@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { UserRole } from '../../types';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ const Register = () => {
     phoneNumber: '',
     institutionalEmail: '',
     institutionalCode: '',
-    role: 'student',
+    role: 'student' as UserRole,
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,7 +72,7 @@ const Register = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'role' ? value as UserRole : value
     }));
   };
 

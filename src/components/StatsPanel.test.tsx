@@ -1,5 +1,6 @@
 
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import StatsPanel from './StatsPanel';
 import { useStats } from '../hooks/useStats';
 
