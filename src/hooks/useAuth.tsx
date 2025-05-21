@@ -125,9 +125,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Registration response:', data);
       
       if (data.user) {
-        // Crear un registro adicional en nuestra tabla personalizada de perfiles si es necesario
-        // Esto se puede implementar si necesitamos almacenar datos adicionales
-        console.log('User created successfully with ID:', data.user.id);
+        try {
+          // Llamar a nuestra edge function para sincronizar en las tablas personalizadas
+          const syncResponse = await supabase.functions.invoke('sync-user', {
+            body: {
+              user: {
+                id: data.user.id,
+                ...userData,
+                role: userRole
+              },
+              action: 'register'
+            }
+          });
+          
+          console.log('Sync user response:', syncResponse);
+          
+          if (syncResponse.error) {
+            console.error('Error sincronizando usuario con tablas personalizadas:', syncResponse.error);
+            throw new Error(syncResponse.error);
+          }
+        } catch (syncError) {
+          console.error('Error llamando a edge function:', syncError);
+          // Continuamos con el flujo aunque falle la sincronización
+          // En producción, podrías querer manejar esto de manera diferente
+        }
       }
       
     } catch (err: any) {
