@@ -1,6 +1,8 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User } from '../types';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -15,43 +17,55 @@ interface AuthContextType {
 // Create a context for authentication
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for development
-const mockUser: User = {
-  id: '1',
-  firstName: 'Juan',
-  lastName: 'Pérez',
-  email: 'juan@universidad.edu.co',
-  institutionId: 'univ-001',
-  role: 'student',
-  createdAt: new Date().toISOString(),
-};
-
 // Provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Check if user is already logged in
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // In a real app, this would check with Supabase or other auth provider
-        // For now, we'll simulate with localStorage
-        const storedUser = localStorage.getItem('uguee-user');
-        
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          const supabaseUser = session.user;
+          const appUser: User = {
+            id: supabaseUser.id,
+            firstName: supabaseUser.user_metadata.firstName || '',
+            lastName: supabaseUser.user_metadata.lastName || '',
+            email: supabaseUser.email || '',
+            role: supabaseUser.user_metadata.role || 'student',
+            createdAt: supabaseUser.created_at,
+          };
+          setUser(appUser);
+        } else {
+          setUser(null);
         }
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        setError('Error verificando autenticación');
-      } finally {
-        setIsLoading(false);
       }
-    };
+    );
 
-    checkAuth();
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        const supabaseUser = session.user;
+        const appUser: User = {
+          id: supabaseUser.id,
+          firstName: supabaseUser.user_metadata.firstName || '',
+          lastName: supabaseUser.user_metadata.lastName || '',
+          email: supabaseUser.email || '',
+          role: supabaseUser.user_metadata.role || 'student',
+          createdAt: supabaseUser.created_at,
+        };
+        setUser(appUser);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Login function
@@ -60,15 +74,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // For development: mock successful login
-      setUser(mockUser);
-      localStorage.setItem('uguee-user', JSON.stringify(mockUser));
-    } catch (err) {
+      if (error) throw error;
+      
+    } catch (err: any) {
       console.error('Login failed:', err);
-      setError('Error iniciando sesión');
+      setError(err.message || 'Error iniciando sesión');
       throw err;
     } finally {
       setIsLoading(false);
@@ -81,22 +96,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email || '',
+        password,
+        options: {
+          data: {
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            phoneNumber: userData.phoneNumber,
+            address: userData.address,
+            institutionalEmail: userData.institutionalEmail,
+            institutionalCode: userData.institutionalCode,
+            role: userData.role,
+          }
+        }
+      });
       
-      // For development: mock successful registration
-      const newUser = {
-        ...userData,
-        id: `user-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        role: userData.role || 'student',
-      } as User;
+      if (error) throw error;
       
-      setUser(newUser);
-      localStorage.setItem('uguee-user', JSON.stringify(newUser));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Registration failed:', err);
-      setError('Error registrando usuario');
+      setError(err.message || 'Error registrando usuario');
       throw err;
     } finally {
       setIsLoading(false);
@@ -104,9 +124,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Logout function
-  const logout = () => {
-    localStorage.removeItem('uguee-user');
-    setUser(null);
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -118,7 +140,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         register,
         logout,
-        isAuthenticated: !!user,
+        isAuthenticated: !!session,
       }}
     >
       {children}
