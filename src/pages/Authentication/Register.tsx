@@ -86,6 +86,8 @@ const Register = () => {
     setIsSubmitting(true);
     
     try {
+      console.log('Submitting registration data:', formData);
+      
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -103,13 +105,13 @@ const Register = () => {
         description: "Bienvenido a Ugüee. Tu cuenta ha sido creada.",
       });
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registration error details:', error);
       toast({
         title: "Error de registro",
-        description: "No pudimos crear tu cuenta. Por favor intenta de nuevo.",
+        description: error.message || "No pudimos crear tu cuenta. Por favor intenta de nuevo.",
         variant: "destructive",
       });
-      console.error('Registration error:', error);
     } finally {
       setIsSubmitting(false);
     }

@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session);
         setSession(session);
         if (session?.user) {
           const supabaseUser = session.user;
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session);
       setSession(session);
       if (session?.user) {
         const supabaseUser = session.user;
@@ -96,6 +98,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     
     try {
+      console.log('Registering user with data:', userData);
+      
+      // Verificamos que el rol sea del tipo correcto
+      const userRole = userData.role as UserRole;
+      
       const { data, error } = await supabase.auth.signUp({
         email: userData.email || '',
         password,
@@ -107,12 +114,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             address: userData.address,
             institutionalEmail: userData.institutionalEmail,
             institutionalCode: userData.institutionalCode,
-            role: userData.role,
+            role: userRole,
           }
         }
       });
       
       if (error) throw error;
+      
+      // Verificar si el usuario se creó correctamente
+      console.log('Registration response:', data);
+      
+      if (data.user) {
+        // Crear un registro adicional en nuestra tabla personalizada de perfiles si es necesario
+        // Esto se puede implementar si necesitamos almacenar datos adicionales
+        console.log('User created successfully with ID:', data.user.id);
+      }
       
     } catch (err: any) {
       console.error('Registration failed:', err);
