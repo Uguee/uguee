@@ -15,6 +15,13 @@ const SearchRoutes = () => {
   
   const { routes, isLoading } = useRoutes();
 
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -49,10 +56,10 @@ const SearchRoutes = () => {
                 <SelectValue placeholder="Elige tu medio de transporte preferido" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="carro">Carro</SelectItem>
-                <SelectItem value="moto">Moto</SelectItem>
-                <SelectItem value="bicicleta">Bicicleta</SelectItem>
-                <SelectItem value="transporte-publico">Transporte público</SelectItem>
+                <SelectItem value="car">Carro</SelectItem>
+                <SelectItem value="bus">Bus</SelectItem>
+                <SelectItem value="bike">Bicicleta</SelectItem>
+                <SelectItem value="walk">Caminar</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline">
@@ -76,10 +83,24 @@ const SearchRoutes = () => {
           <div className="space-y-4">
             {routes.map((route) => (
               <div key={route.id} className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="font-semibold text-lg">{route.origin} → {route.destination}</h3>
-                <p className="text-gray-600">Conductor: {route.driverName}</p>
-                <p className="text-sm text-gray-500">Horario: {route.departureTime}</p>
-                <p className="text-sm text-gray-500">Precio: ${route.price}</p>
+                <h3 className="font-semibold text-lg">{route.origin.name} → {route.destination.name}</h3>
+                <div className="mt-2 space-y-1">
+                  <p className="text-gray-600">ID Conductor: {route.driverId}</p>
+                  <p className="text-sm text-gray-500">Salida: {formatTime(route.departureTime)}</p>
+                  <p className="text-sm text-gray-500">Llegada estimada: {formatTime(route.estimatedArrivalTime)}</p>
+                  <p className="text-sm text-gray-500">Asientos disponibles: {route.availableSeats}/{route.capacity}</p>
+                  <p className="text-sm text-gray-500">Tipo de transporte: {route.transportType}</p>
+                  {route.stops && route.stops.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-gray-700">Paradas:</p>
+                      <ul className="text-sm text-gray-500 ml-4">
+                        {route.stops.map((stop, index) => (
+                          <li key={index}>• {stop.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
