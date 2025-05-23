@@ -1,5 +1,5 @@
 
-import DashboardLayout from '../components/layout/DashboardLayout';
+import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const FavoriteRoutes = () => {
   return (

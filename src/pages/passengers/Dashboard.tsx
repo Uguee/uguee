@@ -1,9 +1,9 @@
 
 import { useEffect } from 'react';
-import Hero from '../components/Hero';
-import StatsPanel from '../components/StatsPanel';
-import InfoCard from '../components/InfoCard';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import Hero from '../../components/Hero';
+import StatsPanel from '../../components/StatsPanel';
+import InfoCard from '../../components/InfoCard';
+import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const Dashboard = () => {
   useEffect(() => {

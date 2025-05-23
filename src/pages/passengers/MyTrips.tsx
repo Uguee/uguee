@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from 'react';
-import { Trip, Route } from '../types';
+import { Trip, Route } from '../../types';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import { useAuth } from '../../hooks/useAuth';
+import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useToast } from '../../hooks/use-toast';
 
-// Mock data for trips and routes
+
 const mockData = [
   {
     trip: {
@@ -105,6 +105,7 @@ const MyTrips = () => {
   const [trips, setTrips] = useState<{trip: Trip, route: Route}[]>([]);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const { user } = useAuth();
+  const { toast } = useToast();
   
   useEffect(() => {
     const fetchTrips = async () => {
@@ -112,19 +113,26 @@ const MyTrips = () => {
       setError(null);
       
       try {
-        // In a real app, you would fetch trips from an API
+        // TODO: Implementar la llamada real a la API
         await new Promise(resolve => setTimeout(resolve, 1000));
         setTrips(mockData);
       } catch (err) {
         console.error('Failed to fetch trips:', err);
         setError('No se pudieron cargar tus viajes. Por favor, intenta de nuevo más tarde.');
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar tus viajes. Por favor, intenta de nuevo más tarde.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchTrips();
-  }, []);
+    if (user) {
+      fetchTrips();
+    }
+  }, [user, toast]);
   
   const formatDate = (isoDate?: string) => {
     if (!isoDate) return 'Fecha no disponible';

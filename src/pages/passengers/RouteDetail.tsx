@@ -1,9 +1,9 @@
 
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import Layout from '../components/layout/Layout';
-import RouteMap from '../components/RouteMap';
-import { useRouteDetail } from '../hooks/useRouteDetail';
+import Layout from '../../components/layout/Layout';
+import RouteMap from '../../components/RouteMap';
+import { useRouteDetail } from '../../hooks/useRouteDetail';
 import { useToast } from '@/hooks/use-toast';
 
 const RouteDetail = () => {

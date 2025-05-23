@@ -9,13 +9,13 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/passengers/Dashboard";
 import SearchRoutes from "./pages/SearchRoutes";
-import RouteDetail from "./pages/RouteDetail";
-import MyTrips from "./pages/MyTrips";
-import Incidents from "./pages/Incidents";
-import FavoriteRoutes from "./pages/FavoriteRoutes";
-import MapView from "./pages/MapView";
+import RouteDetail from "./pages/passengers/RouteDetail";
+import MyTrips from "@/pages/passengers/MyTrips";
+import Incidents from "./pages/passengers/Incidents";
+import FavoriteRoutes from "./pages/passengers/FavoriteRoutes";
+import MapView from "./pages/passengers/MapView";
 
 const queryClient = new QueryClient();
 

@@ -29,69 +29,42 @@ const LandingPage = () => {
                 <StatsPanel />
               </div>
 
-              {/* Features Overview */}
+              {/* Institution Registration */}
               <div className="col-span-1 lg:col-span-2 space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-text mb-6">¿Cómo funciona Ugüee?</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Feature 1 */}
-                    <InfoCard 
-                      title="¡Mantente al tanto de los incidentes!"
-                      linkText="Incidentes"
-                      linkUrl="/incidents"
-                    >
-                      <p className="text-gray-600 text-sm">
-                        ¿Vas tarde? Infórmate en nuestra sección de incidentes para evitar trancones.
-                      </p>
-                    </InfoCard>
-
-                    {/* Feature 2 */}
-                    <InfoCard 
-                      title="¡Día sin carro!"
-                      linkText="Rutas"
-                      linkUrl="/search-routes"
-                    >
-                      <p className="text-gray-600 text-sm">
-                        Prográmate en nuestra sección de rutas y conoce la ruta que más se ajuste a tu viaje
-                      </p>
-                    </InfoCard>
-
-                    {/* Feature 3 */}
-                    <InfoCard 
-                      title="¡20% de descuento!"
-                      linkText="Aplicar descuento"
-                      linkUrl="/discounts"
-                    >
-                      <p className="text-gray-600 text-sm">
-                        Viaje compartido hacia Administración central
-                      </p>
-                    </InfoCard>
-
-                    {/* Feature 4 */}
-                    <InfoCard 
-                      title="¡Viaja con amigos y ahorra!"
-                      linkText="Aplicar descuento"
-                      linkUrl="/discounts"
-                    >
-                      <p className="text-gray-600 text-sm">
-                        15% de descuento al reservar para 3 o más pasajeros
-                      </p>
-                    </InfoCard>
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-bold text-text mb-4">Para Universidades e Instituciones</h2>
+                  <h2 className="text-2xl font-bold text-text mb-6">Para Universidades e Instituciones</h2>
                   <p className="mb-6 text-gray-600">
                     Ofrecemos una solución integral para la gestión de transporte universitario. 
                     Mejora la movilidad en tu campus y proporciona una alternativa segura y eficiente para estudiantes y personal.
                   </p>
-                  <Link 
-                    to="/institution-register" 
-                    className="inline-block bg-primary hover:bg-gradient-primary text-white font-medium py-3 px-6 rounded-md transition-all duration-300"
-                  >
-                    Registrar mi institución
-                  </Link>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                      <h3 className="text-lg font-semibold mb-3">Beneficios para tu institución</h3>
+                      <ul className="space-y-2 text-gray-600">
+                        <li>• Gestión centralizada del transporte</li>
+                        <li>• Monitoreo en tiempo real</li>
+                        <li>• Reportes y estadísticas</li>
+                        <li>• Soporte técnico dedicado</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                      <h3 className="text-lg font-semibold mb-3">¿Por qué elegir Ugüee?</h3>
+                      <ul className="space-y-2 text-gray-600">
+                        <li>• Plataforma personalizada</li>
+                        <li>• Integración con sistemas existentes</li>
+                        <li>• Seguridad y confiabilidad</li>
+                        <li>• Escalable según necesidades</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="mt-8 text-center">
+                    <Link 
+                      to="/institution-register" 
+                      className="inline-block bg-primary hover:bg-gradient-primary text-white font-medium py-3 px-8 rounded-md transition-all duration-300"
+                    >
+                      Registrar mi institución
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
