@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useStats } from '../hooks/useStats';
 
@@ -28,15 +29,26 @@ const StatItem: React.FC<StatItemProps> = ({
 
 interface StatsPanelProps {
   className?: string;
+  universityName?: string;
+  campus?: string;
 }
 
 const StatsPanel: React.FC<StatsPanelProps> = ({ 
-  className = ""
+  className = "",
+  universityName,
+  campus 
 }) => {
   const { stats, isLoading } = useStats();
 
   return (
     <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 ${className}`}>
+      {/* Display university name and campus if provided */}
+      {(universityName || campus) && (
+        <div className="mb-4 text-center">
+          {universityName && <h3 className="font-semibold">{universityName}</h3>}
+          {campus && <p className="text-sm text-gray-500">{campus}</p>}
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2 text-center">
         <StatItem
           label="Vehículos disponibles"

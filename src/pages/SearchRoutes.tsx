@@ -13,7 +13,7 @@ const SearchRoutes = () => {
   const [destination, setDestination] = useState('Carrera 86');
   const [transportType, setTransportType] = useState('');
   
-  const { data: routes, isLoading } = useRoutes();
+  const { routes, isLoading } = useRoutes();
 
   return (
     <DashboardLayout>
