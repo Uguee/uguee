@@ -34,15 +34,7 @@ export type Database = {
           lugar_expedi?: string | null
           tipo?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "documento_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       documento_vehicular: {
         Row: {
@@ -113,15 +105,7 @@ export type Database = {
           id?: number
           id_PK?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "pasajeros_id_fkey"
-            columns: ["id"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       registro: {
         Row: {
@@ -166,13 +150,6 @@ export type Database = {
             columns: ["id_institucion"]
             isOneToOne: false
             referencedRelation: "institucion"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "registro_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
             referencedColumns: ["id"]
           },
         ]
@@ -234,13 +211,6 @@ export type Database = {
             referencedRelation: "ruta"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "ruta_usuario_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
-          },
         ]
       }
       tipo: {
@@ -259,19 +229,19 @@ export type Database = {
         Row: {
           contrasena: string
           edad: number | null
-          id: number
+          id: string
           nombre: string
         }
         Insert: {
           contrasena: string
           edad?: number | null
-          id?: number
+          id: string
           nombre: string
         }
         Update: {
           contrasena?: string
           edad?: number | null
-          id?: number
+          id?: string
           nombre?: string
         }
         Relationships: []
@@ -279,15 +249,15 @@ export type Database = {
       usuario_rol: {
         Row: {
           id_rol: string
-          id_usuario: number
+          id_usuario: string | null
         }
         Insert: {
           id_rol: string
-          id_usuario: number
+          id_usuario?: string | null
         }
         Update: {
           id_rol?: string
-          id_usuario?: number
+          id_usuario?: string | null
         }
         Relationships: [
           {
@@ -296,13 +266,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "rol"
             referencedColumns: ["rol"]
-          },
-          {
-            foreignKeyName: "usuario_rol_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -344,13 +307,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tipo"
             referencedColumns: ["tipo"]
-          },
-          {
-            foreignKeyName: "vehiculo_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -401,13 +357,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pasajeros"
             referencedColumns: ["id_PK"]
-          },
-          {
-            foreignKeyName: "viaje_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "viaje_id_vehiculo_fkey"

@@ -16,7 +16,7 @@ const Navbar = () => {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         {/* Logo */}
-        <Link to="/" className="flex items-center">
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center">
           <h1 className="text-primary text-2xl font-bold">Ugüee</h1>
           {location.pathname !== '/' && (
             <span className="text-xs text-gray-500 ml-2 hidden sm:inline">
@@ -118,6 +118,13 @@ const Navbar = () => {
             <nav className="flex flex-col space-y-3 py-3">
               {isAuthenticated ? (
                 <>
+                  <Link 
+                    to="/dashboard" 
+                    className="text-gray-600 py-2 hover:text-primary transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
                   <Link 
                     to="/search-routes" 
                     className="text-gray-600 py-2 hover:text-primary transition-colors"

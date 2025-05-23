@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,9 +9,13 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
+import Dashboard from "./pages/Dashboard";
 import SearchRoutes from "./pages/SearchRoutes";
 import RouteDetail from "./pages/RouteDetail";
 import MyTrips from "./pages/MyTrips";
+import Incidents from "./pages/Incidents";
+import FavoriteRoutes from "./pages/FavoriteRoutes";
+import MapView from "./pages/MapView";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +48,14 @@ const AppRoutes = () => {
       
       {/* Protected Routes */}
       <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/search-routes" 
         element={
           <ProtectedRoute>
@@ -65,6 +76,30 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MyTrips />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/incidents" 
+        element={
+          <ProtectedRoute>
+            <Incidents />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/favorite-routes" 
+        element={
+          <ProtectedRoute>
+            <FavoriteRoutes />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/map" 
+        element={
+          <ProtectedRoute>
+            <MapView />
           </ProtectedRoute>
         } 
       />
