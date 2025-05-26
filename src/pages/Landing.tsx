@@ -1,12 +1,10 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
-import StatsPanel from '../components/StatsPanel';
 import InfoCard from '../components/InfoCard';
 import Layout from '../components/layout/Layout';
 
 const LandingPage = () => {
-  // Enhanced page description for SEO
   useEffect(() => {
     document.title = 'Ugüee - Tu plataforma de viajes universitarios';
   }, []);
@@ -23,46 +21,78 @@ const LandingPage = () => {
         {/* Stats and Features Section */}
         <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-50" id="info">
           <div className="container mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Stats Panel */}
-              <div className="col-span-1">
-                <StatsPanel />
-              </div>
-
+            <div className="grid grid-cols-1 gap-8">
               {/* Institution Registration */}
-              <div className="col-span-1 lg:col-span-2 space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-text mb-6">Para Universidades e Instituciones</h2>
-                  <p className="mb-6 text-gray-600">
-                    Ofrecemos una solución integral para la gestión de transporte universitario. 
-                    Mejora la movilidad en tu campus y proporciona una alternativa segura y eficiente para estudiantes y personal.
+              <div className="col-span-1 space-y-8">
+                <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-8 rounded-2xl">
+                  <h2 className="text-3xl font-bold text-text mb-4">Para Universidades e Instituciones</h2>
+                  <p className="mb-8 text-gray-600 text-lg">
+                    Transforma la movilidad de tu campus con una solución integral y personalizada. 
+                    Optimiza el transporte universitario y mejora la experiencia de toda tu comunidad.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow-sm border">
-                      <h3 className="text-lg font-semibold mb-3">Beneficios para tu institución</h3>
-                      <ul className="space-y-2 text-gray-600">
-                        <li>• Gestión centralizada del transporte</li>
-                        <li>• Monitoreo en tiempo real</li>
-                        <li>• Reportes y estadísticas</li>
-                        <li>• Soporte técnico dedicado</li>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="bg-white p-8 rounded-xl shadow-sm border hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-semibold mb-4">Beneficios para tu institución</h3>
+                      <ul className="space-y-3 text-gray-600">
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Gestión centralizada y monitoreo en tiempo real de todas las rutas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Reportes detallados y análisis de patrones de movilidad</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Soporte técnico dedicado y capacitación continua</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Reducción de costos operativos y huella de carbono</span>
+                        </li>
                       </ul>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-sm border">
-                      <h3 className="text-lg font-semibold mb-3">¿Por qué elegir Ugüee?</h3>
-                      <ul className="space-y-2 text-gray-600">
-                        <li>• Plataforma personalizada</li>
-                        <li>• Integración con sistemas existentes</li>
-                        <li>• Seguridad y confiabilidad</li>
-                        <li>• Escalable según necesidades</li>
+                    <div className="bg-white p-8 rounded-xl shadow-sm border hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-semibold mb-4">¿Por qué elegir Ugüee?</h3>
+                      <ul className="space-y-3 text-gray-600">
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Plataforma personalizada según las necesidades de tu institución</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Integración perfecta con sistemas administrativos existentes</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Alta seguridad y confiabilidad en la gestión de datos</span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-primary mr-2">•</span>
+                          <span>Solución escalable que crece con tu institución</span>
+                        </li>
                       </ul>
                     </div>
                   </div>
-                  <div className="mt-8 text-center">
+                  <div className="mt-10 text-center">
                     <Link 
                       to="/institution-register" 
-                      className="inline-block bg-primary hover:bg-gradient-primary text-white font-medium py-3 px-8 rounded-md transition-all duration-300"
+                      className="inline-flex items-center justify-center bg-primary hover:bg-gradient-primary text-white font-medium py-4 px-10 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
                     >
-                      Registrar mi institución
+                      <span>Registrar mi institución</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
                     </Link>
                   </div>
                 </div>
@@ -109,15 +139,6 @@ const LandingPage = () => {
                   Resérvate un lugar en la ruta de tu preferencia y disfruta de un transporte seguro.
                 </p>
               </div>
-            </div>
-            
-            <div className="mt-12 text-center">
-              <Link 
-                to="/register"
-                className="inline-block bg-primary hover:bg-gradient-primary text-white font-medium py-3 px-8 rounded-md transition-all duration-300"
-              >
-                Comenzar ahora
-              </Link>
             </div>
           </div>
         </section>

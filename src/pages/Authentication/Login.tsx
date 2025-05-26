@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,7 +21,27 @@ const Login = () => {
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
       });
-      navigate('/');
+      
+      // Redirigir según el rol del usuario
+      const { user } = useAuth();
+      if (user) {
+        switch (user.role) {
+          case 'student':
+            navigate('/dashboard');
+            break;
+          case 'driver':
+            navigate('/driver/dashboard');
+            break;
+          case 'institution-admin':
+            navigate('/institution/dashboard');
+            break;
+          case 'site-admin':
+            navigate('/admin/dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
+      }
     } catch (error) {
       toast({
         title: "Error de inicio de sesión",

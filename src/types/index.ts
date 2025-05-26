@@ -1,4 +1,3 @@
-
 // Institution represents a university or educational institution
 export interface Institution {
   id: string;
@@ -25,6 +24,7 @@ export interface User {
   role: UserRole;
   createdAt: string;
   avatarUrl?: string;
+  dateOfBirth?: string;
 }
 
 // Driver extends User with additional properties

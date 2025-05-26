@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,11 +11,10 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    address: '',
     phoneNumber: '',
-    institutionalEmail: '',
-    institutionalCode: '',
-    role: 'student' as UserRole,
+    role: 'pasajero' as UserRole,
+    dateOfBirth: '',
+    cedula: '',
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,6 +32,16 @@ const Register = () => {
     
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Apellidos son requeridos';
+    }
+    
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Fecha de nacimiento es requerida';
+    }
+    
+    if (!formData.cedula.trim()) {
+      newErrors.cedula = 'Cédula es requerida';
+    } else if (!/^\d{8,10}$/.test(formData.cedula)) {
+      newErrors.cedula = 'Cédula debe tener entre 8 y 10 dígitos';
     }
     
     if (!formData.email.trim()) {
@@ -54,14 +62,6 @@ const Register = () => {
     
     if (!formData.phoneNumber) {
       newErrors.phoneNumber = 'Número de teléfono es requerido';
-    }
-    
-    if (formData.role === 'student' && !formData.institutionalEmail) {
-      newErrors.institutionalEmail = 'Correo institucional es requerido';
-    }
-    
-    if (formData.role === 'student' && !formData.institutionalCode) {
-      newErrors.institutionalCode = 'Código institucional es requerido';
     }
     
     setErrors(newErrors);
@@ -89,14 +89,13 @@ const Register = () => {
       console.log('Submitting registration data:', formData);
       
       const userData = {
+        id: formData.cedula,
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
-        address: formData.address,
-        institutionalEmail: formData.institutionalEmail,
-        institutionalCode: formData.institutionalCode,
         role: formData.role,
+        dateOfBirth: formData.dateOfBirth,
       };
       
       await register(userData, formData.password);
@@ -154,8 +153,8 @@ const Register = () => {
                 value={formData.role}
                 onChange={handleChange}
               >
-                <option value="student">Estudiante</option>
-                <option value="driver">Conductor</option>
+                <option value="pasajero">Estudiante</option>
+                <option value="conductor">Conductor</option>
               </select>
             </div>
             
@@ -202,21 +201,47 @@ const Register = () => {
                   )}
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                Dirección de residencia
-              </label>
-              <div className="mt-1">
-                <input
-                  type="text"
-                  name="address"
-                  id="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md"
-                />
+              <div>
+                <label htmlFor="cedula" className="block text-sm font-medium text-gray-700">
+                  Cédula
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    name="cedula"
+                    id="cedula"
+                    value={formData.cedula}
+                    onChange={handleChange}
+                    className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                      errors.cedula ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {errors.cedula && (
+                    <p className="mt-1 text-sm text-red-600">{errors.cedula}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                  Fecha de nacimiento
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    id="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                      errors.dateOfBirth ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {errors.dateOfBirth && (
+                    <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -240,53 +265,6 @@ const Register = () => {
                 )}
               </div>
             </div>
-            
-            {/* Institutional Information (For Students) */}
-            {formData.role === 'student' && (
-              <>
-                <div>
-                  <label htmlFor="institutionalEmail" className="block text-sm font-medium text-gray-700">
-                    Correo institucional
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="email"
-                      name="institutionalEmail"
-                      id="institutionalEmail"
-                      value={formData.institutionalEmail}
-                      onChange={handleChange}
-                      className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
-                        errors.institutionalEmail ? 'border-red-500' : ''
-                      }`}
-                    />
-                    {errors.institutionalEmail && (
-                      <p className="mt-1 text-sm text-red-600">{errors.institutionalEmail}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="institutionalCode" className="block text-sm font-medium text-gray-700">
-                    Código institucional
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      name="institutionalCode"
-                      id="institutionalCode"
-                      value={formData.institutionalCode}
-                      onChange={handleChange}
-                      className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
-                        errors.institutionalCode ? 'border-red-500' : ''
-                      }`}
-                    />
-                    {errors.institutionalCode && (
-                      <p className="mt-1 text-sm text-red-600">{errors.institutionalCode}</p>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
             
             {/* Account Information */}
             <div>

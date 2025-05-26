@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         if (session?.user) {
           const supabaseUser = session.user;
-          const appUser: User = {
+          const appUser: User = { 
             id: supabaseUser.id,
             firstName: supabaseUser.user_metadata.firstName || '',
             lastName: supabaseUser.user_metadata.lastName || '',
@@ -111,10 +110,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             firstName: userData.firstName,
             lastName: userData.lastName,
             phoneNumber: userData.phoneNumber,
-            address: userData.address,
-            institutionalEmail: userData.institutionalEmail,
-            institutionalCode: userData.institutionalCode,
             role: userRole,
+            dateOfBirth: userData.dateOfBirth,
           }
         }
       });
@@ -130,9 +127,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const syncResponse = await supabase.functions.invoke('sync-user', {
             body: {
               user: {
-                id: data.user.id,
-                ...userData,
-                role: userRole
+                id_usuario: userData.id,
+                uuid: data.user.id,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                phoneNumber: userData.phoneNumber,
+                role: userRole,
+                dateOfBirth: userData.dateOfBirth
               },
               action: 'register'
             }
@@ -146,8 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         } catch (syncError) {
           console.error('Error llamando a edge function:', syncError);
-          // Continuamos con el flujo aunque falle la sincronización
-          // En producción, podrías querer manejar esto de manera diferente
+          throw syncError;
         }
       }
       
