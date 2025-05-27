@@ -1,340 +1,251 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 interface LoginScreenProps {
-  onNavigateToRegister?: () => void;
+  onLogin: (email: string, password: string) => void;
+  onGoToRegister: () => void;
+  onBackToHome: () => void;
 }
 
-export default function LoginScreen({ onNavigateToRegister }: LoginScreenProps) {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+export default function LoginScreen({ onLogin, onGoToRegister, onBackToHome }: LoginScreenProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const updateField = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+  const handleLogin = () => {
+    if (email.trim() && password.trim()) {
+      onLogin(email, password);
     }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email no válido';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Contraseña es requerida';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Contraseña debe tener al menos 6 caracteres';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // Here you would integrate with your authentication system
-      // For now, we'll just simulate a login process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      Alert.alert('Éxito', 'Inicio de sesión exitoso. ¡Bienvenido a Ugüee!');
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo iniciar sesión. Verifica tus credenciales.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const navigateToRegister = () => {
-    if (onNavigateToRegister) {
-      onNavigateToRegister();
-    } else {
-      Alert.alert('Navegación', 'Ir a pantalla de registro');
-    }
-  };
-
-  const navigateToForgotPassword = () => {
-    // Navigation logic would go here
-    Alert.alert('Navegación', 'Ir a recuperar contraseña');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" backgroundColor="#7C3AED" />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <View style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Back to home button */}
+      <TouchableOpacity style={styles.backButton} onPress={onBackToHome}>
+        <Text style={styles.backButtonText}>← Inicio</Text>
+      </TouchableOpacity>
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.logo}>Ugüee</Text>
-            <Text style={styles.subtitle}>¡Viaja seguro!</Text>
-            <Text style={styles.description}>
-              Respaldado por las mejores universidades
-            </Text>
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <Text style={styles.brandName}>Ugüee</Text>
+          <Text style={styles.welcomeText}>¡Bienvenido de vuelta!</Text>
+        </View>
+
+        {/* Login Form */}
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>Iniciar Sesión</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Correo electrónico</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="ejemplo@correo.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </View>
 
-          {/* Login Form */}
-          <View style={styles.formContainer}>
-            <Text style={styles.title}>Inicia sesión</Text>
-            <Text style={styles.subtitle2}>Ingresa a tu cuenta de Ugüee</Text>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                value={formData.email}
-                onChangeText={(value) => updateField('email', value)}
-                placeholder="tu@email.com"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Contraseña</Text>
-              <TextInput
-                style={[styles.input, errors.password && styles.inputError]}
-                value={formData.password}
-                onChangeText={(value) => updateField('password', value)}
-                placeholder="Tu contraseña"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry
-              />
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity onPress={navigateToForgotPassword} style={styles.forgotContainer}>
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.disabledButton]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Social Login Options */}
-            <View style={styles.socialContainer}>
-              <View style={styles.dividerContainer}>
-                <View style={styles.divider} />
-                <Text style={styles.dividerText}>O continúa con</Text>
-                <View style={styles.divider} />
-              </View>
-
-              <View style={styles.socialButtonsRow}>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Text style={styles.socialButtonText}>Google</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton}>
-                  <Text style={styles.socialButtonText}>Microsoft</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Register Link */}
-            <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>¿No tienes cuenta? </Text>
-              <TouchableOpacity onPress={navigateToRegister}>
-                <Text style={styles.registerLink}>Regístrate aquí</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Contraseña</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Tu contraseña"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Social Login Options */}
+        <View style={styles.socialContainer}>
+          <Text style={styles.orText}>O continúa con</Text>
+          
+          <TouchableOpacity style={styles.socialButton}>
+            <Text style={styles.socialButtonText}>📧 Continuar con Google</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.socialButton}>
+            <Text style={styles.socialButtonText}>📘 Continuar con Facebook</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Bottom buttons */}
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity 
+          style={[styles.loginButton, (!email.trim() || !password.trim()) && styles.disabledButton]} 
+          onPress={handleLogin}
+          disabled={!email.trim() || !password.trim()}
+        >
+          <Text style={styles.loginButtonText}>INICIAR SESIÓN</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.registerPrompt}>
+          <Text style={styles.registerPromptText}>¿No tienes cuenta? </Text>
+          <TouchableOpacity onPress={onGoToRegister}>
+            <Text style={styles.registerLink}>Crear cuenta</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#fff',
   },
-  keyboardView: {
+  backButton: {
+    position: 'absolute',
+    top: 60,
+    left: 24,
+    zIndex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  backButtonText: {
+    color: '#8B5CF6',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-  },
-  header: {
-    alignItems: 'center',
+    paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
-  logo: {
-    fontSize: 42,
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 40,
+    marginBottom: 40,
+  },
+  brandName: {
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#8B5CF6',
     marginBottom: 8,
+    letterSpacing: -1,
   },
-  subtitle: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    textAlign: 'center',
+  welcomeText: {
+    fontSize: 18,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   formContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1F2937',
+    marginBottom: 24,
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle2: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
   },
   inputContainer: {
     marginBottom: 20,
   },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
+    borderRadius: 12,
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
     fontSize: 16,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
   },
-  inputError: {
-    borderColor: '#EF4444',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  forgotContainer: {
+  forgotPassword: {
     alignItems: 'flex-end',
-    marginBottom: 24,
+    marginTop: 8,
   },
-  forgotText: {
+  forgotPasswordText: {
+    color: '#8B5CF6',
     fontSize: 14,
-    color: '#7C3AED',
     fontWeight: '500',
   },
-  loginButton: {
-    backgroundColor: '#7C3AED',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   socialContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  orText: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 14,
     marginBottom: 16,
   },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  socialButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
   socialButton: {
-    flex: 1,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
   },
   socialButtonText: {
-    fontSize: 14,
+    textAlign: 'center',
+    fontSize: 16,
     color: '#374151',
     fontWeight: '500',
   },
-  registerContainer: {
+  bottomContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  loginButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#D1D5DB',
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  registerPrompt: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  registerText: {
-    fontSize: 14,
+  registerPromptText: {
     color: '#6B7280',
+    fontSize: 16,
   },
   registerLink: {
-    fontSize: 14,
-    color: '#7C3AED',
-    fontWeight: '500',
+    color: '#8B5CF6',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
