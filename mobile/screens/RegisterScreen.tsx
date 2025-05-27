@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View,
@@ -15,7 +14,11 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Picker } from '@react-native-picker/picker';
 
-export default function RegisterScreen() {
+interface RegisterScreenProps {
+  onNavigateToLogin?: () => void;
+}
+
+export default function RegisterScreen({ onNavigateToLogin }: RegisterScreenProps) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -100,8 +103,11 @@ export default function RegisterScreen() {
   };
 
   const navigateToLogin = () => {
-    // Navigation logic would go here
-    Alert.alert('Navegación', 'Ir a pantalla de inicio de sesión');
+    if (onNavigateToLogin) {
+      onNavigateToLogin();
+    } else {
+      Alert.alert('Navegación', 'Ir a pantalla de inicio de sesión');
+    }
   };
 
   return (
