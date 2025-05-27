@@ -1,73 +1,123 @@
-# Welcome to your Lovable project
+# Uguee - Aplicación Web y Móvil
 
-## Project info
+Este proyecto contiene tanto la versión web como la versión móvil de la aplicación Uguee.
 
-**URL**: https://lovable.dev/projects/cc775755-b32d-4cb0-8ae5-098b097c2802
+## Estructura del Proyecto
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/cc775755-b32d-4cb0-8ae5-098b097c2802) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+uguee/
+├── web/          # Aplicación web (React + Vite + TypeScript + Supabase)
+├── mobile/       # Aplicación móvil (React Native + Expo + TypeScript)
+├── .git/         # Control de versiones compartido
+├── .gitignore    # Archivos ignorados globalmente
+└── README.md     # Este archivo
 ```
 
-**Edit a file directly in GitHub**
+## Aplicación Web (`/web`)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+La aplicación web está construida con:
+- **React** - Biblioteca de UI
+- **TypeScript** - Tipado estático
+- **Vite** - Herramientas de desarrollo y build
+- **Tailwind CSS** - Framework de CSS
+- **Shadcn/ui** - Componentes de UI
+- **Supabase** - Backend completo (autenticación, base de datos, storage)
 
-**Use GitHub Codespaces**
+### Comandos para la Web
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+cd web
+npm install          # Instalar dependencias
+npm run dev          # Ejecutar en modo desarrollo
+npm run build        # Construir para producción
+npm run preview      # Preview del build de producción
+```
 
-## What technologies are used for this project?
+## Aplicación Móvil (`/mobile`)
 
-This project is built with:
+La aplicación móvil está construida con:
+- **React Native** - Framework móvil
+- **Expo** - Plataforma de desarrollo
+- **TypeScript** - Tipado estático
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+> **Nota**: La aplicación móvil es independiente y no maneja autenticación ni backend directamente. Toda la lógica de Supabase se gestiona desde la aplicación web.
 
-## How can I deploy this project?
+### Comandos para la Aplicación Móvil
 
-Simply open [Lovable](https://lovable.dev/projects/cc775755-b32d-4cb0-8ae5-098b097c2802) and click on Share -> Publish.
+```bash
+cd mobile
+npm install          # Instalar dependencias
+npm start            # Iniciar servidor de desarrollo Expo
+npm run android      # Ejecutar en Android
+npm run ios          # Ejecutar en iOS (requiere macOS)
+npm run web          # Ejecutar versión web de Expo
+```
 
-## Can I connect a custom domain to my Lovable project?
+### Desarrollo con Expo
 
-Yes, you can!
+1. Instala la aplicación **Expo Go** en tu dispositivo móvil
+2. Ejecuta `npm start` en la carpeta `/mobile`
+3. Escanea el código QR con la aplicación Expo Go
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Desarrollo
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Para trabajar en ambas aplicaciones simultáneamente:
+
+1. **Terminal 1**: `cd web && npm run dev`
+2. **Terminal 2**: `cd mobile && npm start`
+
+O desde la raíz del proyecto:
+```bash
+npm run dev  # Ejecuta ambas aplicaciones simultáneamente
+```
+
+## Arquitectura
+
+### Separación de Responsabilidades
+
+- **Aplicación Web**: 
+  - Maneja toda la autenticación con Supabase
+  - Gestiona la base de datos y storage
+  - Interfaz completa de administración
+  - APIs y lógica de negocio
+
+- **Aplicación Móvil**:
+  - Experiencia móvil nativa optimizada
+  - Interfaz de usuario simplificada
+  - Navegación móvil intuitiva
+  - Funcionalidades específicas móviles (cámara, geolocalización, etc.)
+
+### Próximos Pasos para Mobile
+
+1. **Configurar navegación**: Instalar React Navigation
+   ```bash
+   cd mobile
+   npm install @react-navigation/native @react-navigation/stack
+   npx expo install react-native-screens react-native-safe-area-context
+   ```
+
+2. **Styling**: NativeWind para usar Tailwind CSS en React Native
+   ```bash
+   cd mobile
+   npm install nativewind
+   npm install --save-dev tailwindcss
+   ```
+
+3. **Estado local**: Context API o Zustand para manejo de estado
+4. **Comunicación con web**: APIs REST o WebSockets para sincronización
+
+## Scripts Disponibles
+
+Desde la raíz del proyecto:
+
+```bash
+npm run web:dev          # Solo aplicación web
+npm run mobile:start     # Solo aplicación móvil
+npm run dev              # Ambas aplicaciones
+npm run install:all      # Instalar dependencias de ambas
+npm run build:all        # Construir aplicación web
+```
+
+## Licencia
+
+[Especifica tu licencia aquí]
