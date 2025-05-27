@@ -1,22 +1,24 @@
-# Uguee - Aplicación Web y Móvil
+# Ugüee - Aplicación Web y Móvil
 
-Este proyecto contiene tanto la versión web como la versión móvil de la aplicación Uguee.
+Plataforma para viajar seguro y económico. Este proyecto contiene tanto la versión web como la versión móvil de la aplicación Ugüee.
 
-## Estructura del Proyecto
+## 🏗️ Estructura del Proyecto
 
 ```
 uguee/
-├── web/          # Aplicación web (React + Vite + TypeScript + Supabase)
-├── mobile/       # Aplicación móvil (React Native + Expo + TypeScript)
-├── .git/         # Control de versiones compartido
-├── .gitignore    # Archivos ignorados globalmente
-└── README.md     # Este archivo
+├── src/              # Código fuente de la aplicación web
+├── public/           # Archivos públicos de la web
+├── mobile/           # Aplicación móvil (React Native + Expo)
+├── package.json      # Dependencias y scripts principales
+├── vite.config.ts    # Configuración de Vite
+├── index.html        # Punto de entrada HTML
+└── README.md         # Este archivo
 ```
 
-## Aplicación Web (`/web`)
+## 🌐 Aplicación Web
 
 La aplicación web está construida con:
-- **React** - Biblioteca de UI
+- **React 18** - Biblioteca de UI
 - **TypeScript** - Tipado estático
 - **Vite** - Herramientas de desarrollo y build
 - **Tailwind CSS** - Framework de CSS
@@ -26,98 +28,199 @@ La aplicación web está construida con:
 ### Comandos para la Web
 
 ```bash
-cd web
-npm install          # Instalar dependencias
-npm run dev          # Ejecutar en modo desarrollo
-npm run build        # Construir para producción
-npm run preview      # Preview del build de producción
+# Instalar dependencias
+npm install
+
+# Ejecutar en modo desarrollo
+npm run dev
+
+# Construir para desarrollo
+npm run build:dev
+
+# Construir para producción
+npm run build
+
+# Preview del build
+npm run preview
 ```
 
-## Aplicación Móvil (`/mobile`)
+## 📱 Aplicación Móvil
 
 La aplicación móvil está construida con:
 - **React Native** - Framework móvil
-- **Expo** - Plataforma de desarrollo
+- **Expo SDK 53** - Plataforma de desarrollo
 - **TypeScript** - Tipado estático
+- **React 19** - Última versión de React
 
-> **Nota**: La aplicación móvil es independiente y no maneja autenticación ni backend directamente. Toda la lógica de Supabase se gestiona desde la aplicación web.
+### Funcionalidades Móviles Implementadas
+
+- ✅ Pantalla de bienvenida
+- ✅ Sistema de autenticación (Login/Registro)
+- ✅ Formulario de registro completo con validación
+- ✅ Flujo de verificación de identidad
+- ✅ Pantallas de permisos (cámara, video, ubicación)
+- ✅ Navegación entre pantallas
+- ✅ ScrollView para formularios largos
 
 ### Comandos para la Aplicación Móvil
 
 ```bash
+# Navegar a la carpeta móvil
 cd mobile
-npm install          # Instalar dependencias
-npm start            # Iniciar servidor de desarrollo Expo
-npm run android      # Ejecutar en Android
-npm run ios          # Ejecutar en iOS (requiere macOS)
-npm run web          # Ejecutar versión web de Expo
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo Expo
+npx expo start
+
+# Ejecutar en Android
+npx expo run:android
+
+# Ejecutar en iOS (requiere macOS)
+npx expo run:ios
 ```
 
-### Desarrollo con Expo
+## 🚀 Instalación en un Nuevo PC
 
-1. Instala la aplicación **Expo Go** en tu dispositivo móvil
-2. Ejecuta `npm start` en la carpeta `/mobile`
-3. Escanea el código QR con la aplicación Expo Go
-
-## Desarrollo
-
-Para trabajar en ambas aplicaciones simultáneamente:
-
-1. **Terminal 1**: `cd web && npm run dev`
-2. **Terminal 2**: `cd mobile && npm start`
-
-O desde la raíz del proyecto:
-```bash
-npm run dev  # Ejecuta ambas aplicaciones simultáneamente
-```
-
-## Arquitectura
-
-### Separación de Responsabilidades
-
-- **Aplicación Web**: 
-  - Maneja toda la autenticación con Supabase
-  - Gestiona la base de datos y storage
-  - Interfaz completa de administración
-  - APIs y lógica de negocio
-
-- **Aplicación Móvil**:
-  - Experiencia móvil nativa optimizada
-  - Interfaz de usuario simplificada
-  - Navegación móvil intuitiva
-  - Funcionalidades específicas móviles (cámara, geolocalización, etc.)
-
-### Próximos Pasos para Mobile
-
-1. **Configurar navegación**: Instalar React Navigation
-   ```bash
-   cd mobile
-   npm install @react-navigation/native @react-navigation/stack
-   npx expo install react-native-screens react-native-safe-area-context
-   ```
-
-2. **Styling**: NativeWind para usar Tailwind CSS en React Native
-   ```bash
-   cd mobile
-   npm install nativewind
-   npm install --save-dev tailwindcss
-   ```
-
-3. **Estado local**: Context API o Zustand para manejo de estado
-4. **Comunicación con web**: APIs REST o WebSockets para sincronización
-
-## Scripts Disponibles
-
-Desde la raíz del proyecto:
+### 1. Requisitos Previos
 
 ```bash
-npm run web:dev          # Solo aplicación web
-npm run mobile:start     # Solo aplicación móvil
-npm run dev              # Ambas aplicaciones
-npm run install:all      # Instalar dependencias de ambas
-npm run build:all        # Construir aplicación web
+# Node.js (versión 18 o superior)
+# Descargar desde: https://nodejs.org/
+
+# Expo CLI (para desarrollo móvil)
+npm install -g @expo/cli
+
+# Git (opcional, para control de versiones)
+# Descargar desde: https://git-scm.com/
 ```
 
-## Licencia
+### 2. Configuración del Proyecto
+
+```bash
+# 1. Clonar o copiar el proyecto
+git clone [URL_DEL_REPOSITORIO]
+# o copiar la carpeta completa
+
+# 2. Instalar dependencias de la aplicación web
+npm install
+
+# 3. Instalar dependencias de la aplicación móvil
+cd mobile
+npm install
+cd ..
+```
+
+### 3. Ejecutar las Aplicaciones
+
+**Aplicación Web:**
+```bash
+# Desde la raíz del proyecto
+npm run dev
+# Se abrirá en http://localhost:5173
+```
+
+**Aplicación Móvil:**
+```bash
+# Desde la carpeta mobile
+cd mobile
+npx expo start
+
+# Opciones:
+# - Escanear QR con Expo Go en tu teléfono
+# - Presionar 'a' para Android emulator
+# - Presionar 'i' para iOS simulator (solo Mac)
+# - Presionar 'w' para abrir en navegador web
+```
+
+### 4. Para Dispositivos Físicos
+
+1. Instala **Expo Go** desde:
+   - [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent) (Android)
+   - [App Store](https://apps.apple.com/app/expo-go/id982107779) (iOS)
+
+2. Ejecuta `npx expo start` en la carpeta `mobile`
+3. Escanea el código QR con Expo Go
+
+## 🛠️ Desarrollo
+
+### Trabajar en Ambas Aplicaciones
+
+```bash
+# Terminal 1 - Aplicación Web
+npm run dev
+
+# Terminal 2 - Aplicación Móvil
+cd mobile && npx expo start
+```
+
+### Scripts Disponibles desde la Raíz
+
+```bash
+npm run dev              # Aplicación web en desarrollo
+npm run build:dev        # Build de desarrollo
+npm run build            # Build de producción
+npm run preview          # Preview del build
+```
+
+## 📋 Variables de Entorno
+
+### Para la Aplicación Web
+Crear archivo `.env` en la raíz:
+```env
+VITE_SUPABASE_URL=tu_supabase_url
+VITE_SUPABASE_ANON_KEY=tu_supabase_anon_key
+```
+
+### Para la Aplicación Móvil
+La aplicación móvil actualmente funciona de forma independiente sin variables de entorno.
+
+## 🎨 Pantallas Móviles Implementadas
+
+1. **WelcomeScreen** - Pantalla inicial con logo y opciones
+2. **LoginScreen** - Inicio de sesión
+3. **RegisterScreen** - Registro con campos completos
+4. **VerifyIdentityScreen** - Confirmación de verificación
+5. **CameraPermissionsScreen** - Solicitud de permisos
+6. **StartVerificationScreen** - Inicio del proceso de verificación
+
+## 🔧 Tecnologías Utilizadas
+
+### Frontend Web
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Shadcn/ui
+- React Router
+- Lucide React (iconos)
+
+### Backend
+- Supabase (autenticación, base de datos, storage)
+
+### Mobile
+- React Native
+- Expo SDK 53
+- TypeScript
+- React Navigation (pendiente)
+
+## 📝 Próximos Pasos
+
+### Para la Aplicación Móvil
+1. **Integración con backend**: Conectar con APIs o Supabase
+2. **Navegación avanzada**: Implementar React Navigation completo
+3. **Funcionalidades nativas**: Cámara, geolocalización, notificaciones
+4. **Optimización**: Mejoras de rendimiento y UX
+
+### Para la Aplicación Web
+1. **Funcionalidades completas**: Dashboard, gestión de viajes
+2. **Optimizaciones**: SEO, performance, accesibilidad
+
+## 📄 Licencia
 
 [Especifica tu licencia aquí]
+
+---
+
+**¡Ugüee - Viaja seguro y económico!** 🚗✈️
