@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, Car, MapPin, AlertTriangle, Settings, Shield } from 'lucide-react';
+import { Users, Building2, Car, MapPin, AlertTriangle, Settings, Shield, Clock } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -219,4 +219,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;
