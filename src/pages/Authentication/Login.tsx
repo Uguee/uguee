@@ -1,56 +1,68 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Efecto para manejar la redirección cuando el usuario está autenticado
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      console.log('Usuario autenticado:', user);
-      switch (user.role) {
-        case 'student':
-          navigate('/dashboard');
-          break;
-        case 'driver':
-          navigate('/driver/dashboard');
-          break;
-        case 'institution-admin':
-          navigate('/institution/dashboard');
-          break;
-        case 'site-admin':
-          navigate('/admin/dashboard');
-          break;
-        default:
-          navigate('/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      const loggedInUser = await login(email, password);
+
+      console.log("🔍 Login successful, user data:", loggedInUser);
+      console.log("🎭 User role:", loggedInUser?.role);
+
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
       });
+
+      // Redirigir según el rol del usuario devuelto por login
+      if (loggedInUser) {
+        console.log("🚀 Redirecting based on role:", loggedInUser.role);
+
+        switch (loggedInUser.role) {
+          case "pasajero":
+            console.log("➡️ Redirecting to /dashboard");
+            navigate("/dashboard");
+            break;
+          case "conductor":
+            console.log("➡️ Redirecting to /driver/dashboard");
+            navigate("/driver/dashboard");
+            break;
+          case "admin_institucional":
+            console.log("➡️ Redirecting to /institution/dashboard");
+            navigate("/institution/dashboard");
+            break;
+          case "admin":
+            console.log("➡️ Redirecting to /admin/dashboard");
+            navigate("/admin/dashboard");
+            break;
+          default:
+            console.log("❓ Unknown role, redirecting to /dashboard");
+            navigate("/dashboard");
+        }
+      } else {
+        console.log("❌ No user data, redirecting to /dashboard");
+        navigate("/dashboard");
+      }
     } catch (error) {
       toast({
         title: "Error de inicio de sesión",
-        description: "Por favor verifica tus credenciales e intenta nuevamente.",
+        description:
+          "Por favor verifica tus credenciales e intenta nuevamente.",
         variant: "destructive",
       });
-      console.error('Login error:', error);
+      console.error("Login error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -69,13 +81,9 @@ const Login = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link to="/">
-          <h2 className="text-center text-3xl font-bold text-primary">
-            Ugüee
-          </h2>
+          <h2 className="text-center text-3xl font-bold text-primary">Ugüee</h2>
         </Link>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          ¡Viaja seguro!
-        </p>
+        <p className="mt-2 text-center text-sm text-gray-600">¡Viaja seguro!</p>
         <p className="text-center text-xs text-gray-500">
           Respaldado por las mejores universidades
         </p>
@@ -88,7 +96,10 @@ const Login = () => {
           </h2>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Correo electrónico
               </label>
               <div className="mt-1">
@@ -106,7 +117,10 @@ const Login = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Contraseña
               </label>
               <div className="mt-1">
@@ -131,13 +145,19 @@ const Login = () => {
                   type="checkbox"
                   className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-900"
+                >
                   Recordarme
                 </label>
               </div>
 
               <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-primary hover:text-primary-hover">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-primary hover:text-primary-hover"
+                >
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
@@ -149,7 +169,7 @@ const Login = () => {
                 disabled={isSubmitting}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
-                {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                {isSubmitting ? "Iniciando sesión..." : "Iniciar sesión"}
               </button>
             </div>
           </form>
@@ -189,8 +209,11 @@ const Login = () => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              ¿No tienes cuenta?{' '}
-              <Link to="/register" className="font-medium text-primary hover:text-primary-hover">
+              ¿No tienes cuenta?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-primary hover:text-primary-hover"
+              >
                 Regístrate aquí
               </Link>
             </p>

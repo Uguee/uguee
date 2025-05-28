@@ -1,13 +1,14 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { UserService } from '../services/userService';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -23,17 +24,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para convertir un usuario de Supabase a nuestro modelo de usuario
-  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => {
+  // Función para obtener datos completos del usuario
+  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
+    try {
+      // Intentar obtener datos del endpoint primero
+      const userData = await UserService.getUserByUuid(supabaseUser.id);
+      
+      if (userData) {
+        console.log('User data from endpoint:', userData);
+        return userData;
+      }
+    } catch (error) {
+      console.warn('Error fetching user data from endpoint:', error);
+    }
+    
+    // Fallback a datos de Supabase metadata
+    console.log('Using Supabase metadata:', supabaseUser.user_metadata);
     return {
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata.firstName || '',
       lastName: supabaseUser.user_metadata.lastName || '',
       email: supabaseUser.email || '',
-      role: supabaseUser.user_metadata.role || 'student',
+      role: supabaseUser.user_metadata.role || 'pasajero',
       createdAt: supabaseUser.created_at,
-      phoneNumber: supabaseUser.user_metadata.phoneNumber,
-      dateOfBirth: supabaseUser.user_metadata.dateOfBirth,
+      phoneNumber: supabaseUser.user_metadata.phoneNumber || '',
+      dateOfBirth: supabaseUser.user_metadata.dateOfBirth || '',
     };
   };
 
@@ -46,34 +61,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         
         if (session?.user) {
-          const appUser = convertSupabaseUser(session.user);
+          setIsLoading(true);
+          const appUser = await fetchUserData(session.user);
           setUser(appUser);
+          setIsLoading(false);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('Initial session check:', session);
       setSession(session);
       
       if (session?.user) {
-        const appUser = convertSupabaseUser(session.user);
+        setIsLoading(true);
+        const appUser = await fetchUserData(session.user);
         setUser(appUser);
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
     setError(null);
     
@@ -86,9 +104,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       if (data.user) {
-        const appUser = convertSupabaseUser(data.user);
+        const appUser = await fetchUserData(data.user);
         setUser(appUser);
+        return appUser; // Retornar el usuario
       }
+      
+      return null;
       
     } catch (err: any) {
       console.error('Login failed:', err);
@@ -127,7 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       if (data.user) {
-        const appUser = convertSupabaseUser(data.user);
+        const appUser = await fetchUserData(data.user);
         setUser(appUser);
       }
       
