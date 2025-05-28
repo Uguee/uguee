@@ -9,6 +9,7 @@ import {
   StartVerificationScreen,
   HomeScreen,
 } from "./screens";
+import InstitutionListScreen from "./screens/InstitutionListScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
@@ -22,7 +23,8 @@ type Screen =
   | "permissions"
   | "start-verification"
   | "verification-in-progress"
-  | "dashboard";
+  | "dashboard"
+  | "institutions";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -141,6 +143,8 @@ const AppNavigator = () => {
     setCurrentScreen("permissions");
   };
 
+  const handleGoToInstitutions = () => setCurrentScreen("institutions");
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -149,7 +153,7 @@ const AppNavigator = () => {
       <ProtectedRoute
         allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
       >
-        <HomeScreen />
+        <HomeScreen onGoToInstitutions={handleGoToInstitutions} />
       </ProtectedRoute>
     );
   };
@@ -221,6 +225,12 @@ const AppNavigator = () => {
         );
       case "dashboard":
         return <DashboardScreen />;
+      case "institutions":
+        return (
+          <InstitutionListScreen
+            onGoHome={() => setCurrentScreen("dashboard")}
+          />
+        );
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />
