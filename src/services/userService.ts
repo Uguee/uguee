@@ -43,19 +43,16 @@ export class UserService {
   private static mapRole(role: string): UserRole {
     switch (role.toLowerCase()) {
       case 'admin':
-      case 'site-admin':
-        return 'site-admin';
-      case 'student':
-      case 'estudiante':
-        return 'student';
-      case 'driver':
+        return 'admin';
+      case 'pasajero':
+        return 'pasajero';
       case 'conductor':
-        return 'driver';
-      case 'institution-admin':
+        return 'conductor';
+      case 'admin_institucional':
       case 'admin-institucion':
-        return 'institution-admin';
+        return 'admin_institucional';
       default:
-        return 'student';
+        return 'pasajero';
     }
   }
 

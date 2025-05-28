@@ -8,7 +8,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user } = useAuth();
-  const { login, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -18,6 +17,10 @@ const Login = () => {
 
     try {
       const loggedInUser = await login(email, password);
+      
+      console.log('🔍 Login successful, user data:', loggedInUser);
+      console.log('🎭 User role:', loggedInUser?.role);
+      
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
@@ -25,27 +28,31 @@ const Login = () => {
       
       // Redirigir según el rol del usuario devuelto por login
       if (loggedInUser) {
+        console.log('🚀 Redirecting based on role:', loggedInUser.role);
+        
         switch (loggedInUser.role) {
-      // Redirigir según el rol del usuario
-      if (user) {
-        switch (user.role) {
-          case 'student':
+          case 'pasajero':
+            console.log('➡️ Redirecting to /dashboard');
             navigate('/dashboard');
             break;
-          case 'driver':
+          case 'conductor':
+            console.log('➡️ Redirecting to /driver/dashboard');
             navigate('/driver/dashboard');
             break;
-          case 'institution-admin':
+          case 'admin_institucional':
+            console.log('➡️ Redirecting to /institution/dashboard');
             navigate('/institution/dashboard');
             break;
-          case 'site-admin':
+          case 'admin':
+            console.log('➡️ Redirecting to /admin/dashboard');
             navigate('/admin/dashboard');
             break;
           default:
+            console.log('❓ Unknown role, redirecting to /dashboard');
             navigate('/dashboard');
         }
       } else {
-        // Si no hay usuario, redirigir al dashboard por defecto
+        console.log('❌ No user data, redirecting to /dashboard');
         navigate('/dashboard');
       }
       
