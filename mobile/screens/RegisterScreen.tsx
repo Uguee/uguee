@@ -7,7 +7,6 @@ interface RegisterScreenProps {
   onGoToLogin: () => void;
   onBackToHome: () => void;
 }
-
 interface RegisterData {
   name: string;
   lastName: string;
