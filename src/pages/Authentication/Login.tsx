@@ -7,7 +7,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -16,16 +16,15 @@ const Login = () => {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      const loggedInUser = await login(email, password);
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
       });
       
-      // Redirigir según el rol del usuario
-      const { user } = useAuth();
-      if (user) {
-        switch (user.role) {
+      // Redirigir según el rol del usuario devuelto por login
+      if (loggedInUser) {
+        switch (loggedInUser.role) {
           case 'student':
             navigate('/dashboard');
             break;
@@ -41,7 +40,11 @@ const Login = () => {
           default:
             navigate('/dashboard');
         }
+      } else {
+        // Si no hay usuario, redirigir al dashboard por defecto
+        navigate('/dashboard');
       }
+      
     } catch (error) {
       toast({
         title: "Error de inicio de sesión",

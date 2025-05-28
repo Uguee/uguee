@@ -12,7 +12,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     phoneNumber: '',
-    role: 'pasajero' as UserRole,
+    role: 'student' as UserRole,
     dateOfBirth: '',
     cedula: '',
   });
@@ -153,8 +153,8 @@ const Register = () => {
                 value={formData.role}
                 onChange={handleChange}
               >
-                <option value="pasajero">Estudiante</option>
-                <option value="conductor">Conductor</option>
+                <option value="student">Estudiante</option>
+                <option value="driver">Conductor</option>
               </select>
             </div>
             

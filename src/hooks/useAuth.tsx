@@ -1,13 +1,14 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { UserService } from '../services/userService';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -23,54 +24,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Función para obtener datos completos del usuario desde el endpoint
+  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User | null> => {
+    try {
+      const userData = await UserService.getUserByUuid(supabaseUser.id);
+      
+      if (userData) {
+        return userData;
+      } else {
+        console.error('No user data found for UUID:', supabaseUser.id);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  };
+
   // Check if user is already logged in
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session);
+      async (event, session) => {
         setSession(session);
+        
         if (session?.user) {
-          const supabaseUser = session.user;
-          const appUser: User = { 
-            id: supabaseUser.id,
-            firstName: supabaseUser.user_metadata.firstName || '',
-            lastName: supabaseUser.user_metadata.lastName || '',
-            email: supabaseUser.email || '',
-            role: supabaseUser.user_metadata.role || 'student',
-            createdAt: supabaseUser.created_at,
-          };
-          setUser(appUser);
+          setIsLoading(true);
+          const userData = await fetchUserData(session.user);
+          
+          if (userData) {
+            setUser(userData);
+          } else {
+            console.error('Failed to get user data from database');
+            setUser(null);
+          }
+          
+          setIsLoading(false);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      
       if (session?.user) {
-        const supabaseUser = session.user;
-        const appUser: User = {
-          id: supabaseUser.id,
-          firstName: supabaseUser.user_metadata.firstName || '',
-          lastName: supabaseUser.user_metadata.lastName || '',
-          email: supabaseUser.email || '',
-          role: supabaseUser.user_metadata.role || 'student',
-          createdAt: supabaseUser.created_at,
-        };
-        setUser(appUser);
+        setIsLoading(true);
+        const userData = await fetchUserData(session.user);
+        
+        if (userData) {
+          setUser(userData);
+        } else {
+          console.error('Failed to get initial user data from database');
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
     setError(null);
     
@@ -81,6 +104,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       
       if (error) throw error;
+      
+      // Si el login fue exitoso, obtener datos completos del usuario
+      if (data.user) {
+        const userData = await fetchUserData(data.user);
+        return userData;
+      }
+      
+      return null;
       
     } catch (err: any) {
       console.error('Login failed:', err);
