@@ -12,7 +12,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     phoneNumber: '',
-    role: 'pasajero' as UserRole,
+    role: 'student' as UserRole,
     dateOfBirth: '',
     cedula: '',
   });
@@ -26,6 +26,10 @@ const Register = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
+    if (!formData.role) {
+      newErrors.role = 'Debes seleccionar un rol';
+    }
+
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'Nombre es requerido';
     }
@@ -153,8 +157,8 @@ const Register = () => {
                 value={formData.role}
                 onChange={handleChange}
               >
-                <option value="pasajero">Estudiante</option>
-                <option value="conductor">Conductor</option>
+                <option value="student">Estudiante</option>
+                <option value="driver">Conductor</option>
               </select>
             </div>
             

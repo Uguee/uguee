@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -7,9 +7,32 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, user } = useAuth();
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Efecto para manejar la redirección cuando el usuario está autenticado
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('Usuario autenticado:', user);
+      switch (user.role) {
+        case 'student':
+          navigate('/dashboard');
+          break;
+        case 'driver':
+          navigate('/driver/dashboard');
+          break;
+        case 'institution-admin':
+          navigate('/institution/dashboard');
+          break;
+        case 'site-admin':
+          navigate('/admin/dashboard');
+          break;
+        default:
+          navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,26 +44,6 @@ const Login = () => {
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
       });
-      
-      // Redirigir según el rol del usuario
-      if (user) {
-        switch (user.role) {
-          case 'student':
-            navigate('/dashboard');
-            break;
-          case 'driver':
-            navigate('/driver/dashboard');
-            break;
-          case 'institution-admin':
-            navigate('/institution/dashboard');
-            break;
-          case 'site-admin':
-            navigate('/admin/dashboard');
-            break;
-          default:
-            navigate('/dashboard');
-        }
-      }
     } catch (error) {
       toast({
         title: "Error de inicio de sesión",
@@ -52,6 +55,15 @@ const Login = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Si el usuario ya está autenticado, mostrar un estado de carga
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
