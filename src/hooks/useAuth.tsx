@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+<<<<<<< HEAD
   // Función para obtener datos completos del usuario desde el endpoint
   const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User | null> => {
     try {
@@ -40,13 +41,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Error fetching user data:', error);
       return null;
     }
+=======
+  // Función para convertir un usuario de Supabase a nuestro modelo de usuario
+  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => {
+    return {
+      id: supabaseUser.id,
+      firstName: supabaseUser.user_metadata.firstName || '',
+      lastName: supabaseUser.user_metadata.lastName || '',
+      email: supabaseUser.email || '',
+      role: supabaseUser.user_metadata.role || 'student',
+      createdAt: supabaseUser.created_at,
+      phoneNumber: supabaseUser.user_metadata.phoneNumber,
+      dateOfBirth: supabaseUser.user_metadata.dateOfBirth,
+    };
+>>>>>>> 6eaf5927cfa231ea81f13ad0b225b9804f4dc58c
   };
 
   // Check if user is already logged in
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+<<<<<<< HEAD
         setSession(session);
         
         if (session?.user) {
@@ -61,13 +77,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           
           setIsLoading(false);
+=======
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        
+        if (session?.user) {
+          const appUser = convertSupabaseUser(session.user);
+          setUser(appUser);
+>>>>>>> 6eaf5927cfa231ea81f13ad0b225b9804f4dc58c
         } else {
           setUser(null);
           setIsLoading(false);
         }
+        
+        setIsLoading(false);
       }
     );
 
+<<<<<<< HEAD
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
@@ -87,6 +114,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setIsLoading(false);
       }
+=======
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session);
+      setSession(session);
+      
+      if (session?.user) {
+        const appUser = convertSupabaseUser(session.user);
+        setUser(appUser);
+      }
+      
+      setIsLoading(false);
+>>>>>>> 6eaf5927cfa231ea81f13ad0b225b9804f4dc58c
     });
 
     return () => subscription.unsubscribe();
@@ -105,6 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) throw error;
       
+<<<<<<< HEAD
       // Si el login fue exitoso, obtener datos completos del usuario
       if (data.user) {
         const userData = await fetchUserData(data.user);
@@ -113,6 +154,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       return null;
       
+=======
+      if (data.user) {
+        const appUser = convertSupabaseUser(data.user);
+        setUser(appUser);
+      }
+      
+>>>>>>> 6eaf5927cfa231ea81f13ad0b225b9804f4dc58c
     } catch (err: any) {
       console.error('Login failed:', err);
       setError(err.message || 'Error iniciando sesión');
@@ -149,42 +197,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) throw error;
       
-      // Verificar si el usuario se creó correctamente
-      console.log('Registration response:', data);
-      
       if (data.user) {
-        try {
-          // Llamar a nuestra edge function para sincronizar en las tablas personalizadas
-          const syncResponse = await supabase.functions.invoke('sync-user', {
-            body: {
-              user: {
-                id_usuario: userData.id,
-                uuid: data.user.id,
-                firstName: userData.firstName,
-                lastName: userData.lastName,
-                phoneNumber: userData.phoneNumber,
-                role: userRole,
-                dateOfBirth: userData.dateOfBirth
-              },
-              action: 'register'
-            }
-          });
-          
-          console.log('Sync user response:', syncResponse);
-          
-          if (syncResponse.error) {
-            console.error('Error sincronizando usuario con tablas personalizadas:', syncResponse.error);
-            throw new Error(syncResponse.error);
-          }
-        } catch (syncError) {
-          console.error('Error llamando a edge function:', syncError);
-          throw syncError;
-        }
+        const appUser = convertSupabaseUser(data.user);
+        setUser(appUser);
       }
+      
+      console.log('Registration successful:', data);
       
     } catch (err: any) {
       console.error('Registration failed:', err);
-      setError(err.message || 'Error registrando usuario');
+      setError(err.message || 'Error en el registro');
       throw err;
     } finally {
       setIsLoading(false);
@@ -193,30 +215,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Logout function
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Logout error:', error);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      setSession(null);
+    } catch (err: any) {
+      console.error('Logout failed:', err);
+      setError(err.message || 'Error cerrando sesión');
     }
   };
 
+  const value = {
+    user,
+    isLoading,
+    error,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        login,
-        register,
-        logout,
-        isAuthenticated: !!session,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook for using the auth context
+// Hook for using auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -224,3 +251,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthProvider;
