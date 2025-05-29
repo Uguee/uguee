@@ -11,9 +11,13 @@ import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 // Agrega las props
 interface HomeScreenProps {
   onGoToInstitutions?: () => void;
+  onGoToDriverRegister?: () => void;
 }
 
-export default function HomeScreen({ onGoToInstitutions }: HomeScreenProps) {
+export default function HomeScreen({
+  onGoToInstitutions,
+  onGoToDriverRegister,
+}: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
   const suggestions = [
@@ -89,7 +93,7 @@ export default function HomeScreen({ onGoToInstitutions }: HomeScreenProps) {
               image={require("../assets/car3D.png")}
               title="Vuelvete conductor"
               description="Para poder transportar a otros usuarios"
-              onPress={() => alert("Conductor")}
+              onPress={onGoToDriverRegister}
             />
           </>
         }

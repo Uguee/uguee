@@ -8,7 +8,9 @@ import {
   CameraPermissionsScreen,
   StartVerificationScreen,
   HomeScreen,
+  DocumentVerificationScreen,
   RegisterToInstScreen,
+  DriverRegisterScreen,
 } from "./screens";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
@@ -25,10 +27,12 @@ type Screen =
   | "permissions"
   | "start-verification"
   | "verification-in-progress"
+  | "document-verification"
   | "dashboard"
   | "institutions"
   | "selected-institution"
-  | "register-to-inst";
+  | "register-to-inst"
+  | "driver-register";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -40,8 +44,11 @@ const AppNavigator = () => {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && user) {
-        console.log("🔄 Usuario autenticado, redirigiendo al dashboard");
-        setCurrentScreen("dashboard");
+        // Solo redirigir al dashboard si no estamos en proceso de validación de documentos
+        if (currentScreen === "welcome" || currentScreen === "login") {
+          console.log("🔄 Usuario autenticado, redirigiendo al dashboard");
+          setCurrentScreen("dashboard");
+        }
       } else if (currentScreen === "dashboard") {
         console.log("🔄 Usuario no autenticado, redirigiendo a welcome");
         setCurrentScreen("welcome");
@@ -96,28 +103,30 @@ const AppNavigator = () => {
 
   const handleRegisterSubmit = async (data: {
     name: string;
+    lastName: string;
+    cedula: string;
+    birthDate: string;
+    phone: string;
     email: string;
     password: string;
   }) => {
     try {
       console.log("📝 Intentando registro:", { email: data.email });
 
-      // Separar nombre completo en firstName y lastName
-      const nameParts = data.name.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
       await register({
-        firstName,
-        lastName,
+        firstName: data.name,
+        lastName: data.lastName,
         email: data.email,
         password: data.password,
+        phoneNumber: data.phone,
         role: "pasajero", // Por defecto, los usuarios móviles son pasajeros
+        dateOfBirth: data.birthDate,
+        id: data.cedula, // Cédula para sync-user
       });
 
       console.log("✅ Registro exitoso");
-      // La redirección se maneja automáticamente por el useEffect
-      setCurrentScreen("dashboard");
+      // Después del registro exitoso, ir a validación de documentos
+      setCurrentScreen("verify-identity");
     } catch (error: any) {
       console.error("❌ Error en registro:", error.message);
       // El error se maneja en el hook useAuth
@@ -129,7 +138,8 @@ const AppNavigator = () => {
   };
 
   const handleSkipVerifyIdentity = () => {
-    setCurrentScreen("welcome");
+    // Si decide saltarse la verificación, ir al dashboard
+    setCurrentScreen("dashboard");
   };
 
   const handleAllowPermissions = () => {
@@ -141,14 +151,33 @@ const AppNavigator = () => {
   };
 
   const handleStartVerificationProcess = () => {
-    setCurrentScreen("verification-in-progress");
+    setCurrentScreen("document-verification");
   };
 
   const handleGoBackFromStart = () => {
     setCurrentScreen("permissions");
   };
 
+  const handleCompleteVerification = () => {
+    // Después de completar la verificación, ir al dashboard
+    console.log("✅ Verificación completada, redirigiendo al dashboard");
+    setCurrentScreen("dashboard");
+  };
+
+  const handleCompleteDocumentVerification = () => {
+    // Después de subir el documento, ir al dashboard
+    console.log("✅ Documento subido exitosamente, redirigiendo al dashboard");
+    setCurrentScreen("dashboard");
+  };
+
+  const handleGoBackFromDocuments = () => {
+    // Volver a la pantalla anterior
+    setCurrentScreen("start-verification");
+  };
+
   const handleGoToInstitutions = () => setCurrentScreen("institutions");
+
+  const handleGoToDriverRegister = () => setCurrentScreen("driver-register");
 
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
@@ -158,7 +187,10 @@ const AppNavigator = () => {
       <ProtectedRoute
         allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
       >
-        <HomeScreen onGoToInstitutions={handleGoToInstitutions} />
+        <HomeScreen
+          onGoToInstitutions={handleGoToInstitutions}
+          onGoToDriverRegister={handleGoToDriverRegister}
+        />
       </ProtectedRoute>
     );
   };
@@ -223,9 +255,17 @@ const AppNavigator = () => {
       case "verification-in-progress":
         return (
           <VerifyIdentityScreen
-            onContinue={() => console.log("Verificación completada")}
+            onContinue={handleCompleteVerification}
             onSkip={() => setCurrentScreen("welcome")}
             onBackToHome={handleBackToHome}
+          />
+        );
+      case "document-verification":
+        return (
+          <DocumentVerificationScreen
+            onComplete={handleCompleteDocumentVerification}
+            onBack={handleGoBackFromDocuments}
+            userId={user ? parseInt(user.id) : 0}
           />
         );
       case "dashboard":
@@ -255,6 +295,12 @@ const AppNavigator = () => {
           <RegisterToInstScreen
             institutionName={selectedInstitution?.name || ""}
             onGoBack={() => setCurrentScreen("selected-institution")}
+          />
+        );
+      case "driver-register":
+        return (
+          <DriverRegisterScreen
+            onGoBack={() => setCurrentScreen("dashboard")}
           />
         );
       default:
