@@ -3,11 +3,14 @@ import { View, ScrollView, StyleSheet, Alert } from "react-native";
 import InstitutionRequestHeader from "../components/HeaderInstRequest";
 import InstitutionRequestForm from "../components/FormInstRequest";
 import InstitutionRequestButton from "../components/ButtonInstRequest";
+import ReturnButton from "../components/ReturnButton";
 
 export default function InstitutionRequestScreen({
   institutionName,
+  onGoBack,
 }: {
   institutionName: string;
+  onGoBack: () => void;
 }) {
   const [form, setForm] = useState({
     code: "",
@@ -33,15 +36,18 @@ export default function InstitutionRequestScreen({
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <InstitutionRequestHeader institutionName={institutionName} />
-      <InstitutionRequestForm
-        value={form}
-        onChange={setForm}
-        onPickFiles={handlePickFiles}
-      />
-      <InstitutionRequestButton onPress={handleSubmit} />
-    </ScrollView>
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ReturnButton onPress={onGoBack} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <InstitutionRequestHeader institutionName={institutionName} />
+        <InstitutionRequestForm
+          value={form}
+          onChange={setForm}
+          onPickFiles={handlePickFiles}
+        />
+        <InstitutionRequestButton onPress={handleSubmit} />
+      </ScrollView>
+    </View>
   );
 }
 
