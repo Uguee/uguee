@@ -12,11 +12,13 @@ interface SelectedInstScreenProps {
     logo: any;
   } | null;
   onGoHome: () => void;
+  onRequestRegister: (institutionName: string) => void;
 }
 
 export default function SelectedInstScreen({
   institution,
   onGoHome,
+  onRequestRegister,
 }: SelectedInstScreenProps) {
   if (!institution) return null; // O un mensaje de error
 
@@ -29,7 +31,7 @@ export default function SelectedInstScreen({
           name={institution.name}
           address={institution.address || "Dirección no disponible"}
           logo={institution.logo}
-          onRequest={() => alert("Solicitud enviada")}
+          onRequest={() => onRequestRegister(institution.name)}
         />
       </View>
       <BottomNavigation

@@ -8,6 +8,7 @@ import {
   CameraPermissionsScreen,
   StartVerificationScreen,
   HomeScreen,
+  RegisterToInstScreen,
 } from "./screens";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
@@ -26,7 +27,8 @@ type Screen =
   | "verification-in-progress"
   | "dashboard"
   | "institutions"
-  | "selected-institution";
+  | "selected-institution"
+  | "register-to-inst";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -243,6 +245,15 @@ const AppNavigator = () => {
           <SelectedInstScreen
             institution={selectedInstitution}
             onGoHome={() => setCurrentScreen("dashboard")}
+            onRequestRegister={(institutionName) => {
+              setCurrentScreen("register-to-inst");
+            }}
+          />
+        );
+      case "register-to-inst":
+        return (
+          <RegisterToInstScreen
+            institutionName={selectedInstitution?.name || ""}
           />
         );
       default:

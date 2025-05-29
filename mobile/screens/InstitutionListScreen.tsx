@@ -13,7 +13,7 @@ interface InstitutionListScreenProps {
 
 const institutions = [
   {
-    name: "Universidad del Valle",
+    name: "Universidad de Tolima",
     logo: require("../assets/univalle-logo.png"),
   },
   {
