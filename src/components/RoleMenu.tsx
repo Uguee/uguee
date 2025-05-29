@@ -9,15 +9,16 @@ interface MenuOption {
   roles: UserRole[];
 }
 
+
 const menuOptions: MenuOption[] = [
-  { label: 'Buscar rutas', path: '/search-routes', roles: ['student', 'driver', 'institution-admin'] },
-  { label: 'Historial de viajes', path: '/my-trips', roles: ['student', 'driver'] },
-  { label: 'Mis rutas activas', path: '/my-routes', roles: ['driver'] },
-  { label: 'Reportar incidente', path: '/report-incident', roles: ['student', 'driver'] },
-  { label: 'Validar conductores', path: '/validate-drivers', roles: ['institution-admin'] },
-  { label: 'Gestionar vehículos', path: '/manage-vehicles', roles: ['institution-admin'] },
-  { label: 'Aprobación de solicitudes', path: '/approve-requests', roles: ['institution-admin'] },
-  { label: 'Administrar instituciones', path: '/admin/institutions', roles: ['site-admin'] },
+  { label: 'Buscar rutas',        path: '/search-routes',      roles: ['pasajero', 'conductor', 'admin_institucional'] },
+  { label: 'Historial de viajes', path: '/my-trips',           roles: ['pasajero', 'conductor'] },
+  { label: 'Mis rutas activas',   path: '/my-routes',          roles: ['conductor'] },
+  { label: 'Reportar incidente',  path: '/report-incident',    roles: ['pasajero', 'conductor'] },
+  { label: 'Validar conductores', path: '/validate-drivers',   roles: ['admin_institucional'] },
+  { label: 'Gestionar vehículos', path: '/manage-vehicles',    roles: ['admin_institucional'] },
+  { label: 'Aprobación de solicitudes', path: '/approve-requests', roles: ['admin_institucional'] },
+  { label: 'Administrar instituciones', path: '/admin/institutions', roles: ['admin'] },
 ];
 
 interface RoleMenuProps {

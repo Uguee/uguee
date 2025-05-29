@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface RegisterScreenProps {
   onRegister: (data: RegisterData) => void;
   onGoToLogin: () => void;
   onBackToHome: () => void;
 }
-
 interface RegisterData {
   name: string;
   lastName: string;
@@ -22,18 +22,36 @@ export default function RegisterScreen({ onRegister, onGoToLogin, onBackToHome }
   const [name, setName] = useState('');
   const [lastName, setLastName] = useState('');
   const [cedula, setCedula] = useState('');
-  const [birthDate, setBirthDate] = useState('');
+  const [birthDate, setBirthDate] = useState(new Date());
+  const [birthDateString, setBirthDateString] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    const currentDate = selectedDate || birthDate;
+    setShowDatePicker(Platform.OS === 'ios');
+    setBirthDate(currentDate);
+    
+    // Formatear la fecha como YYYY-MM-DD para PostgreSQL
+    const day = currentDate.getDate().toString().padStart(2, '0');
+    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = currentDate.getFullYear();
+    setBirthDateString(`${year}-${month}-${day}`);
+  };
+
+  const showDatepicker = () => {
+    setShowDatePicker(true);
+  };
+
   const handleRegister = () => {
-    if (name.trim() && lastName.trim() && cedula.trim() && birthDate.trim() && phone.trim() && email.trim() && password.trim()) {
+    if (name.trim() && lastName.trim() && cedula.trim() && birthDateString.trim() && phone.trim() && email.trim() && password.trim()) {
       onRegister({
         name,
         lastName,
         cedula,
-        birthDate,
+        birthDate: birthDateString,
         phone,
         email,
         password
@@ -41,7 +59,7 @@ export default function RegisterScreen({ onRegister, onGoToLogin, onBackToHome }
     }
   };
 
-  const isFormValid = name.trim() && lastName.trim() && cedula.trim() && birthDate.trim() && phone.trim() && email.trim() && password.trim();
+  const isFormValid = name.trim() && lastName.trim() && cedula.trim() && birthDateString.trim() && phone.trim() && email.trim() && password.trim();
 
   return (
     <View style={styles.container}>
@@ -107,16 +125,16 @@ export default function RegisterScreen({ onRegister, onGoToLogin, onBackToHome }
           {/* Date of birth */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Fecha de nacimiento</Text>
-            <View style={styles.inputWrapper}>
+            <TouchableOpacity onPress={showDatepicker} style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="mm/dd/aaaa"
-                value={birthDate}
-                onChangeText={setBirthDate}
-                keyboardType="numeric"
+                placeholder="Selecciona tu fecha de nacimiento (YYYY-MM-DD)"
+                value={birthDateString}
+                editable={false}
+                pointerEvents="none"
               />
               <Text style={styles.calendarIcon}>📅</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Phone */}
@@ -168,6 +186,15 @@ export default function RegisterScreen({ onRegister, onGoToLogin, onBackToHome }
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={birthDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
     </View>
   );
 }

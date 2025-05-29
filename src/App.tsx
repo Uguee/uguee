@@ -21,6 +21,7 @@ import DriverDashboard from "./pages/drivers/Dashboard";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import MapViewDriver from "./pages/drivers/MapView";
+import DriverNotAllowed from './pages/DriverNotAllowed';
 import 'leaflet/dist/leaflet.css';
 
 const queryClient = new QueryClient();
@@ -155,7 +156,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['conductor', 'pasajero']}>
             <DriverDashboard />
           </ProtectedRoute>
         } 
@@ -191,6 +192,8 @@ const AppRoutes = () => {
       
       {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
+
+      <Route path="/driver-not-allowed" element={<DriverNotAllowed />} />
     </Routes>
   );
 };
