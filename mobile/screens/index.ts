@@ -5,3 +5,4 @@ export { default as VerifyIdentityScreen } from "./VerifyIdentityScreen";
 export { default as CameraPermissionsScreen } from "./CameraPermissionsScreen";
 export { default as StartVerificationScreen } from "./StartVerificationScreen";
 export { default as HomeScreen } from "./HomeScreen";
+export { default as DocumentVerificationScreen } from "./DocumentVerificationScreen";

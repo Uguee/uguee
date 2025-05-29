@@ -1,5 +1,4 @@
 // import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
 
 // Tipos
 export interface User {
@@ -57,11 +56,6 @@ let currentUser: User | null = null;
 let currentToken: string | null = null;
 let refreshToken: string | null = null;
 let tokenExpiresAt: number | null = null;
-
-// Configurar cliente de Supabase para móvil
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export class AuthService {
   // API key desde variables de entorno
@@ -193,43 +187,15 @@ export class AuthService {
         };
       }
 
-      // Obtener datos completos del usuario
-      const userData = await this.fetchUserData(data.user.id);
-      
-      if (!userData) {
-        // Fallback a metadata de Supabase
-        const fallbackUser: User = {
-          id: data.user.id,
-          firstName: data.user.user_metadata?.firstName || '',
-          lastName: data.user.user_metadata?.lastName || '',
-          email: data.user.email || '',
-          phoneNumber: data.user.user_metadata?.phoneNumber || '',
-          role: this.mapRole(data.user.user_metadata?.role || 'pasajero'),
-          createdAt: data.user.created_at,
-          dateOfBirth: data.user.user_metadata?.dateOfBirth || '',
-        };
-        
-        this.saveSession(data, fallbackUser);
-        
-        return {
-          success: true,
-          data: {
-            user: fallbackUser,
-            session: {
-              access_token: data.access_token,
-              refresh_token: data.refresh_token,
-              expires_at: data.expires_at,
-            },
-          },
-        };
-      }
+      // Obtener datos completos del usuario usando la misma lógica que el registro
+      const appUser = await this.fetchUserDataForRegistration(data.user, data.access_token);
 
-      this.saveSession(data, userData);
+      this.saveSession(data, appUser);
 
       return {
         success: true,
         data: {
-          user: userData,
+          user: appUser,
           session: {
             access_token: data.access_token,
             refresh_token: data.refresh_token,
@@ -264,6 +230,7 @@ export class AuthService {
             phoneNumber: userData.phoneNumber,
             role: userData.role || 'pasajero',
             dateOfBirth: userData.dateOfBirth,
+            id: userData.id, // Agregar cédula a metadata
           },
         }),
       });
@@ -287,10 +254,10 @@ export class AuthService {
         };
       }
 
-      // Sincronizar usuario con la base de datos (siempre, incluso sin sesión)
+      // Sincronizar usuario con la base de datos usando sync-user
       const syncSuccess = await this.syncUserToDatabase(userData, userObj.id, data.session?.access_token);
 
-      // Intentar obtener datos del usuario desde el endpoint (igual que la versión web)
+      // Intentar obtener datos del usuario desde el endpoint
       const appUser = await this.fetchUserDataForRegistration(userObj, data.session?.access_token);
 
       // Si hay sesión, guardarla (pero puede no haberla si requiere confirmación)
@@ -327,6 +294,95 @@ export class AuthService {
         success: false,
         error: error.message || 'Error de conexión',
       };
+    }
+  }
+
+  /**
+   * Sincroniza el usuario con la tabla usuario usando sync-user edge function
+   */
+  private static async syncUserToDatabase(userData: RegisterData, supabaseUserId: string, accessToken?: string): Promise<boolean> {
+    try {
+      // Asegurar que todos los campos requeridos tengan valores válidos
+      const phoneNumber = userData.phoneNumber || '';
+      
+      // Usar la cédula como id_usuario
+      const cedula = userData.id;
+      const id_usuario = cedula ? parseInt(cedula.toString()) : null;
+      
+      if (!id_usuario) {
+        console.error('❌ No se encontró cédula para usar como id_usuario');
+        return false;
+      }
+      
+      const syncUserData = {
+        id_usuario: id_usuario,   // Cédula como número entero
+        uuid: supabaseUserId,     // UUID de Supabase como string
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
+        role: userData.role || 'pasajero',
+        dateOfBirth: userData.dateOfBirth || ''
+      };
+
+      // Validar que los campos requeridos no estén vacíos
+      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
+      const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
+      
+      // Validar phoneNumber por separado ya que puede ser null
+      if (!syncUserData.phoneNumber) {
+        missingFields.push('phoneNumber');
+      }
+      
+      if (missingFields.length > 0) {
+        console.error('❌ Campos faltantes para sync-user:', missingFields);
+        return false;
+      }
+      
+      console.log('📤 Datos enviados a sync-user:', {
+        user: syncUserData,
+        action: 'register'
+      });
+      
+      // Llamar a sync-user usando fetch directo
+      const syncResponse = await fetch(`${API_BASE_URL}/functions/v1/sync-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.apiKey,
+          'Authorization': `Bearer ${accessToken || this.apiKey}`,
+        },
+        body: JSON.stringify({
+          user: syncUserData,
+          action: 'register'
+        })
+      });
+
+      console.log('📡 sync-user response status:', syncResponse.status);
+
+      if (!syncResponse.ok) {
+        // Intentar obtener detalles del error
+        try {
+          const errorBody = await syncResponse.text();
+          console.warn('❌ sync-user error body:', errorBody);
+        } catch (e) {
+          console.warn('❌ No se pudo leer el error body');
+        }
+        console.warn('❌ Error HTTP calling sync-user:', syncResponse.status);
+        return false;
+      }
+
+      const syncResult = await syncResponse.json();
+      console.log('📋 sync-user result:', syncResult);
+
+      if (syncResult.success) {
+        return true;
+      } else {
+        console.warn('❌ sync-user returned error:', syncResult);
+        return false;
+      }
+    } catch (error: any) {
+      console.warn('❌ Error calling sync-user:', error);
+      return false;
     }
   }
 
@@ -373,7 +429,7 @@ export class AuthService {
       console.warn('⚠️ Error obteniendo datos del endpoint:', error);
     }
     
-    // Fallback a datos de Supabase metadata (igual que la versión web)
+    // Fallback a datos de Supabase metadata
     return {
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata?.firstName || '',
@@ -432,70 +488,5 @@ export class AuthService {
   static isAuthenticated(): boolean {
     const session = this.getCurrentSession();
     return session?.isValid || false;
-  }
-
-  /**
-   * Sincroniza el usuario con la tabla usuario usando sync-user
-   */
-  private static async syncUserToDatabase(userData: RegisterData, supabaseUserId: string, accessToken?: string): Promise<boolean> {
-    try {
-      // Asegurar que todos los campos requeridos tengan valores válidos
-      const phoneNumber = userData.phoneNumber || '';
-      
-      // Usar la cédula como id_usuario
-      const cedula = userData.id;
-      const id_usuario = cedula ? parseInt(cedula.toString()) : null;
-      
-      if (!id_usuario) {
-        console.error('❌ No se encontró cédula para usar como id_usuario');
-        return false;
-      }
-      
-      const syncUserData = {
-        id_usuario: id_usuario,   // Cédula como número entero
-        uuid: supabaseUserId,     // UUID de Supabase como string
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
-        role: userData.role || 'pasajero',
-        dateOfBirth: userData.dateOfBirth || ''
-      };
-
-      // Validar que los campos requeridos no estén vacíos
-      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
-      const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
-      
-      // Validar phoneNumber por separado ya que puede ser null
-      if (!syncUserData.phoneNumber) {
-        missingFields.push('phoneNumber');
-      }
-      
-      if (missingFields.length > 0) {
-        console.error('❌ Campos faltantes para sync-user:', missingFields);
-        return false;
-      }
-      
-      const syncResponse = await supabase.functions.invoke('sync-user', {
-        body: {
-          user: syncUserData,
-          action: 'register'
-        }
-      });
-
-      if (syncResponse.error) {
-        console.warn('❌ Error calling sync-user:', syncResponse.error);
-        return false;
-      }
-
-      if (syncResponse.data?.success) {
-        return true;
-      } else {
-        console.warn('❌ sync-user returned error:', syncResponse.data);
-        return false;
-      }
-    } catch (error: any) {
-      console.warn('❌ Error calling sync-user:', error);
-      return false;
-    }
   }
 } 

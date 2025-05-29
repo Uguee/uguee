@@ -85,21 +85,6 @@ export default function LoginScreen({
             </Text>
           </TouchableOpacity>
         </View>
-
-        {/* Social Login Options */}
-        <View style={styles.socialContainer}>
-          <Text style={styles.orText}>O continúa con</Text>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialButtonText}>📧 Continuar con Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Text style={styles.socialButtonText}>
-              📘 Continuar con Facebook
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Bottom buttons */}
@@ -204,29 +189,6 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: "#8B5CF6",
     fontSize: 14,
-    fontWeight: "500",
-  },
-  socialContainer: {
-    marginBottom: 20,
-  },
-  orText: {
-    textAlign: "center",
-    color: "#6B7280",
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  socialButton: {
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginBottom: 12,
-    backgroundColor: "#F9FAFB",
-  },
-  socialButtonText: {
-    textAlign: "center",
-    fontSize: 16,
-    color: "#374151",
     fontWeight: "500",
   },
   bottomContainer: {

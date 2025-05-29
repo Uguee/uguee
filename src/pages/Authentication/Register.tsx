@@ -12,7 +12,7 @@ const Register = () => {
     password: "",
     confirmPassword: "",
     phoneNumber: "",
-    role: "student" as UserRole,
+    role: "pasajero" as UserRole,
     dateOfBirth: "",
     cedula: "",
   });
@@ -25,10 +25,6 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.role) {
-      newErrors.role = "Debes seleccionar un rol";
-    }
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = "Nombre es requerido";
@@ -78,7 +74,7 @@ const Register = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "role" ? (value as UserRole) : value,
+      [name]: value,
     }));
   };
 
@@ -149,26 +145,6 @@ const Register = () => {
 
         <div className="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Role Selection */}
-            <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Selecciona tu rol
-              </label>
-              <select
-                id="role"
-                name="role"
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="pasajero">Pasajero</option>
-                <option value="conductor">Conductor</option>
-              </select>
-            </div>
-
             {/* Personal Information */}
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
               <div>
