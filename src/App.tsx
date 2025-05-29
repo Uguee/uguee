@@ -35,7 +35,16 @@ const ProtectedRoute = ({
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  console.log('🛡️ ProtectedRoute check:', {
+    isAuthenticated,
+    isLoading,
+    userRole: user?.role,
+    allowedRoles,
+    currentPath: window.location.pathname
+  });
+
   if (isLoading) {
+    console.log('⏳ Still loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -44,25 +53,33 @@ const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
+    console.log('🚫 Not authenticated, redirecting to login');
     return <Navigate to="/login" />;
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    console.log('❌ Role not allowed:', user.role, 'Allowed:', allowedRoles);
     // Redirigir a la página correspondiente según el rol
     switch (user.role) {
-      case 'student':
+      case 'pasajero':
+        console.log('🔄 Redirecting pasajero to /dashboard');
         return <Navigate to="/dashboard" />;
-      case 'driver':
+      case 'conductor':
+        console.log('🔄 Redirecting conductor to /driver/dashboard');
         return <Navigate to="/driver/dashboard" />;
-      case 'institution-admin':
+      case 'admin_institucional':
+        console.log('🔄 Redirecting admin_institucional to /institution/dashboard');
         return <Navigate to="/institution/dashboard" />;
-      case 'site-admin':
+      case 'admin':
+        console.log('🔄 Redirecting admin to /admin/dashboard');
         return <Navigate to="/admin/dashboard" />;
       default:
+        console.log('🔄 Unknown role, redirecting to /dashboard');
         return <Navigate to="/dashboard" />;
     }
   }
 
+  console.log('✅ Access granted to:', window.location.pathname);
   return <>{children}</>;
 };
 
@@ -76,11 +93,11 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       
-      {/* Rutas para estudiantes */}
+      {/* Rutas para pasajeros */}
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -88,7 +105,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -96,7 +113,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -104,7 +121,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -112,7 +129,7 @@ const AppRoutes = () => {
       <Route 
         path="/incidents" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <Incidents />
           </ProtectedRoute>
         } 
@@ -120,7 +137,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -128,7 +145,7 @@ const AppRoutes = () => {
       <Route 
         path="/map" 
         element={
-          <ProtectedRoute allowedRoles={['student']}>
+          <ProtectedRoute allowedRoles={['pasajero']}>
             <MapView />
           </ProtectedRoute>
         } 
@@ -138,7 +155,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['driver']}>
+          <ProtectedRoute allowedRoles={['conductor']}>
             <DriverDashboard />
           </ProtectedRoute>
         } 
@@ -146,7 +163,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/map" 
         element={
-          <ProtectedRoute allowedRoles={['driver']}>
+          <ProtectedRoute allowedRoles={['conductor']}>
             <MapViewDriver />
           </ProtectedRoute>
         } 
@@ -156,7 +173,7 @@ const AppRoutes = () => {
       <Route 
         path="/institution/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['institution-admin']}>
+          <ProtectedRoute allowedRoles={['admin_institucional']}>
             <InstitutionDashboard />
           </ProtectedRoute>
         } 
@@ -166,7 +183,7 @@ const AppRoutes = () => {
       <Route 
         path="/admin/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['site-admin']}>
+          <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
           </ProtectedRoute>
         } 

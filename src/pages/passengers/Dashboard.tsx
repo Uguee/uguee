@@ -1,93 +1,166 @@
-
 import { useEffect } from 'react';
-import Hero from '../../components/Hero';
-import StatsPanel from '../../components/StatsPanel';
-import InfoCard from '../../components/InfoCard';
+import { useAuth } from '../../hooks/useAuth';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const Dashboard = () => {
+  const { user, isLoading } = useAuth();
+
   useEffect(() => {
     document.title = 'Ugüee - Dashboard';
   }, []);
 
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-64">
+          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      <div className="bg-white">
-        {/* Hero Section */}
+      <div className="bg-white p-4">
+        {/* Información del usuario */}
+        {user && (
+          <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <h2 className="text-lg font-semibold text-purple-900 mb-2">Información del Usuario</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Nombre:</span> {user.firstName} {user.lastName}
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Email:</span> {user.email}
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Rol:</span> 
+                <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                  {user.role}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">ID:</span> {user.id}
+              </div>
+              {user.phoneNumber && (
+                <div>
+                  <span className="font-medium text-gray-700">Teléfono:</span> {user.phoneNumber}
+                </div>
+              )}
+              {user.dateOfBirth && (
+                <div>
+                  <span className="font-medium text-gray-700">Fecha de nacimiento:</span> {user.dateOfBirth}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Contenido básico para verificar que funciona */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text mb-4">Inicio</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            Bienvenido{user ? `, ${user.firstName}` : ''}
+          </h1>
           <p className="text-gray-600 mb-6">
             "Tu plataforma de viajes universitarios: planifica, comparte y viaja de forma inteligente"
           </p>
         </div>
 
-        {/* Stats and Features Section */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Stats Panel */}
-            <div className="col-span-1">
-              <StatsPanel />
-            </div>
-
-            {/* Features Overview */}
-            <div className="col-span-1 lg:col-span-2 space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-text mb-6">Información</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Feature 1 */}
-                  <InfoCard 
-                    title="¡Mantente al tanto de los incidentes!"
-                    linkText="Incidentes"
-                    linkUrl="/incidents"
-                  >
-                    <p className="text-gray-600 text-sm">
-                      ¿Vas tarde? Infórmate en nuestra sección de incidentes para evitar trancones.
-                    </p>
-                  </InfoCard>
-
-                  {/* Feature 2 */}
-                  <InfoCard 
-                    title="¡Día sin carro!"
-                    linkText="Rutas"
-                    linkUrl="/search-routes"
-                  >
-                    <p className="text-gray-600 text-sm">
-                      Prográmate en nuestra sección de rutas y conoce la ruta que más se ajuste a tu viaje
-                    </p>
-                  </InfoCard>
+        {/* Contenido de prueba simple */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Panel de estadísticas simplificado */}
+          <div className="col-span-1">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border">
+              <h3 className="text-lg font-semibold mb-4">Estadísticas</h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="flex flex-col items-center">
+                  <p className="text-2xl lg:text-3xl font-bold text-purple-600">24</p>
+                  <p className="text-sm text-gray-600 mt-1">Vehículos disponibles</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-2xl lg:text-3xl font-bold text-purple-600">8</p>
+                  <p className="text-sm text-gray-600 mt-1">Rutas activas</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-2xl lg:text-3xl font-bold text-purple-600">130</p>
+                  <p className="text-sm text-gray-600 mt-1">Viajeros</p>
                 </div>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Discounts Section */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold text-text mb-6">Descuentos</h2>
+          {/* Sección de información simplificada */}
+          <div className="col-span-1 lg:col-span-2 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Información</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Tarjeta 1 */}
+                <div className="border-2 border-dashed border-purple-300 rounded-lg p-5">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-900">
+                    ¡Mantente al tanto de los incidentes!
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    ¿Vas tarde? Infórmate en nuestra sección de incidentes para evitar trancones.
+                  </p>
+                  <a
+                    href="/incidents"
+                    className="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors duration-200"
+                  >
+                    Incidentes
+                  </a>
+                </div>
+
+                {/* Tarjeta 2 */}
+                <div className="border-2 border-dashed border-purple-300 rounded-lg p-5">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-900">
+                    ¡Día sin carro!
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Prográmate en nuestra sección de rutas y conoce la ruta que más se ajuste a tu viaje
+                  </p>
+                  <a
+                    href="/search-routes"
+                    className="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors duration-200"
+                  >
+                    Rutas
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sección de descuentos simplificada */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Descuentos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Discount 1 */}
-            <InfoCard 
-              title="¡20% de descuento!"
-              linkText="Aplicar descuento"
-              linkUrl="/discounts"
-            >
-              <p className="text-gray-600 text-sm">
+            {/* Descuento 1 */}
+            <div className="border-2 border-dashed border-purple-300 rounded-lg p-5">
+              <h3 className="text-lg font-semibold mb-3 text-gray-900">
+                ¡20% de descuento!
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
                 Viaje compartido hacia Administración central
               </p>
-            </InfoCard>
+              <button className="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors duration-200">
+                Aplicar descuento
+              </button>
+            </div>
 
-            {/* Discount 2 */}
-            <InfoCard 
-              title="¡Viaja con amigos y ahorra!"
-              linkText="Aplicar descuento"
-              linkUrl="/discounts"
-            >
-              <p className="text-gray-600 text-sm">
+            {/* Descuento 2 */}
+            <div className="border-2 border-dashed border-purple-300 rounded-lg p-5">
+              <h3 className="text-lg font-semibold mb-3 text-gray-900">
+                ¡Viaja con amigos y ahorra!
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
                 15% de descuento al reservar para 3 o más pasajeros
               </p>
-            </InfoCard>
+              <button className="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors duration-200">
+                Aplicar descuento
+              </button>
+            </div>
           </div>
-        </section>
+        </div>
       </div>
     </DashboardLayout>
   );

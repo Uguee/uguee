@@ -9,7 +9,7 @@ export interface Institution {
 }
 
 // User types and roles
-export type UserRole = 'student' | 'driver' | 'institution-admin' | 'site-admin';
+export type UserRole = 'pasajero' | 'conductor' | 'admin_institucional' | 'admin';
 
 export interface User {
   id: string;

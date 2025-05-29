@@ -1,13 +1,14 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
+import { UserService } from '../services/userService';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -23,17 +24,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para convertir un usuario de Supabase a nuestro modelo de usuario
-  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => {
+  // Función para obtener datos completos del usuario
+  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
+    try {
+      // Intentar obtener datos del endpoint primero
+      const userData = await UserService.getUserByUuid(supabaseUser.id);
+      
+      if (userData) {
+        return userData;
+      }
+    } catch (error) {
+      console.warn('Error fetching user data from endpoint:', error);
+    }
+    
+    // Fallback a datos de Supabase metadata
     return {
+    
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata.firstName || '',
       lastName: supabaseUser.user_metadata.lastName || '',
       email: supabaseUser.email || '',
-      role: supabaseUser.user_metadata.role || 'student',
+      role: supabaseUser.user_metadata.role || 'pasajero',
       createdAt: supabaseUser.created_at,
-      phoneNumber: supabaseUser.user_metadata.phoneNumber,
-      dateOfBirth: supabaseUser.user_metadata.dateOfBirth,
+      phoneNumber: supabaseUser.user_metadata.phoneNumber || '',
+      dateOfBirth: supabaseUser.user_metadata.dateOfBirth || '',
     };
   };
 
@@ -42,38 +56,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
         setSession(session);
         
         if (session?.user) {
-          const appUser = convertSupabaseUser(session.user);
+          setIsLoading(true);
+          const appUser = await fetchUserData(session.user);
           setUser(appUser);
+          setIsLoading(false);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       
       if (session?.user) {
-        const appUser = convertSupabaseUser(session.user);
+        setIsLoading(true);
+        const appUser = await fetchUserData(session.user);
         setUser(appUser);
+        setIsLoading(false);
+      } else {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   // Login function
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
     setError(null);
     
@@ -86,9 +101,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       if (data.user) {
-        const appUser = convertSupabaseUser(data.user);
+        const appUser = await fetchUserData(data.user);
         setUser(appUser);
+        return appUser; // Retornar el usuario
       }
+      
+      return null;
       
     } catch (err: any) {
       console.error('Login failed:', err);
@@ -99,21 +117,89 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Register function - Edge Function - CORREGIDA
+  // Función para sincronizar usuario con la tabla usuario
+  const syncUserToDatabase = async (supabaseUser: SupabaseUser, userData: Partial<User>): Promise<boolean> => {
+    try {
+      // Verificamos que el rol sea del tipo correcto
+      const userRole = userData.role as UserRole;
+      
+      // Asegurar que todos los campos requeridos tengan valores válidos
+      const phoneNumber = userData.phoneNumber || supabaseUser.user_metadata?.phoneNumber || '';
+      
+      // Usar la cédula como id_usuario
+      const cedula = userData.id || supabaseUser.user_metadata?.id;
+      const id_usuario = cedula ? parseInt(cedula.toString()) : null;
+      
+      if (!id_usuario) {
+        console.error('❌ No se encontró cédula para usar como id_usuario');
+        return false;
+      }
+      
+      const syncUserData = {
+        id_usuario: id_usuario, // Cédula como número entero
+        uuid: supabaseUser.id,  // UUID de Supabase como string
+        firstName: userData.firstName || supabaseUser.user_metadata?.firstName || '',
+        lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
+        phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
+        role: userRole || supabaseUser.user_metadata?.role || 'pasajero',
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+      };
+
+      // Validar que los campos requeridos no estén vacíos
+      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
+      const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
+      
+      // Validar phoneNumber por separado ya que puede ser null
+      if (!syncUserData.phoneNumber) {
+        missingFields.push('phoneNumber');
+      }
+      
+      if (missingFields.length > 0) {
+        console.error('❌ Campos faltantes para sync-user:', missingFields);
+        return false;
+      }
+      
+      const syncResponse = await supabase.functions.invoke('sync-user', {
+        body: {
+          user: syncUserData,
+          action: 'register'
+        }
+      });
+
+      if (syncResponse.error) {
+        console.warn('❌ Error calling sync-user:', syncResponse.error);
+        return false;
+      }
+
+      if (syncResponse.data?.success) {
+        return true;
+      } else {
+        console.warn('❌ sync-user returned error:', syncResponse.data);
+        return false;
+      }
+    } catch (error: any) {
+      console.warn('❌ Error calling sync-user:', error);
+      return false;
+    }
+  };
+
+  // Register function
   const register = async (userData: Partial<User>, password: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('🔄 Registro con Edge Function...');
+      // Verificamos que el rol sea del tipo correcto
+      const userRole = userData.role as UserRole;
       
-      // 1. LIMPIAR DATOS CONFLICTIVOS PRIMERO
-      console.log('🧹 Limpiando datos previos...');
-      const userId = parseInt(userData.id || '0');
+      // Id numérico del usuario (cédula) si se proporcionó
+      const userId = userData.id ? Number(userData.id) : null;
       
       // Intentar limpiar datos previos (puede fallar, no importa)
       try {
-        await supabase.from('usuario').delete().eq('id_usuario', userId);
+        if (userId) {
+          await supabase.from('usuario').delete().eq('id_usuario', userId);
+        }
       } catch (cleanError) {
         console.log('ℹ️ No había datos previos que limpiar');
       }
@@ -138,41 +224,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 3. EDGE FUNCTION CON DATOS CORRECTOS
       if (data.user) {
-        console.log('🔄 Llamando Edge Function con datos corregidos...');
+        // Sincronizar usuario con la base de datos (siempre, incluso sin sesión)
+        const syncSuccess = await syncUserToDatabase(data.user, userData);
         
-        const requestBody = {
-          user: {
-            id_usuario: userId,
-            uuid: data.user.id,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            phoneNumber: userData.phoneNumber, // ✅ Como string
-            dateOfBirth: userData.dateOfBirth,
-          },
-          action: 'register'
-        };
-        
-        console.log('📤 Datos enviados a Edge Function:', requestBody);
-        
-        const syncResponse = await supabase.functions.invoke('sync-user', {
-          body: requestBody
-        });
-
-        console.log('📡 Respuesta Edge Function:', syncResponse);
-        
-        if (syncResponse.error) {
-          console.error('❌ Edge Function error:', syncResponse.error);
-          throw new Error(`Edge Function falló: ${JSON.stringify(syncResponse.error)}`);
-        }
-        
-        if (syncResponse.data?.error) {
-          console.error('❌ Edge Function data error:', syncResponse.data.error);
-          throw new Error(`Datos error: ${syncResponse.data.error}`);
-        }
-        
-        console.log('✅ Sincronización exitosa:', syncResponse.data);
-        
-        const appUser = convertSupabaseUser(data.user);
+        const appUser = await fetchUserData(data.user);
         setUser(appUser);
       }
       
