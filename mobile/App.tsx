@@ -9,6 +9,7 @@ import {
   StartVerificationScreen,
   HomeScreen,
   RegisterToInstScreen,
+  DriverRegisterScreen,
 } from "./screens";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
@@ -28,7 +29,8 @@ type Screen =
   | "dashboard"
   | "institutions"
   | "selected-institution"
-  | "register-to-inst";
+  | "register-to-inst"
+  | "driver-register";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -150,6 +152,8 @@ const AppNavigator = () => {
 
   const handleGoToInstitutions = () => setCurrentScreen("institutions");
 
+  const handleGoToDriverRegister = () => setCurrentScreen("driver-register");
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -158,7 +162,10 @@ const AppNavigator = () => {
       <ProtectedRoute
         allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
       >
-        <HomeScreen onGoToInstitutions={handleGoToInstitutions} />
+        <HomeScreen
+          onGoToInstitutions={handleGoToInstitutions}
+          onGoToDriverRegister={handleGoToDriverRegister}
+        />
       </ProtectedRoute>
     );
   };
@@ -255,6 +262,12 @@ const AppNavigator = () => {
           <RegisterToInstScreen
             institutionName={selectedInstitution?.name || ""}
             onGoBack={() => setCurrentScreen("selected-institution")}
+          />
+        );
+      case "driver-register":
+        return (
+          <DriverRegisterScreen
+            onGoBack={() => setCurrentScreen("dashboard")}
           />
         );
       default:
