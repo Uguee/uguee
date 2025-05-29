@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await UserService.getUserByUuid(supabaseUser.id);
       
       if (userData) {
-        console.log('User data from endpoint:', userData);
         return userData;
       }
     } catch (error) {
@@ -39,8 +38,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Fallback a datos de Supabase metadata
-    console.log('Using Supabase metadata:', supabaseUser.user_metadata);
     return {
+    
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata.firstName || '',
       lastName: supabaseUser.user_metadata.lastName || '',
@@ -57,7 +56,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
         setSession(session);
         
         if (session?.user) {
@@ -74,7 +72,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Initial session check:', session);
       setSession(session);
       
       if (session?.user) {
@@ -120,17 +117,94 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Función para sincronizar usuario con la tabla usuario
+  const syncUserToDatabase = async (supabaseUser: SupabaseUser, userData: Partial<User>): Promise<boolean> => {
+    try {
+      // Verificamos que el rol sea del tipo correcto
+      const userRole = userData.role as UserRole;
+      
+      // Asegurar que todos los campos requeridos tengan valores válidos
+      const phoneNumber = userData.phoneNumber || supabaseUser.user_metadata?.phoneNumber || '';
+      
+      // Usar la cédula como id_usuario
+      const cedula = userData.id || supabaseUser.user_metadata?.id;
+      const id_usuario = cedula ? parseInt(cedula.toString()) : null;
+      
+      if (!id_usuario) {
+        console.error('❌ No se encontró cédula para usar como id_usuario');
+        return false;
+      }
+      
+      const syncUserData = {
+        id_usuario: id_usuario, // Cédula como número entero
+        uuid: supabaseUser.id,  // UUID de Supabase como string
+        firstName: userData.firstName || supabaseUser.user_metadata?.firstName || '',
+        lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
+        phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
+        role: userRole || supabaseUser.user_metadata?.role || 'pasajero',
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+      };
+
+      // Validar que los campos requeridos no estén vacíos
+      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
+      const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
+      
+      // Validar phoneNumber por separado ya que puede ser null
+      if (!syncUserData.phoneNumber) {
+        missingFields.push('phoneNumber');
+      }
+      
+      if (missingFields.length > 0) {
+        console.error('❌ Campos faltantes para sync-user:', missingFields);
+        return false;
+      }
+      
+      const syncResponse = await supabase.functions.invoke('sync-user', {
+        body: {
+          user: syncUserData,
+          action: 'register'
+        }
+      });
+
+      if (syncResponse.error) {
+        console.warn('❌ Error calling sync-user:', syncResponse.error);
+        return false;
+      }
+
+      if (syncResponse.data?.success) {
+        return true;
+      } else {
+        console.warn('❌ sync-user returned error:', syncResponse.data);
+        return false;
+      }
+    } catch (error: any) {
+      console.warn('❌ Error calling sync-user:', error);
+      return false;
+    }
+  };
+
   // Register function
   const register = async (userData: Partial<User>, password: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('Registering user with data:', userData);
-      
       // Verificamos que el rol sea del tipo correcto
       const userRole = userData.role as UserRole;
       
+      // Id numérico del usuario (cédula) si se proporcionó
+      const userId = userData.id ? Number(userData.id) : null;
+      
+      // Intentar limpiar datos previos (puede fallar, no importa)
+      try {
+        if (userId) {
+          await supabase.from('usuario').delete().eq('id_usuario', userId);
+        }
+      } catch (cleanError) {
+        console.log('ℹ️ No había datos previos que limpiar');
+      }
+      
+      // 2. CREAR EN AUTH
       const { data, error } = await supabase.auth.signUp({
         email: userData.email || '',
         password,
@@ -139,24 +213,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             firstName: userData.firstName,
             lastName: userData.lastName,
             phoneNumber: userData.phoneNumber,
-            role: userRole,
+            role: userData.role as UserRole,
             dateOfBirth: userData.dateOfBirth,
           }
         }
       });
       
       if (error) throw error;
-      
+      console.log('✅ Auth exitoso');
+
+      // 3. EDGE FUNCTION CON DATOS CORRECTOS
       if (data.user) {
+        // Sincronizar usuario con la base de datos (siempre, incluso sin sesión)
+        const syncSuccess = await syncUserToDatabase(data.user, userData);
+        
         const appUser = await fetchUserData(data.user);
         setUser(appUser);
       }
       
-      console.log('Registration successful:', data);
-      
     } catch (err: any) {
-      console.error('Registration failed:', err);
-      setError(err.message || 'Error en el registro');
+      console.error('❌ Error completo:', err);
+      setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);
