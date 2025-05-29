@@ -8,7 +8,12 @@ import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 
-export default function HomeScreen() {
+// Agrega las props
+interface HomeScreenProps {
+  onGoToInstitutions?: () => void;
+}
+
+export default function HomeScreen({ onGoToInstitutions }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
   const suggestions = [
@@ -22,7 +27,7 @@ export default function HomeScreen() {
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Inicio"),
+      onPress: () => alert("Ya te encuentras en inicio"),
     },
     {
       label: "Mis viajes",
@@ -78,7 +83,7 @@ export default function HomeScreen() {
               image={require("../assets/building3D.png")}
               title="Ingresa a una institución"
               description="Para poder tomar ver rutas específicas y tomar viajes"
-              onPress={() => alert("Institución")}
+              onPress={onGoToInstitutions}
             />
             <BigCard
               image={require("../assets/car3D.png")}
