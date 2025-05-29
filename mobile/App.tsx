@@ -149,7 +149,11 @@ const AppNavigator = () => {
       <ProtectedRoute
         allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
       >
-        <HomeScreen />
+        <HomeScreen
+          onGoToInstitutions={() => console.log("Navegar a Instituciones")}
+          onGoToBecomeDriver={() => console.log("Navegar a proceso Conductor")}
+          onGoToDriverView={() => console.log("Cambiar a vista Conductor")}
+        />
       </ProtectedRoute>
     );
   };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, FlatList } from "react-native";
 import { TopMenu } from "../components/TopMenu"; // Ajusta la ruta si es necesario
 import { SearchBar } from "../components/SearchBar";
@@ -7,9 +7,65 @@ import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { useAuth } from "../hooks/useAuth";
+import { useVerificationStatus } from "../hooks/useVerificationStatus";
+import {
+  getUserDataByUUID,
+  getCedulaByUUID,
+} from "../services/userDataService";
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  onGoToInstitutions?: () => void;
+  onGoToBecomeDriver?: () => void;
+  onGoToDriverView?: () => void;
+}
+
+export default function HomeScreen({
+  onGoToInstitutions,
+  onGoToBecomeDriver,
+  onGoToDriverView,
+}: HomeScreenProps) {
   const [search, setSearch] = useState("");
+
+  // Contexto de usuario y verificación
+  const { user } = useAuth();
+  const {
+    institutionStatus,
+    conductorStatus,
+    loading: verificationLoading,
+    error,
+  } = useVerificationStatus();
+
+  // Log de verificación al cargar la pantalla
+  useEffect(() => {
+    if (!verificationLoading) {
+      console.log("[HomeScreen] Usuario actual:", user);
+      console.log("[HomeScreen] Estado verificación:", {
+        institutionStatus,
+        conductorStatus,
+        error,
+        userEmail: user?.email,
+      });
+
+      // Obtener y mostrar id_usuario real
+      if (user?.id) {
+        (async () => {
+          const userRow = await getUserDataByUUID(user.id);
+          console.log(
+            "[HomeScreen] id_usuario (tabla usuarios):",
+            userRow?.id_usuario ?? userRow?.id
+          );
+
+          const cedula = await getCedulaByUUID(user.id);
+          if (!cedula) {
+            console.log("[HomeScreen] No se encontró cedula");
+            return;
+          }
+          console.log("[HomeScreen] cedula:", cedula);
+        })();
+      }
+    }
+  }, [verificationLoading, institutionStatus, conductorStatus, error]);
 
   const suggestions = [
     { label: "Sugerir ruta", onPress: () => alert("Sugerir ruta") },
@@ -54,6 +110,66 @@ export default function HomeScreen() {
     ruta.title.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Construimos dinámicamente las BigCards según el estado de verificación.
+  const renderDynamicCards = () => {
+    if (verificationLoading) return null; // Aún consultando, no mostrar nada.
+
+    const cards: JSX.Element[] = [];
+
+    // Tarjeta institución
+    if (institutionStatus !== "validado") {
+      cards.push(
+        <BigCard
+          key="inst-no"
+          image={require("../assets/building3D.png")}
+          title="Ingresa a una institución"
+          description="Para poder tomar ver rutas específicas y tomar viajes"
+          onPress={onGoToInstitutions ?? (() => alert("Institución"))}
+        />
+      );
+    } else {
+      cards.push(
+        <BigCard
+          key="inst-yes"
+          image={require("../assets/building3D.png")}
+          title="¿Tu institución?"
+          description="Presiona aquí para acceder a los detalles de tu institución"
+          onPress={onGoToInstitutions ?? (() => alert("pertenece Institución"))}
+        />
+      );
+    }
+
+    // Tarjetas de conductor basadas en status
+    if (institutionStatus === "validado" && conductorStatus !== "validado") {
+      cards.push(
+        <BigCard
+          key="cond-no"
+          image={require("../assets/car3D.png")}
+          title="Vuelvete conductor"
+          description="Para poder transportar a otros usuarios"
+          onPress={onGoToBecomeDriver ?? (() => alert("Conductor"))}
+        />
+      );
+    } else if (
+      institutionStatus === "validado" &&
+      conductorStatus === "validado"
+    ) {
+      cards.push(
+        <BigCard
+          key="cond-yes"
+          image={require("../assets/car3D.png")}
+          title="¿Vas a algún lado?"
+          description="Presiona aquí para cambiar a la vista de conductor"
+          onPress={
+            onGoToDriverView ?? (() => alert("cambiar a vista conductor"))
+          }
+        />
+      );
+    }
+
+    return cards;
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <FlatList
@@ -74,18 +190,8 @@ export default function HomeScreen() {
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
-            <BigCard
-              image={require("../assets/building3D.png")}
-              title="Ingresa a una institución"
-              description="Para poder tomar ver rutas específicas y tomar viajes"
-              onPress={() => alert("Institución")}
-            />
-            <BigCard
-              image={require("../assets/car3D.png")}
-              title="Vuelvete conductor"
-              description="Para poder transportar a otros usuarios"
-              onPress={() => alert("Conductor")}
-            />
+            {/* Tarjetas dinámicas según verificación */}
+            {renderDynamicCards()}
           </>
         }
         ListFooterComponent={
