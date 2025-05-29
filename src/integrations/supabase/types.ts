@@ -1031,6 +1031,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      obtener_ruta_con_coordenadas: {
+        Args: { p_id_ruta: number }
+        Returns: {
+          id_ruta: number
+          longitud: number
+          origen_coords: Json
+          destino_coords: Json
+          trayecto_coords: Json
+        }[]
+      }
       obtener_rutas_con_coordenadas: {
         Args: Record<PropertyKey, never>
         Returns: {

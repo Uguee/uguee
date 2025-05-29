@@ -10,16 +10,18 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   console.log('Entro al dashboard layout');
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       <SidebarProvider>
-        <div className="flex">
+        <div className="flex-1 flex">
           <AppSidebar />
-          <main className="flex-1 p-6">
-            <div className="mb-4">
+          <main className="flex-1 flex flex-col">
+            <div className="p-4">
               <SidebarTrigger />
             </div>
-            {children}
+            <div className="flex-1">
+              {children}
+            </div>
           </main>
         </div>
       </SidebarProvider>
