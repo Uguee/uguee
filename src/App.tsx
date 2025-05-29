@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
+import DocumentVerification from "./pages/Authentication/DocumentVerification";
 import Dashboard from "./pages/passengers/Dashboard";
 import SearchRoutes from "./pages/SearchRoutes";
 import RouteDetail from "./pages/passengers/RouteDetail";
@@ -90,6 +91,16 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
+      
+      {/* Ruta para verificación de documentos - protegida pero sin restricción de rol específico */}
+      <Route 
+        path="/verify-documents" 
+        element={
+          <ProtectedRoute>
+            <DocumentVerification />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Rutas para pasajeros */}
       <Route 

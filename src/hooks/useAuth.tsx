@@ -27,19 +27,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Función para obtener datos completos del usuario
   const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
     try {
-      // Intentar obtener datos del endpoint primero
-      const userData = await UserService.getUserByUuid(supabaseUser.id);
+      // Intentar obtener datos del endpoint con timeout rápido
+      const userData = await Promise.race([
+        UserService.getUserByUuid(supabaseUser.id),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('User service timeout')), 1000)
+        )
+      ]);
       
       if (userData) {
         return userData;
       }
     } catch (error) {
-      console.warn('Error fetching user data from endpoint:', error);
+      // Usar fallback si falla la edge function
     }
     
     // Fallback a datos de Supabase metadata
     return {
-    
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata.firstName || '',
       lastName: supabaseUser.user_metadata.lastName || '',
@@ -60,9 +64,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (session?.user) {
           setIsLoading(true);
-          const appUser = await fetchUserData(session.user);
-          setUser(appUser);
-          setIsLoading(false);
+          try {
+            const appUser = await fetchUserData(session.user);
+            setUser(appUser);
+          } catch (error) {
+            setUser(null);
+          } finally {
+            setIsLoading(false);
+          }
         } else {
           setUser(null);
           setIsLoading(false);
@@ -76,9 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.user) {
         setIsLoading(true);
-        const appUser = await fetchUserData(session.user);
-        setUser(appUser);
-        setIsLoading(false);
+        try {
+          const appUser = await fetchUserData(session.user);
+          setUser(appUser);
+        } catch (error) {
+          setUser(null);
+        } finally {
+          setIsLoading(false);
+        }
       } else {
         setIsLoading(false);
       }
@@ -103,7 +117,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user) {
         const appUser = await fetchUserData(data.user);
         setUser(appUser);
-        return appUser; // Retornar el usuario
+        setSession(data.session);
+        return appUser;
       }
       
       return null;
@@ -112,8 +127,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Login failed:', err);
       setError(err.message || 'Error iniciando sesión');
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -9,7 +9,29 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Obtener datos del estado de navegación
+  const navigationState = location.state as { 
+    message?: string; 
+    email?: string;
+    returnTo?: string;
+  } | null;
+
+  // Pre-llenar email y mostrar mensaje si viene desde document verification
+  useEffect(() => {
+    if (navigationState?.email) {
+      setEmail(navigationState.email);
+    }
+    if (navigationState?.message) {
+      toast({
+        title: "Verificación de documentos",
+        description: navigationState.message,
+        variant: "default"
+      });
+    }
+  }, [navigationState, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +47,13 @@ const Login = () => {
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de nuevo a Ugüee",
       });
+
+      // Si viene desde document verification, regresar ahí
+      if (navigationState?.returnTo === 'document-verification') {
+        console.log("➡️ Redirecting back to document verification");
+        navigate("/verify-documents");
+        return;
+      }
 
       // Redirigir según el rol del usuario devuelto por login
       if (loggedInUser) {

@@ -103,9 +103,17 @@ const Register = () => {
       await register(userData, formData.password);
       toast({
         title: "Registro exitoso",
-        description: "Bienvenido a Ugüee. Tu cuenta ha sido creada.",
+        description: "Tu cuenta ha sido creada. Revisa tu correo para confirmar tu cuenta.",
       });
-      navigate("/");
+      
+      // Redirigir al login con mensaje simple
+      navigate("/login", {
+        state: {
+          message: "Registro completado. Recuerda confirmar tu correo antes de iniciar sesión.",
+          email: formData.email,
+          returnTo: 'document-verification'
+        }
+      });
     } catch (error: any) {
       console.error("Registration error details:", error);
       toast({
