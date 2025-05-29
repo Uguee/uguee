@@ -12,6 +12,8 @@ import {
   RegisterToInstScreen,
   DriverRegisterScreen,
 } from "./screens";
+import InstProfileScreen from "./screens/InstProfileScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
