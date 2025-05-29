@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from './AppSidebar'
@@ -11,10 +10,10 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   console.log('Entro al dashboard layout');
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen">
       <Navbar />
       <SidebarProvider>
-        <div className="flex min-h-screen w-full">
+        <div className="flex">
           <AppSidebar />
           <main className="flex-1 p-6">
             <div className="mb-4">
