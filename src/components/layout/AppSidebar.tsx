@@ -1,4 +1,3 @@
-
 import { 
   Calendar, 
   Home, 
@@ -6,9 +5,12 @@ import {
   History, 
   Heart, 
   AlertTriangle,
-  Map
+  Map,
+  Car,
+  Plus
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
+import { useAuth } from "@/hooks/useAuth"
 
 import {
   Sidebar,
@@ -22,7 +24,7 @@ import {
 } from "@/components/ui/sidebar"
 
 // Menu items for passenger navigation
-const items = [
+const passengerItems = [
   {
     title: "Inicio",
     url: "/dashboard",
@@ -55,14 +57,48 @@ const items = [
   },
 ]
 
+// Menu items for driver navigation
+const driverItems = [
+  {
+    title: "Dashboard",
+    url: "/driver/dashboard",
+    icon: Home,
+  },
+  {
+    title: "Crear viaje",
+    url: "/driver/create-trip",
+    icon: Plus,
+  },
+  {
+    title: "Mapa conductor",
+    url: "/driver/map",
+    icon: Map,
+  },
+]
+
 export function AppSidebar() {
   const location = useLocation()
+  const { user } = useAuth()
+
+  // Determinar qué items mostrar según el rol
+  const getMenuItems = () => {
+    switch (user?.role) {
+      case 'conductor':
+        return driverItems
+      case 'pasajero':
+      default:
+        return passengerItems
+    }
+  }
+
+  const items = getMenuItems()
+  const sectionTitle = user?.role === 'conductor' ? 'Conductor' : 'Pasajero'
 
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Barra de navegación</SidebarGroupLabel>
+          <SidebarGroupLabel>Navegación - {sectionTitle}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

@@ -21,6 +21,7 @@ import DriverDashboard from "./pages/drivers/Dashboard";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import MapViewDriver from "./pages/drivers/MapView";
+import CreateTrip from "./pages/drivers/CreateTrip";
 import 'leaflet/dist/leaflet.css';
 
 const queryClient = new QueryClient();
@@ -165,6 +166,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <MapViewDriver />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/create-trip" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <CreateTrip />
           </ProtectedRoute>
         } 
       />

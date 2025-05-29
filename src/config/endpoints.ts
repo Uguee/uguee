@@ -5,6 +5,7 @@ export const SUPABASE_FUNCTIONS = {
   // Endpoints específicos
   GET_USER_DATA: 'https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-user-data',
   SYNC_USER: 'https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/sync-user',
+  GET_USER_WITH_VALIDATION: 'https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-user-with-validation',
 } as const;
 
 // Configuración de la aplicación

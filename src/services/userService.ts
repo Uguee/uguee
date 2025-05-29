@@ -45,8 +45,10 @@ export class UserService {
       case 'admin':
         return 'admin';
       case 'pasajero':
+      case 'student':
         return 'pasajero';
       case 'conductor':
+      case 'driver':
         return 'conductor';
       case 'admin_institucional':
       case 'admin-institucion':
@@ -60,13 +62,32 @@ export class UserService {
    * Mapea los datos del endpoint a nuestro tipo User
    */
   private static mapUserData(userData: any, uuid: string): User {
+    console.log('🔍 UserService mapUserData - Raw data:', userData);
+    
+    // Determinar el rol basándose en validacion_conductor
+    let role: UserRole;
+    
+    console.log('🔍 validacion_conductor value:', userData.validacion_conductor);
+    
+    // Si tiene validacion_conductor: 'validado', entonces es conductor
+    if (userData.validacion_conductor === 'validado') {
+      console.log('✅ Usuario es conductor (validado)');
+      role = 'conductor';
+    } else {
+      console.log('⚠️ Usuario NO es conductor, usando rol base:', userData.rol || userData.role);
+      // Si no está validado como conductor, usar el rol existente o por defecto 'pasajero'
+      role = this.mapRole(userData.rol || userData.role || 'pasajero');
+    }
+    
+    console.log('📝 Final role assigned:', role);
+
     return {
       id: userData.uuid || userData.id || uuid,
       firstName: userData.nombre || userData.firstName || '',
       lastName: userData.apellido || userData.lastName || '',
       email: userData.email || userData.correo || '',
       phoneNumber: userData.celular || userData.phoneNumber || '',
-      role: this.mapRole(userData.rol || userData.role || 'student'),
+      role: role,
       createdAt: userData.createdAt || userData.created_at || new Date().toISOString(),
       dateOfBirth: userData.fecha_nacimiento || userData.dateOfBirth || '',
       address: userData.address || userData.direccion || '',
@@ -83,7 +104,7 @@ export class UserService {
   static async getUserByUuid(uuid: string): Promise<User | null> {
     try {
       const headers = await this.getAuthHeaders();
-      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA}?uuid=${uuid}`;
+      const url = `${SUPABASE_FUNCTIONS.GET_USER_WITH_VALIDATION}?uuid=${uuid}`;
 
       const response = await fetch(url, {
         method: 'GET',

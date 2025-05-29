@@ -26,25 +26,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Función para obtener datos completos del usuario
   const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
+    console.log('🔍 Fetching user data for UUID:', supabaseUser.id);
+    
     try {
       // Intentar obtener datos del endpoint primero
       const userData = await UserService.getUserByUuid(supabaseUser.id);
       
       if (userData) {
+        console.log('✅ Datos obtenidos del UserService:', userData);
         return userData;
       }
     } catch (error) {
-      console.warn('Error fetching user data from endpoint:', error);
+      console.warn('❌ Error fetching user data from endpoint:', error);
     }
     
     // Fallback a datos de Supabase metadata
-    return {
+    console.log('⚠️ Usando fallback metadata');
     
+    // Mapear roles del metadata también
+    const metadataRole = supabaseUser.user_metadata.role || 'pasajero';
+    let mappedRole: UserRole;
+    
+    switch (metadataRole.toLowerCase()) {
+      case 'driver':
+        mappedRole = 'conductor';
+        break;
+      case 'student':
+        mappedRole = 'pasajero';
+        break;
+      case 'admin':
+        mappedRole = 'admin';
+        break;
+      case 'admin_institucional':
+        mappedRole = 'admin_institucional';
+        break;
+      default:
+        mappedRole = 'pasajero';
+    }
+    
+    console.log(`📝 Rol convertido: ${metadataRole} → ${mappedRole}`);
+    
+    return {
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata.firstName || '',
       lastName: supabaseUser.user_metadata.lastName || '',
       email: supabaseUser.email || '',
-      role: supabaseUser.user_metadata.role || 'pasajero',
+      role: mappedRole,  // ← Usar rol mapeado
       createdAt: supabaseUser.created_at,
       phoneNumber: supabaseUser.user_metadata.phoneNumber || '',
       dateOfBirth: supabaseUser.user_metadata.dateOfBirth || '',

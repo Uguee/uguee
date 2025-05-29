@@ -13,6 +13,7 @@ interface MenuOption {
 const menuOptions: MenuOption[] = [
   { label: 'Buscar rutas',        path: '/search-routes',      roles: ['pasajero', 'conductor', 'admin_institucional'] },
   { label: 'Historial de viajes', path: '/my-trips',           roles: ['pasajero', 'conductor'] },
+  { label: 'Crear viaje',         path: '/crear-viaje',        roles: ['conductor'] },
   { label: 'Mis rutas activas',   path: '/my-routes',          roles: ['conductor'] },
   { label: 'Reportar incidente',  path: '/report-incident',    roles: ['pasajero', 'conductor'] },
   { label: 'Validar conductores', path: '/validate-drivers',   roles: ['admin_institucional'] },
