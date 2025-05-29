@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { coordsToPointWKT, coordsToLineStringWKT, calculateRouteLength } from '../lib/postgis';
+import { calculateRouteLength } from '../lib/postgis';
 
 interface RoutePoint {
   lat: number;
@@ -28,29 +28,24 @@ export const useRouteManager = () => {
 
     try {
       const { origin, destination, path } = routeData;
-      
-      // Convertir coordenadas a formato PostGIS WKT
-      const puntoPartidaWKT = coordsToPointWKT(origin.lat, origin.lng);
-      const puntoLlegadaWKT = coordsToPointWKT(destination.lat, destination.lng);
-      const trayectoWKT = coordsToLineStringWKT(path);
-      
-      // Calcular longitud de la ruta
       const longitud = calculateRouteLength(path);
 
-      // Insertar en la base de datos usando funciones PostGIS
-      const { data, error } = await supabase.rpc('insertar_ruta', {
-        p_longitud: longitud,
-        p_punto_partida_wkt: puntoPartidaWKT,
-        p_punto_llegada_wkt: puntoLlegadaWKT,
-        p_trayecto_wkt: trayectoWKT
-      });
+      // Insertar directamente usando el formato que PostGIS entiende
+      const { data, error } = await supabase
+        .from('ruta')
+        .insert({
+          longitud: longitud,
+          punto_partida: `POINT(${origin.lng} ${origin.lat})`,
+          punto_llegada: `POINT(${destination.lng} ${destination.lat})`,
+          trayecto: `LINESTRING(${path.map(([lat, lng]) => `${lng} ${lat}`).join(', ')})`
+        })
+        .select('id_ruta') // Solo seleccionar el ID que necesitamos
+        .single(); // Obtener un solo resultado en lugar de array
 
-      if (error) {
-        throw error;
-      }
-
-      console.log('Ruta guardada exitosamente:', data);
-      return data;
+      if (error) throw error;
+      
+      console.log('Ruta guardada:', data); // Para debug
+      return data; // Ahora devuelve { id_ruta: number }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
