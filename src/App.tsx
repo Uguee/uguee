@@ -163,7 +163,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/map" 
         element={
-          <ProtectedRoute allowedRoles={['driver']}>
+          <ProtectedRoute allowedRoles={['conductor']}>
             <MapViewDriver />
           </ProtectedRoute>
         } 
