@@ -99,12 +99,12 @@ export class UserService {
   }
 
   /**
-   * Obtiene los datos del usuario por UUID desde el endpoint
+   * Obtiene los datos del usuario por UUID
    */
   static async getUserByUuid(uuid: string): Promise<User | null> {
     try {
       const headers = await this.getAuthHeaders();
-      const url = `${SUPABASE_FUNCTIONS.GET_USER_WITH_VALIDATION}?uuid=${uuid}`;
+      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA}?uuid=${uuid}`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -121,8 +121,40 @@ export class UserService {
         return null;
       }
 
+      // Obtener validacion_conductor usando la nueva edge function
+      const userId = result.data.id_usuario;
+      if (userId) {
+        const validacionConductor = await this.getValidacionConductor(userId);
+        result.data.validacion_conductor = validacionConductor;
+      }
+
       return this.mapUserData(result.data, uuid);
     } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene validacion_conductor usando la edge function del compañero
+   */
+  private static async getValidacionConductor(id_usuario: number): Promise<string | null> {
+    try {
+      const headers = await this.getAuthHeaders();
+      
+      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ id_usuario })
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const result = await response.json();
+      return result.validacion_conductor || null;
+    } catch (error) {
+      console.warn('Error consultando validacion_conductor:', error);
       return null;
     }
   }
@@ -154,6 +186,36 @@ export class UserService {
       );
     } catch (error) {
       return [];
+    }
+  }
+
+  /**
+   * Obtiene los datos del usuario desde la tabla usuarios
+   */
+  static async getUserDataFromUsuarios(uuid: string): Promise<any | null> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA_POST}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ uuid })
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        return null;
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching user data from usuarios:', error);
+      return null;
     }
   }
 } 

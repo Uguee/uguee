@@ -80,19 +80,12 @@ export function AppSidebar() {
   const location = useLocation()
   const { user } = useAuth()
 
-  // Determinar qué items mostrar según el rol
-  const getMenuItems = () => {
-    switch (user?.role) {
-      case 'conductor':
-        return driverItems
-      case 'pasajero':
-      default:
-        return passengerItems
-    }
-  }
+  // Detectar si estamos en vista de conductor basándose en la URL
+  const isDriverView = location.pathname.startsWith('/driver')
 
-  const items = getMenuItems()
-  const sectionTitle = user?.role === 'conductor' ? 'Conductor' : 'Pasajero'
+  // Determinar qué items mostrar según la vista actual
+  const items = isDriverView ? driverItems : passengerItems
+  const sectionTitle = isDriverView ? 'Conductor' : 'Pasajero'
 
   return (
     <Sidebar>

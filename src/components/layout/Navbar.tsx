@@ -1,20 +1,96 @@
-
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { Check } from 'lucide-react';
+import { UserService } from '../../services/userService';
+import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
+import { supabase } from '@/integrations/supabase/client';
+
+interface User {
+  id: string;
+  firstName?: string;
+}
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const toggleViewMenu = () => {
+    setIsViewMenuOpen(!isViewMenuOpen);
+  };
+
+  const handleViewChange = async (view: 'driver' | 'passenger') => {
+    if (view === 'driver') {
+      try {
+        if (!user?.id) {
+          throw new Error('User not authenticated');
+        }
+
+        console.log('Getting user data...');
+        const userData = await UserService.getUserDataFromUsuarios(user.id);
+        
+        if (!userData) {
+          throw new Error('Could not get user data');
+        }
+
+        console.log('User data from usuarios:', userData);
+        console.log('id_usuario being sent:', userData.id_usuario);
+        
+        console.log('Checking driver validation...');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No active session');
+        }
+
+        const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ id_usuario: userData.id_usuario })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Validation response:', data);
+        console.log('data.validacion_conductor:', data.validacion_conductor); // debug
+        if (data.validacion_conductor === 'validado') {
+          console.log('User is validated, redirecting to driver dashboard');
+          navigate('/driver/dashboard');
+        } else {
+          console.log('User is not validated, redirecting to not allowed page');
+          navigate('/driver-not-allowed');
+        }
+      } catch (error) {
+        console.error('Error checking driver validation:', error);
+        // Show error message to user
+        alert('Error al verificar la validación del conductor. Por favor, intente nuevamente.');
+        navigate('/driver-not-allowed');
+      }
+    } else {
+      console.log('Switching to passenger view');
+      navigate('/dashboard');
+    }
+    setIsViewMenuOpen(false);
+  };
+
+  const isDriverView = location.pathname.startsWith('/driver');
+
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+    <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
+      <div className="container mx-auto px-4 h-full flex justify-between items-center">
         {/* Logo */}
         <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center">
           <h1 className="text-primary text-2xl font-bold">Ugüee</h1>
@@ -30,17 +106,51 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               <Link 
-                to="/search-routes" 
+                to="/dashboard" 
                 className="text-gray-600 hover:text-primary transition-colors"
               >
-                Buscar rutas
+                Inicio
               </Link>
-              <Link 
-                to="/my-trips" 
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Mis viajes
-              </Link>
+              <div className="relative group">
+                <button 
+                  className="flex items-center text-gray-600 hover:text-primary transition-colors"
+                  onClick={toggleViewMenu}
+                >
+                  Cambiar vista
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 ml-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M19 9l-7 7-7-7" 
+                    />
+                  </svg>
+                </button>
+                {isViewMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => handleViewChange('driver')}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Vista conductor
+                      {isDriverView && <Check className="ml-2 h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleViewChange('passenger')}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Vista pasajero
+                      {!isDriverView && <Check className="ml-2 h-4 w-4" />}
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="relative group">
                 <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
                   {user?.firstName || 'Usuario'}
@@ -123,22 +233,20 @@ const Navbar = () => {
                     className="text-gray-600 py-2 hover:text-primary transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Dashboard
+                    Inicio
                   </Link>
-                  <Link 
-                    to="/search-routes" 
-                    className="text-gray-600 py-2 hover:text-primary transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                  <button 
+                    onClick={() => handleViewChange('driver')}
+                    className="text-left text-gray-600 py-2 hover:text-primary transition-colors"
                   >
-                    Buscar rutas
-                  </Link>
-                  <Link 
-                    to="/my-trips" 
-                    className="text-gray-600 py-2 hover:text-primary transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
+                    Vista conductor
+                  </button>
+                  <button 
+                    onClick={() => handleViewChange('passenger')}
+                    className="text-left text-gray-600 py-2 hover:text-primary transition-colors"
                   >
-                    Mis viajes
-                  </Link>
+                    Vista pasajero
+                  </button>
                   <Link 
                     to="/profile" 
                     className="text-gray-600 py-2 hover:text-primary transition-colors"

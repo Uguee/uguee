@@ -22,6 +22,7 @@ import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import MapViewDriver from "./pages/drivers/MapView";
 import CreateTrip from "./pages/drivers/CreateTrip";
+import DriverNotAllowed from './pages/DriverNotAllowed';
 import 'leaflet/dist/leaflet.css';
 
 const queryClient = new QueryClient();
@@ -94,11 +95,11 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       
-      {/* Rutas para pasajeros */}
+      {/* Rutas para pasajeros - PERMITIR TAMBIÉN CONDUCTORES */}
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -106,7 +107,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -114,7 +115,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -122,7 +123,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -130,7 +131,7 @@ const AppRoutes = () => {
       <Route 
         path="/incidents" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <Incidents />
           </ProtectedRoute>
         } 
@@ -138,7 +139,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -146,7 +147,7 @@ const AppRoutes = () => {
       <Route 
         path="/map" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <MapView />
           </ProtectedRoute>
         } 
@@ -156,7 +157,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['conductor', 'pasajero']}>
             <DriverDashboard />
           </ProtectedRoute>
         } 
@@ -200,6 +201,8 @@ const AppRoutes = () => {
       
       {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
+
+      <Route path="/driver-not-allowed" element={<DriverNotAllowed />} />
     </Routes>
   );
 };
