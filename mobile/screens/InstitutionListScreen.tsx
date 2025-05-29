@@ -8,6 +8,7 @@ import SearchBarInst from "../components/SearchBarInst";
 
 interface InstitutionListScreenProps {
   onGoHome: () => void;
+  onSelectInstitution: (institution: any) => void;
 }
 
 const institutions = [
@@ -39,6 +40,7 @@ const institutions = [
 
 export default function InstitutionListScreen({
   onGoHome,
+  onSelectInstitution,
 }: InstitutionListScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -59,7 +61,7 @@ export default function InstitutionListScreen({
             <InstitutionCard
               name={item.name}
               logo={item.logo}
-              onPress={() => {}}
+              onPress={() => onSelectInstitution(item)}
             />
           )}
           contentContainerStyle={{ paddingBottom: 80 }}
@@ -70,7 +72,7 @@ export default function InstitutionListScreen({
           {
             label: "Inicio",
             icon: <Ionicons name="home-outline" size={28} color="#000" />,
-            active: true,
+            active: false,
             onPress: onGoHome,
           },
           {

@@ -10,6 +10,7 @@ import {
   HomeScreen,
 } from "./screens";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
+import SelectedInstScreen from "./screens/SelectedInstScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
@@ -24,12 +25,14 @@ type Screen =
   | "start-verification"
   | "verification-in-progress"
   | "dashboard"
-  | "institutions";
+  | "institutions"
+  | "selected-institution";
 
 // Componente principal de navegación
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("welcome");
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
+  const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -228,6 +231,17 @@ const AppNavigator = () => {
       case "institutions":
         return (
           <InstitutionListScreen
+            onGoHome={() => setCurrentScreen("dashboard")}
+            onSelectInstitution={(institution) => {
+              setSelectedInstitution(institution);
+              setCurrentScreen("selected-institution");
+            }}
+          />
+        );
+      case "selected-institution":
+        return (
+          <SelectedInstScreen
+            institution={selectedInstitution}
             onGoHome={() => setCurrentScreen("dashboard")}
           />
         );
