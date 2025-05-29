@@ -8,11 +8,18 @@ import {
   CameraPermissionsScreen,
   StartVerificationScreen,
   HomeScreen,
+  DocumentVerificationScreen,
+  RegisterToInstScreen,
+  DriverRegisterScreen,
 } from "./screens";
+import InstitutionListScreen from "./screens/InstitutionListScreen";
+import SelectedInstScreen from "./screens/SelectedInstScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
+import DriverHomeScreen from "./screens/DriverHomeScreen";
+import MyVehiclesScreen from "./screens/MyVehiclesScreen";
 
 type Screen =
   | "welcome"
@@ -22,19 +29,28 @@ type Screen =
   | "permissions"
   | "start-verification"
   | "verification-in-progress"
-  | "dashboard";
+  | "document-verification"
+  | "dashboard"
+  | "institutions"
+  | "selected-institution"
+  | "register-to-inst"
+  | "driver-register";
 
 // Componente principal de navegación
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("welcome");
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
+  const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && user) {
-        console.log("🔄 Usuario autenticado, redirigiendo al dashboard");
-        setCurrentScreen("dashboard");
+        // Solo redirigir al dashboard si no estamos en proceso de validación de documentos
+        if (currentScreen === "welcome" || currentScreen === "login") {
+          console.log("🔄 Usuario autenticado, redirigiendo al dashboard");
+          setCurrentScreen("dashboard");
+        }
       } else if (currentScreen === "dashboard") {
         console.log("🔄 Usuario no autenticado, redirigiendo a welcome");
         setCurrentScreen("welcome");
@@ -89,28 +105,30 @@ const AppNavigator = () => {
 
   const handleRegisterSubmit = async (data: {
     name: string;
+    lastName: string;
+    cedula: string;
+    birthDate: string;
+    phone: string;
     email: string;
     password: string;
   }) => {
     try {
       console.log("📝 Intentando registro:", { email: data.email });
 
-      // Separar nombre completo en firstName y lastName
-      const nameParts = data.name.trim().split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
       await register({
-        firstName,
-        lastName,
+        firstName: data.name,
+        lastName: data.lastName,
         email: data.email,
         password: data.password,
+        phoneNumber: data.phone,
         role: "pasajero", // Por defecto, los usuarios móviles son pasajeros
+        dateOfBirth: data.birthDate,
+        id: data.cedula, // Cédula para sync-user
       });
 
       console.log("✅ Registro exitoso");
-      // La redirección se maneja automáticamente por el useEffect
-      setCurrentScreen("dashboard");
+      // Después del registro exitoso, ir a validación de documentos
+      setCurrentScreen("verify-identity");
     } catch (error: any) {
       console.error("❌ Error en registro:", error.message);
       // El error se maneja en el hook useAuth
@@ -122,7 +140,8 @@ const AppNavigator = () => {
   };
 
   const handleSkipVerifyIdentity = () => {
-    setCurrentScreen("welcome");
+    // Si decide saltarse la verificación, ir al dashboard
+    setCurrentScreen("dashboard");
   };
 
   const handleAllowPermissions = () => {
@@ -134,12 +153,33 @@ const AppNavigator = () => {
   };
 
   const handleStartVerificationProcess = () => {
-    setCurrentScreen("verification-in-progress");
+    setCurrentScreen("document-verification");
   };
 
   const handleGoBackFromStart = () => {
     setCurrentScreen("permissions");
   };
+
+  const handleCompleteVerification = () => {
+    // Después de completar la verificación, ir al dashboard
+    console.log("✅ Verificación completada, redirigiendo al dashboard");
+    setCurrentScreen("dashboard");
+  };
+
+  const handleCompleteDocumentVerification = () => {
+    // Después de subir el documento, ir al dashboard
+    console.log("✅ Documento subido exitosamente, redirigiendo al dashboard");
+    setCurrentScreen("dashboard");
+  };
+
+  const handleGoBackFromDocuments = () => {
+    // Volver a la pantalla anterior
+    setCurrentScreen("start-verification");
+  };
+
+  const handleGoToInstitutions = () => setCurrentScreen("institutions");
+
+  const handleGoToDriverRegister = () => setCurrentScreen("driver-register");
 
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
@@ -153,6 +193,10 @@ const AppNavigator = () => {
           onGoToInstitutions={() => console.log("Navegar a Instituciones")}
           onGoToBecomeDriver={() => console.log("Navegar a proceso Conductor")}
           onGoToDriverView={() => console.log("Cambiar a vista Conductor")}
+        />
+        <HomeScreen
+          onGoToInstitutions={handleGoToInstitutions}
+          onGoToDriverRegister={handleGoToDriverRegister}
         />
       </ProtectedRoute>
     );
@@ -218,13 +262,54 @@ const AppNavigator = () => {
       case "verification-in-progress":
         return (
           <VerifyIdentityScreen
-            onContinue={() => console.log("Verificación completada")}
+            onContinue={handleCompleteVerification}
             onSkip={() => setCurrentScreen("welcome")}
             onBackToHome={handleBackToHome}
           />
         );
+      case "document-verification":
+        return (
+          <DocumentVerificationScreen
+            onComplete={handleCompleteDocumentVerification}
+            onBack={handleGoBackFromDocuments}
+            userId={user ? parseInt(user.id) : 0}
+          />
+        );
       case "dashboard":
         return <DashboardScreen />;
+      case "institutions":
+        return (
+          <InstitutionListScreen
+            onGoHome={() => setCurrentScreen("dashboard")}
+            onSelectInstitution={(institution) => {
+              setSelectedInstitution(institution);
+              setCurrentScreen("selected-institution");
+            }}
+          />
+        );
+      case "selected-institution":
+        return (
+          <SelectedInstScreen
+            institution={selectedInstitution}
+            onGoHome={() => setCurrentScreen("dashboard")}
+            onRequestRegister={(institutionName) => {
+              setCurrentScreen("register-to-inst");
+            }}
+          />
+        );
+      case "register-to-inst":
+        return (
+          <RegisterToInstScreen
+            institutionName={selectedInstitution?.name || ""}
+            onGoBack={() => setCurrentScreen("selected-institution")}
+          />
+        );
+      case "driver-register":
+        return (
+          <DriverRegisterScreen
+            onGoBack={() => setCurrentScreen("dashboard")}
+          />
+        );
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />

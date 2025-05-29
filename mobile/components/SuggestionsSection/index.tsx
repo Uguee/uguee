@@ -53,7 +53,7 @@ export const SuggestionsSection: React.FC<SuggestionsSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: 20,
     marginBottom: 8,
     marginHorizontal: 8,
   },
@@ -77,21 +77,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   suggestionCard: {
-    width: 90,
-    height: 90,
+    width: 100,
+    height: 100,
     backgroundColor: "#A259FF",
-    borderRadius: 16,
-    justifyContent: "flex-end",
+    borderRadius: 12,
     alignItems: "center",
-    marginRight: 12,
-    marginLeft: 0,
-    marginBottom: 4,
-    paddingBottom: 10,
+    justifyContent: "center",
+    marginRight: 35,
   },
   suggestionText: {
     color: "#fff",
     fontWeight: "500",
-    fontSize: 14,
+    fontSize: 19,
     textAlign: "center",
   },
 });

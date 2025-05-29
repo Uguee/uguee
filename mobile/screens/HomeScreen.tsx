@@ -20,9 +20,15 @@ interface HomeScreenProps {
   onGoToDriverView?: () => void;
 }
 
+// Agrega las props
+interface HomeScreenProps {
+  onGoToInstitutions?: () => void;
+  onGoToDriverRegister?: () => void;
+}
+
 export default function HomeScreen({
   onGoToInstitutions,
-  onGoToBecomeDriver,
+  onGoToDriverRegister,
   onGoToDriverView,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
@@ -78,7 +84,7 @@ export default function HomeScreen({
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Inicio"),
+      onPress: () => alert("Ya te encuentras en inicio"),
     },
     {
       label: "Mis viajes",
