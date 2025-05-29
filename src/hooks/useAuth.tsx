@@ -99,17 +99,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Register function
+  // Register function - Edge Function - CORREGIDA
   const register = async (userData: Partial<User>, password: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('Registering user with data:', userData);
+      console.log('🔄 Registro con Edge Function...');
       
-      // Verificamos que el rol sea del tipo correcto
-      const userRole = userData.role as UserRole;
+      // 1. LIMPIAR DATOS CONFLICTIVOS PRIMERO
+      console.log('🧹 Limpiando datos previos...');
+      const userId = parseInt(userData.id || '0');
       
+      // Intentar limpiar datos previos (puede fallar, no importa)
+      try {
+        await supabase.from('usuario').delete().eq('id_usuario', userId);
+      } catch (cleanError) {
+        console.log('ℹ️ No había datos previos que limpiar');
+      }
+      
+      // 2. CREAR EN AUTH
       const { data, error } = await supabase.auth.signUp({
         email: userData.email || '',
         password,
@@ -118,24 +127,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             firstName: userData.firstName,
             lastName: userData.lastName,
             phoneNumber: userData.phoneNumber,
-            role: userRole,
+            role: userData.role as UserRole,
             dateOfBirth: userData.dateOfBirth,
           }
         }
       });
       
       if (error) throw error;
-      
+      console.log('✅ Auth exitoso');
+
+      // 3. EDGE FUNCTION CON DATOS CORRECTOS
       if (data.user) {
+        console.log('🔄 Llamando Edge Function con datos corregidos...');
+        
+        const requestBody = {
+          user: {
+            id_usuario: userId,
+            uuid: data.user.id,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            phoneNumber: userData.phoneNumber, // ✅ Como string
+            dateOfBirth: userData.dateOfBirth,
+          },
+          action: 'register'
+        };
+        
+        console.log('📤 Datos enviados a Edge Function:', requestBody);
+        
+        const syncResponse = await supabase.functions.invoke('sync-user', {
+          body: requestBody
+        });
+
+        console.log('📡 Respuesta Edge Function:', syncResponse);
+        
+        if (syncResponse.error) {
+          console.error('❌ Edge Function error:', syncResponse.error);
+          throw new Error(`Edge Function falló: ${JSON.stringify(syncResponse.error)}`);
+        }
+        
+        if (syncResponse.data?.error) {
+          console.error('❌ Edge Function data error:', syncResponse.data.error);
+          throw new Error(`Datos error: ${syncResponse.data.error}`);
+        }
+        
+        console.log('✅ Sincronización exitosa:', syncResponse.data);
+        
         const appUser = convertSupabaseUser(data.user);
         setUser(appUser);
       }
       
-      console.log('Registration successful:', data);
-      
     } catch (err: any) {
-      console.error('Registration failed:', err);
-      setError(err.message || 'Error en el registro');
+      console.error('❌ Error completo:', err);
+      setError(err.message);
       throw err;
     } finally {
       setIsLoading(false);

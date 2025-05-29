@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouteManager } from '../../hooks/useRouteManager';
 import { useViajeManager } from '../../hooks/useViajeManager';
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 interface RoutePoint {
   lat: number;
@@ -43,6 +44,7 @@ const MapView = () => {
   const { saveRoute, isLoading: isLoadingRoute } = useRouteManager();
   const { fetchRutasDisponibles, crearViaje, isLoading: isLoadingViaje } = useViajeManager();
   const { toast } = useToast();
+  const { currentUserId, isLoading: isLoadingUser } = useCurrentUser();
 
   // Cargar rutas disponibles al montar el componente
   useEffect(() => {
@@ -70,7 +72,19 @@ const MapView = () => {
   };
 
   const handleCrearViaje = async () => {
-    // Validaciones
+    // Validación del usuario actual
+    if (!currentUserId) {
+      toast({
+        title: "❌ Error de autenticación",
+        description: "No se pudo identificar el usuario actual",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('🔍 DEBUG - currentUserId actual:', currentUserId);
+
+    // Validaciones existentes
     if (!fecha || !horaSalida || !horaLlegada || !vehiculo) {
       toast({
         title: "❌ Campos requeridos",
@@ -103,45 +117,44 @@ const MapView = () => {
 
       // Si es modo nueva ruta, primero guardar la ruta
       if (modoCreacion === 'nueva' && currentRoute) {
-        console.log('Creando nueva ruta...'); // Debug
-        const driverId = 1; // TODO: obtener del contexto de auth
+        console.log('Creando nueva ruta...');
         const rutaNueva = await saveRoute({
           origin: currentRoute.origin,
           destination: currentRoute.destination,
           path: currentRoute.path,
-          driverId
+          driverId: currentUserId // ✅ Ahora usa el usuario real
         });
         
-        console.log('Ruta creada:', rutaNueva); // Debug
-        idRutaAUsar = rutaNueva.id_ruta; // Ahora accedemos directamente al ID
+        console.log('Ruta creada:', rutaNueva);
+        idRutaAUsar = rutaNueva.id_ruta;
         
       } else if (modoCreacion === 'seleccionar' && rutaSeleccionada) {
-        console.log('Usando ruta existente:', rutaSeleccionada); // Debug
+        console.log('Usando ruta existente:', rutaSeleccionada);
         idRutaAUsar = rutaSeleccionada;
         
       } else {
         throw new Error('No se pudo determinar la ruta a usar');
       }
 
-      console.log('ID de ruta a usar:', idRutaAUsar); // Debug
+      console.log('ID de ruta a usar:', idRutaAUsar);
 
       if (!idRutaAUsar) {
         throw new Error('ID de ruta inválido');
       }
 
-      // Crear el viaje
-      console.log('Creando viaje...'); // Debug
+      // Crear el viaje CON VALIDACIONES
+      console.log('Creando viaje...');
       const viajeCreado = await crearViaje({
         id_ruta: idRutaAUsar,
-        id_conductor: 1, // TODO: obtener del contexto de auth
+        id_conductor: currentUserId, // ✅ Ahora usa el usuario real
         id_vehiculo: vehiculo,
         fecha: fecha,
         hora_salida: horaSalida,
         hora_llegada: horaLlegada,
-        reseña: 1 // valor por defecto
+        reseña: 1
       });
 
-      console.log('Viaje creado:', viajeCreado); // Debug
+      console.log('Viaje creado:', viajeCreado);
 
       toast({
         title: "✅ Viaje creado",
@@ -170,7 +183,31 @@ const MapView = () => {
     }
   };
 
-  const isLoading = isLoadingRoute || isLoadingViaje;
+  const isLoading = isLoadingRoute || isLoadingViaje || isLoadingUser;
+
+  // ✅ Mostrar loading si está cargando el usuario
+  if (isLoadingUser) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <span className="ml-2">Cargando datos del usuario...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ✅ Mostrar error si no hay usuario
+  if (!currentUserId) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-8">
+          <h2 className="text-xl font-semibold text-red-600">Error de autenticación</h2>
+          <p className="text-gray-600 mt-2">No se pudo identificar tu usuario. Por favor, inicia sesión nuevamente.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
