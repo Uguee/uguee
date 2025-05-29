@@ -18,6 +18,8 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
+import DriverHomeScreen from "./screens/DriverHomeScreen";
+import MyVehiclesScreen from "./screens/MyVehiclesScreen";
 
 type Screen =
   | "welcome"
