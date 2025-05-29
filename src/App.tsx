@@ -11,10 +11,10 @@ import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
 import Dashboard from "./pages/passengers/Dashboard";
-import SearchRoutes from "./pages/SearchRoutes";
+import SearchRoutes from "./pages/passengers/SearchRoutes";
+import StartTrip from "./pages/passengers/StartTrip";
 import RouteDetail from "./pages/passengers/RouteDetail";
 import MyTrips from "./pages/passengers/MyTrips";
-import Incidents from "./pages/passengers/Incidents";
 import FavoriteRoutes from "./pages/passengers/FavoriteRoutes";
 import MapView from "./pages/passengers/MapView";
 import DriverDashboard from "./pages/drivers/Dashboard";
@@ -113,6 +113,14 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/start-trip" 
+        element={
+          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+            <StartTrip />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/routes/:routeId" 
         element={
           <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
@@ -125,14 +133,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <MyTrips />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/incidents" 
-        element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
-            <Incidents />
           </ProtectedRoute>
         } 
       />

@@ -4,10 +4,10 @@ import {
   Search, 
   History, 
   Heart, 
-  AlertTriangle,
   Map,
   Car,
-  Plus
+  Plus,
+  Play
 } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
@@ -31,6 +31,11 @@ const passengerItems = [
     icon: Home,
   },
   {
+    title: "Iniciar viaje",
+    url: "/start-trip",
+    icon: Play,
+  },
+  {
     title: "Buscar rutas",
     url: "/search-routes",
     icon: Search,
@@ -39,11 +44,6 @@ const passengerItems = [
     title: "Historial de viajes",
     url: "/my-trips",
     icon: History,
-  },
-  {
-    title: "Incidentes",
-    url: "/incidents",
-    icon: AlertTriangle,
   },
   {
     title: "Ver mapa",
