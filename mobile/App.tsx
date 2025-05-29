@@ -254,7 +254,6 @@ const AppNavigator = () => {
         return (
           <RegisterToInstScreen
             institutionName={selectedInstitution?.name || ""}
-            onGoBack={() => setCurrentScreen("selected-institution")}
           />
         );
       default:
