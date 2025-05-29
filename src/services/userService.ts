@@ -135,4 +135,34 @@ export class UserService {
       return [];
     }
   }
+
+  /**
+   * Obtiene los datos del usuario desde la tabla usuarios
+   */
+  static async getUserDataFromUsuarios(uuid: string): Promise<any | null> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA_POST}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ uuid })
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        return null;
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching user data from usuarios:', error);
+      return null;
+    }
+  }
 } 

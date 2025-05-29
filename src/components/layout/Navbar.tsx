@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Check } from 'lucide-react';
 import { UserService } from '../../services/userService';
 import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -33,20 +34,28 @@ const Navbar = () => {
         }
 
         console.log('Getting user data...');
-        const userData = await UserService.getUserByUuid(user.id);
+        const userData = await UserService.getUserDataFromUsuarios(user.id);
         
         if (!userData) {
           throw new Error('Could not get user data');
         }
 
+        console.log('User data from usuarios:', userData);
+        console.log('id_usuario being sent:', userData.id_usuario);
+        
         console.log('Checking driver validation...');
-        const response = await fetch(SUPABASE_FUNCTIONS.CHECK_DRIVER_VALIDATION, {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('No active session');
+        }
+
+        const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            'Authorization': `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({ id_usuario: userData.id })
+          body: JSON.stringify({ id_usuario: userData.id_usuario })
         });
 
         if (!response.ok) {
@@ -56,7 +65,7 @@ const Navbar = () => {
         
         const data = await response.json();
         console.log('Validation response:', data);
-        
+        console.log('data.validacion_conductor:', data.validacion_conductor); // debug
         if (data.validacion_conductor === 'validado') {
           console.log('User is validated, redirecting to driver dashboard');
           navigate('/driver/dashboard');
