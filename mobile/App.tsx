@@ -20,6 +20,7 @@ import { User } from "./services/authService";
 import { View, Text } from "react-native";
 import DriverHomeScreen from "./screens/DriverHomeScreen";
 import MyVehiclesScreen from "./screens/MyVehiclesScreen";
+import AddVehicleScreen from "./screens/AddVehicleScreen";
 
 type Screen =
   | "welcome"
