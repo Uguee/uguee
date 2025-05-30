@@ -23,6 +23,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import MapViewDriver from "./pages/drivers/MapView";
 import CreateTrip from "./pages/drivers/CreateTrip";
 import DriverNotAllowed from './pages/DriverNotAllowed';
+import HistorialViajes from "./pages/drivers/HistorialViajes";
 import 'leaflet/dist/leaflet.css';
 
 const queryClient = new QueryClient();
@@ -163,10 +164,10 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/map" 
+        path="/driver/historial-viajes" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
-            <MapViewDriver />
+            <HistorialViajes />
           </ProtectedRoute>
         } 
       />
