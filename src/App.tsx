@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
+import DocumentVerification from "./pages/Authentication/DocumentVerification";
 import Dashboard from "./pages/passengers/Dashboard";
 import SearchRoutes from "./pages/passengers/SearchRoutes";
 import StartTrip from "./pages/passengers/StartTrip";
@@ -25,6 +26,8 @@ import DriverNotAllowed from './pages/DriverNotAllowed';
 import HistorialViajes from "./pages/drivers/HistorialViajes";
 import MisVehiculos from "./pages/drivers/MisVehiculos";
 import 'leaflet/dist/leaflet.css';
+import PendingValidation from "./pages/Validation/PendingValidation";
+import UserValidation from "./pages/admin/UserValidation";
 
 const queryClient = new QueryClient();
 
@@ -64,7 +67,11 @@ const ProtectedRoute = ({
     console.log('❌ Role not allowed:', user.role, 'Allowed:', allowedRoles);
     // Redirigir a la página correspondiente según el rol
     switch (user.role) {
-      case 'pasajero':
+      case 'externo':
+      case 'estudiante':
+      case 'profesor':
+      case 'administrativo':
+      case 'usuario':
         console.log('🔄 Redirecting pasajero to /dashboard');
         return <Navigate to="/dashboard" />;
       case 'conductor':
@@ -76,6 +83,9 @@ const ProtectedRoute = ({
       case 'admin':
         console.log('🔄 Redirecting admin to /admin/dashboard');
         return <Navigate to="/admin/dashboard" />;
+      case 'validacion':
+        console.log('🔄 Redirecting validacion to /pending-validation');
+        return <Navigate to="/pending-validation" />;
       default:
         console.log('🔄 Unknown role, redirecting to /dashboard');
         return <Navigate to="/dashboard" />;
@@ -95,6 +105,26 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
+      
+      {/* Ruta para validación pendiente - solo para usuarios con rol "validacion" */}
+      <Route 
+        path="/pending-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['validacion']}>
+            <PendingValidation />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Ruta para verificación de documentos - protegida pero sin restricción de rol específico */}
+      <Route 
+        path="/verify-documents" 
+        element={
+          <ProtectedRoute>
+            <DocumentVerification />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Rutas para pasajeros - PERMITIR TAMBIÉN CONDUCTORES */}
       <Route 
@@ -152,6 +182,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor', 'pasajero']}>
             <DriverDashboard />
+            <Incidents />
           </ProtectedRoute>
         } 
       />
@@ -160,6 +191,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <HistorialViajes />
+            <FavoriteRoutes />
           </ProtectedRoute>
         } 
       />
@@ -168,6 +200,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <CreateTrip />
+            <MapView />
           </ProtectedRoute>
         } 
       />
@@ -196,6 +229,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Ruta para validación de usuarios - solo para admins */}
+      <Route 
+        path="/admin/user-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UserValidation />
           </ProtectedRoute>
         } 
       />

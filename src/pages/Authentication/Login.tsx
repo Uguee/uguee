@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
@@ -12,16 +12,30 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
-  // Load remembered email if exists
+  // Obtener datos del estado de navegación
+  const navigationState = location.state as { 
+    message?: string; 
+    email?: string;
+    returnTo?: string;
+    isInstitutionFlow?: boolean;
+  } | null;
+
+  // Pre-llenar email y mostrar mensaje si viene desde document verification
   useEffect(() => {
-    const rememberedEmail = localStorage.getItem('rememberedEmail');
-    if (rememberedEmail) {
-      setEmail(rememberedEmail);
-      setRememberMe(true);
+    if (navigationState?.email) {
+      setEmail(navigationState.email);
     }
-  }, []);
+    if (navigationState?.message) {
+      toast({
+        title: navigationState.isInstitutionFlow ? "Registro Institucional" : "Verificación de documentos",
+        description: navigationState.message,
+        variant: "default"
+      });
+    }
+  }, [navigationState, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,12 +59,26 @@ const Login = () => {
         description: "Bienvenido de nuevo a Ugüee",
       });
 
+      // Si viene desde document verification, regresar ahí
+      if (navigationState?.returnTo === 'document-verification') {
+        console.log("➡️ Redirecting back to document verification");
+        navigate("/verify-documents");
+        return;
+      }
+
+      // Si viene del flujo de registro institucional, ir al formulario de institución
+      if (navigationState?.returnTo === 'institution-register' || navigationState?.isInstitutionFlow) {
+        console.log("➡️ Redirecting to institution registration form");
+        navigate("/institution-register");
+        return;
+      }
+
       // Redirigir según el rol del usuario devuelto por login
       if (loggedInUser) {
         console.log("🚀 Redirecting based on role:", loggedInUser.role);
 
         switch (loggedInUser.role) {
-          case "pasajero":
+          case "usuario":
             console.log("➡️ Redirecting to /dashboard");
             navigate("/dashboard");
             break;

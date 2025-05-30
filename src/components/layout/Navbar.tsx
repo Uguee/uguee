@@ -96,7 +96,7 @@ const Navbar = () => {
           <h1 className="text-primary text-2xl font-bold">Ugüee</h1>
           {location.pathname !== '/' && (
             <span className="text-xs text-gray-500 ml-2 hidden sm:inline">
-              Transporte universitario
+              {isInstitutionalAdmin ? 'Panel Administrativo' : 'Transporte universitario'}
             </span>
           )}
         </Link>

@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Users, Building2, Car, MapPin, AlertTriangle, Settings, Shield, Clock } from 'lucide-react';
+import { Users, Building2, Car, MapPin, AlertTriangle, Settings, Shield, Clock, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
   // Datos de ejemplo - En producción vendrían de una API
@@ -71,6 +73,31 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
+
+        {/* Botón grande para validar instituciones */}
+        <Card className="border-2 border-primary/20">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
+                <CheckCircle className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Validar Solicitudes de Instituciones
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Revisa y aprueba las solicitudes de registro institucional pendientes
+              </p>
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/admin/user-validation')}
+                className="w-full sm:w-auto px-8 py-3"
+              >
+                <Users className="w-5 h-5 mr-2" />
+                Ver Solicitudes Pendientes
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
