@@ -12,6 +12,7 @@ import {
   RegisterToInstScreen,
   DriverRegisterScreen,
 } from "./screens";
+import DriverRoutesScreen from "./screens/DriverRoutesScreen";
 import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstProfileScreen from "./screens/InstProfileScreen";
 import ProfileScreen from "./screens/ProfileScreen";
@@ -328,7 +329,7 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <AppNavigator />
+      <DriverRoutesScreen />
     </AuthProvider>
   );
 }
