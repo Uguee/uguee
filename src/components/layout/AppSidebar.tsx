@@ -4,7 +4,6 @@ import {
   Search, 
   History, 
   Heart, 
-  Map,
   Car,
   Plus,
   Play
@@ -46,11 +45,6 @@ const passengerItems = [
     icon: History,
   },
   {
-    title: "Ver mapa",
-    url: "/map",
-    icon: Map,
-  },
-  {
     title: "Rutas favoritas",
     url: "/favorite-routes",
     icon: Heart,
@@ -77,7 +71,7 @@ const driverItems = [
   {
     title: "Mis Vehículos",
     url: "/driver/mis-vehiculos",
-    icon: Car,  // Ya está importado el ícono Car
+    icon: Car,
   },
 ]
 

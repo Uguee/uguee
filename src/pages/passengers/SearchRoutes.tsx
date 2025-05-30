@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FilterIcon } from "lucide-react";
 import { useRoutes } from '@/hooks/useRoutes';
@@ -10,21 +9,70 @@ import { useToast } from "@/hooks/use-toast";
 import { format, parse } from "date-fns";
 import { es } from "date-fns/locale";
 import { TripService, Trip } from "@/services/tripService";
+import { supabase } from "@/integrations/supabase/client";
+import { useRouteManager } from "@/hooks/useRouteManager";
 
 const SearchRoutes = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
+  const [selectedVehicleType, setSelectedVehicleType] = useState<string>("all");
+  const [selectedRoute, setSelectedRoute] = useState<string>("all");
+  const [availableRoutes, setAvailableRoutes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRouteDetails, setSelectedRouteDetails] = useState<any>(null);
   const { toast } = useToast();
+  const { fetchRoutes } = useRouteManager();
 
   useEffect(() => {
     fetchTrips();
+    fetchAvailableRoutes();
   }, []);
+
+  useEffect(() => {
+    let filtered = trips;
+
+    // Filter by vehicle type
+    if (selectedVehicleType !== "all") {
+      filtered = filtered.filter(trip => 
+        trip.vehiculo?.tipo.tipo.toLowerCase() === selectedVehicleType.toLowerCase()
+      );
+    }
+
+    // Filter by route
+    if (selectedRoute !== "all") {
+      filtered = filtered.filter(trip => 
+        trip.id_ruta.toString() === selectedRoute
+      );
+    }
+
+    setFilteredTrips(filtered);
+  }, [selectedVehicleType, selectedRoute, trips]);
+
+  const fetchAvailableRoutes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ruta')
+        .select('id_ruta, longitud')
+        .order('id_ruta', { ascending: false });
+
+      if (error) throw error;
+      setAvailableRoutes(data || []);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las rutas disponibles",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchTrips = async () => {
     try {
       setIsLoading(true);
       const data = await TripService.getUpcomingTrips();
       setTrips(data);
+      setFilteredTrips(data);
     } catch (error) {
       console.error('Error fetching trips:', error);
       toast({
@@ -34,6 +82,36 @@ const SearchRoutes = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewRoute = async (routeId: number) => {
+    try {
+      const { data, error } = await supabase
+        .rpc('obtener_ruta_con_coordenadas', {
+          p_id_ruta: routeId
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        setSelectedRouteDetails(data[0]);
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo encontrar la ruta",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la ruta",
+        variant: "destructive",
+      });
     }
   };
 
@@ -71,102 +149,132 @@ const SearchRoutes = () => {
           <h1 className="text-3xl font-bold text-text">Viajes Disponibles</h1>
         </div>
 
-        {/* Search Form */}
+        {/* Filter Section */}
         <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Origen:</label>
-              <Input 
-                placeholder="Tu ubicación"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Destino:</label>
-              <Input 
-                placeholder="Carrera 86"
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-4">
-            <Select>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Elige tu medio de transporte preferido" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="car">Carro</SelectItem>
-                <SelectItem value="bus">Bus</SelectItem>
-                <SelectItem value="bike">Bicicleta</SelectItem>
-                <SelectItem value="walk">Caminar</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <FilterIcon className="w-4 h-4 mr-2" />
-              Filtrar
-            </Button>
-          </div>
-        </div>
-
-        {/* Map Section */}
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <RouteMap 
-            origin={null}
-            destination={null}
-            route={null}
-            allowClickToSetPoints={false}
-          />
-        </div>
-
-        {/* Routes List */}
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : trips.length > 0 ? (
-            trips.map((trip) => (
-              <div
-                key={trip.id_viaje}
-                className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-4">
+              <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Filtrar por tipo de vehículo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los vehículos</SelectItem>
+                  <SelectItem value="automóvil">Automóvil</SelectItem>
+                  <SelectItem value="camioneta">Camioneta</SelectItem>
+                  <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                  <SelectItem value="bicicleta">Bicicleta</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setSelectedVehicleType("all");
+                  setSelectedRoute("all");
+                }}
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-lg">
-                      {trip.conductor?.nombre} {trip.conductor?.apellido}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {formatDate(trip.fecha + ' ' + trip.hora_salida)}
-                    </p>
-                    <div className="mt-2 space-y-1">
-                      <p className="text-sm">
-                        <span className="font-medium">Teléfono:</span> {trip.conductor?.celular}
+                <FilterIcon className="w-4 h-4 mr-2" />
+                Limpiar filtros
+              </Button>
+            </div>
+            <div className="flex gap-4">
+              <Select value={selectedRoute} onValueChange={setSelectedRoute}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Filtrar por ruta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las rutas</SelectItem>
+                  {availableRoutes.map((route) => (
+                    <SelectItem key={route.id_ruta} value={route.id_ruta.toString()}>
+                      Ruta #{route.id_ruta} ({Number(route.longitud).toFixed(2)} km)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Map Section */}
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden relative" style={{ zIndex: 1 }}>
+            <RouteMap 
+              origin={selectedRouteDetails ? {
+                lat: selectedRouteDetails.origen_coords.y,
+                lng: selectedRouteDetails.origen_coords.x,
+                address: "Origen"
+              } : null}
+              destination={selectedRouteDetails ? {
+                lat: selectedRouteDetails.destino_coords.y,
+                lng: selectedRouteDetails.destino_coords.x,
+                address: "Destino"
+              } : null}
+              route={selectedRouteDetails?.trayecto_coords?.map((coord: any) => [coord.y, coord.x]) || null}
+              allowClickToSetPoints={false}
+            />
+          </div>
+
+          {/* Routes List */}
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredTrips.length > 0 ? (
+              filteredTrips.map((trip) => (
+                <div
+                  key={trip.id_viaje}
+                  className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium text-lg">
+                        {trip.conductor?.nombre} {trip.conductor?.apellido}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {formatDate(trip.fecha + ' ' + trip.hora_salida)}
                       </p>
-                      <p className="text-sm">
-                        <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
-                      </p>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm">
+                          <span className="font-medium">Teléfono:</span> {trip.conductor?.celular}
+                        </p>
+                        <p className="text-sm">
+                          <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-2">
+                      <button
+                        className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                        onClick={() => {
+                          toast({
+                            title: "Próximamente",
+                            description: "La funcionalidad de reserva estará disponible pronto",
+                          });
+                        }}
+                      >
+                        Reservar
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
+                        onClick={() => handleViewRoute(trip.id_ruta)}
+                      >
+                        Ver ruta
+                      </button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <button
-                      className="mt-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-                      onClick={() => {
-                        toast({
-                          title: "Próximamente",
-                          description: "La funcionalidad de reserva estará disponible pronto",
-                        });
-                      }}
-                    >
-                      Reservar
-                    </button>
-                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <p className="text-gray-500 text-lg">
+                  {selectedVehicleType !== "all" || selectedRoute !== "all"
+                    ? "No hay viajes disponibles con los filtros seleccionados"
+                    : "No hay viajes disponibles"}
+                </p>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-500 text-lg">No hay viajes disponibles</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

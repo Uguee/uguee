@@ -16,7 +16,6 @@ import StartTrip from "./pages/passengers/StartTrip";
 import RouteDetail from "./pages/passengers/RouteDetail";
 import MyTrips from "./pages/passengers/MyTrips";
 import FavoriteRoutes from "./pages/passengers/FavoriteRoutes";
-import MapView from "./pages/passengers/MapView";
 import DriverDashboard from "./pages/drivers/Dashboard";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -143,14 +142,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
             <FavoriteRoutes />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/map" 
-        element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
-            <MapView />
           </ProtectedRoute>
         } 
       />

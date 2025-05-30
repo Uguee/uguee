@@ -36,6 +36,7 @@ interface RouteMapProps {
   route: [number, number][] | null;
   onCurrentLocationChange?: (location: Location) => void;
   onRouteGenerated?: (origin: Location, destination: Location, route: [number, number][]) => void;
+  onMapClick?: (lat: number, lng: number) => void;
   allowClickToSetPoints?: boolean;
 }
 
@@ -97,10 +98,12 @@ function MapController({ onCurrentLocationChange }: { onCurrentLocationChange?: 
 }
 
 // Componente para manejar clics en el mapa
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
     click: (e) => {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+      if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
     },
   });
   return null;
@@ -112,6 +115,7 @@ export function RouteMap({
   route, 
   onCurrentLocationChange,
   onRouteGenerated,
+  onMapClick,
   allowClickToSetPoints = false 
 }: RouteMapProps) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
