@@ -5,6 +5,16 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../integrations/supabase/client';
 import { UserService } from '../../services/userService';
 import { User } from '../../types';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 interface ViajeDetalle {
   id_viaje: number;
@@ -14,7 +24,6 @@ interface ViajeDetalle {
   fecha: string;
   hora_salida: string;
   hora_llegada: string;
-  estado: 'pendiente' | 'en_curso' | 'completado' | 'cancelado';
   origen: string;
   destino: string;
   pasajeros: number;
@@ -51,6 +60,7 @@ const HistorialViajes = () => {
   const [activeTab, setActiveTab] = useState<'proximos' | 'pasados'>('proximos');
   const { user } = useAuth();
   const { toast } = useToast();
+  const [viajeACancelar, setViajeACancelar] = useState<number | null>(null);
 
   useEffect(() => {
     const cargarViajes = async () => {
@@ -99,16 +109,11 @@ const HistorialViajes = () => {
         if (viajesData) {
           console.log('Viajes data:', viajesData);
           setViajes(viajesData.map(viaje => {
-            const fechaViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
-            const now = new Date();
-            const estado = fechaViaje > now ? 'pendiente' : 'completado';
-
             return {
               ...viaje,
               origen: 'Origen',  // Placeholder simple
               destino: 'Destino', // Placeholder simple
               pasajeros: Array.isArray(viaje.pasajeros) ? viaje.pasajeros.length : 0,
-              estado,
               vehiculo: {
                 placa: viaje.vehiculo?.placa || 'No disponible',
                 tipo: viaje.vehiculo?.tipo || 0,
@@ -148,13 +153,42 @@ const HistorialViajes = () => {
 
   // Filtrar viajes según la pestaña activa
   const viajesFiltrados = viajes.filter(viaje => {
-    const fechaViaje = new Date(viaje.fecha);
+    const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
     const now = new Date();
     
     return activeTab === 'proximos' 
-      ? fechaViaje >= now && viaje.estado !== 'cancelado'
-      : fechaViaje < now || viaje.estado === 'completado';
+      ? fechaHoraViaje > now  // Viajes futuros
+      : fechaHoraViaje <= now; // Viajes pasados
   });
+
+  // Función para cancelar viaje
+  const cancelarViaje = async (idViaje: number) => {
+    try {
+      const { error } = await supabase
+        .from('viaje')
+        .delete()
+        .eq('id_viaje', idViaje);
+
+      if (error) throw error;
+
+      // Actualizar el estado local eliminando el viaje
+      setViajes(viajes.filter(viaje => viaje.id_viaje !== idViaje));
+
+      toast({
+        title: "Viaje cancelado",
+        description: "El viaje ha sido eliminado exitosamente",
+      });
+    } catch (err) {
+      console.error('Error cancelando viaje:', err);
+      toast({
+        title: "Error",
+        description: "No se pudo cancelar el viaje",
+        variant: "destructive",
+      });
+    } finally {
+      setViajeACancelar(null);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -244,15 +278,11 @@ const HistorialViajes = () => {
                           {formatDate(viaje.fecha)}
                         </span>
                         <span className={`text-sm px-2 py-0.5 rounded-full ${
-                          viaje.estado === 'completado' 
-                            ? 'bg-green-100 text-green-800'
-                            : viaje.estado === 'cancelado'
-                            ? 'bg-red-100 text-red-800'
-                            : viaje.estado === 'en_curso'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                          new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date()
+                            ? 'bg-blue-100 text-blue-800'  // Viaje próximo
+                            : 'bg-green-100 text-green-800' // Viaje pasado
                         }`}>
-                          {viaje.estado.charAt(0).toUpperCase() + viaje.estado.slice(1).replace('_', ' ')}
+                          {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
                         </span>
                       </div>
                       <h3 className="text-lg font-medium text-text">
@@ -277,9 +307,9 @@ const HistorialViajes = () => {
                         Ver detalles
                       </button>
                       
-                      {activeTab === 'proximos' && viaje.estado === 'pendiente' && (
+                      {activeTab === 'proximos' && (
                         <button 
-                          onClick={() => {/* TODO: Implementar cancelación */}}
+                          onClick={() => setViajeACancelar(viaje.id_viaje)}
                           className="border border-red-500 text-red-500 hover:bg-red-50 py-2 px-4 rounded-md transition-colors"
                         >
                           Cancelar
@@ -293,6 +323,28 @@ const HistorialViajes = () => {
           )}
         </div>
       </div>
+
+      {/* Diálogo de confirmación */}
+      <AlertDialog open={viajeACancelar !== null} onOpenChange={() => setViajeACancelar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cancelará el viaje y notificará a los pasajeros registrados.
+              No podrás deshacer esta acción.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => viajeACancelar && cancelarViaje(viajeACancelar)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Sí, cancelar viaje
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

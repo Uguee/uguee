@@ -74,6 +74,11 @@ const driverItems = [
     url: "/driver/historial-viajes",
     icon: History,
   },
+  {
+    title: "Mis Vehículos",
+    url: "/driver/mis-vehiculos",
+    icon: Car,  // Ya está importado el ícono Car
+  },
 ]
 
 export function AppSidebar() {
