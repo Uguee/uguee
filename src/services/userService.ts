@@ -21,7 +21,7 @@ export class UserService {
       const { data: { session }, error } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
+          setTimeout(() => reject(new Error('Session timeout')), 10000)
         )
       ]);
       
@@ -31,10 +31,12 @@ export class UserService {
       
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
+        console.log('✅ Headers de autorización obtenidos correctamente');
       } else {
         throw new Error('No active session');
       }
     } catch (error: any) {
+      console.error('❌ Error obteniendo headers:', error.message);
       throw new Error(`Authentication failed: ${error.message}`);
     }
 
@@ -86,8 +88,8 @@ export class UserService {
       role = 'conductor';
     } else {
       console.log('⚠️ Usuario NO es conductor, usando rol base:', userData.rol || userData.role);
-      // Si no está validado como conductor, usar el rol existente o por defecto 'pasajero'
-      role = this.mapRole(userData.rol || userData.role || 'pasajero');
+      // Si no está validado como conductor, usar el rol existente o por defecto 'usuario'
+      role = this.mapRole(userData.rol || userData.role || 'usuario');
     }
     
     console.log('📝 Final role assigned:', role);
@@ -98,7 +100,7 @@ export class UserService {
       lastName: userData.apellido || userData.lastName || '',
       email: userData.email || userData.correo || '',
       phoneNumber: userData.celular || userData.phoneNumber || '',
-      role: this.mapRole(userData.rol || userData.role),
+      role: role,
       createdAt: userData.createdAt || userData.created_at || new Date().toISOString(),
       dateOfBirth: userData.fecha_nacimiento || userData.dateOfBirth || '',
       address: userData.address || userData.direccion || '',

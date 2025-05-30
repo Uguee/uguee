@@ -130,7 +130,7 @@ const AppRoutes = () => {
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -138,7 +138,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -146,7 +146,7 @@ const AppRoutes = () => {
       <Route 
         path="/start-trip" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <StartTrip />
           </ProtectedRoute>
         } 
@@ -154,7 +154,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -162,7 +162,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -170,7 +170,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -180,9 +180,8 @@ const AppRoutes = () => {
       <Route 
         path="/driver/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['conductor', 'pasajero']}>
+          <ProtectedRoute allowedRoles={['conductor']}>
             <DriverDashboard />
-            <Incidents />
           </ProtectedRoute>
         } 
       />
@@ -191,7 +190,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <HistorialViajes />
-            <FavoriteRoutes />
           </ProtectedRoute>
         } 
       />
@@ -200,7 +198,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <CreateTrip />
-            <MapView />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/map-view" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <MapViewDriver />
           </ProtectedRoute>
         } 
       />

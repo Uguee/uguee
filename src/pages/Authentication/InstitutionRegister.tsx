@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { LogoService } from '@/services/logoService';
+import { InstitutionService, InstitutionData } from '@/services/institutionService';
 
 const InstitutionRegister = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InstitutionData>({
     nombre_oficial: '',
     logo: '',
     direccion: '',
@@ -47,18 +46,9 @@ const InstitutionRegister = () => {
   }, [user, isLoading, navigate, toast]);
   
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.nombre_oficial.trim()) {
-      newErrors.nombre_oficial = 'Nombre oficial de la institución es requerido';
-    }
-    
-    if (!formData.direccion.trim()) {
-      newErrors.direccion = 'Dirección es requerida';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validationErrors = InstitutionService.validateInstitutionData(formData);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   const handleChange = (
@@ -85,35 +75,6 @@ const InstitutionRegister = () => {
     }
   };
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    try {
-      const { data: { session }, error } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
-        )
-      ]);
-      
-      if (error) {
-        throw new Error(`Session error: ${error.message}`);
-      }
-      
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      } else {
-        throw new Error('No active session');
-      }
-    } catch (error: any) {
-      throw new Error(`Authentication failed: ${error.message}`);
-    }
-
-    return headers;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -121,37 +82,14 @@ const InstitutionRegister = () => {
       return;
     }
 
-    // Verificación mejorada del usuario
+    // Verificación del usuario
     if (!user?.id) {
       console.error('❌ No user found:', { user, isLoading });
-      
-      // Intentar obtener sesión directamente
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('🔍 Sesión directa:', session);
-        
-        if (session?.user) {
-          toast({
-            title: "Error de sincronización",
-            description: "Hay un problema con la sincronización del usuario. Por favor, vuelve a iniciar sesión.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Sesión requerida",
-            description: "Necesitas iniciar sesión para registrar una institución.",
-            variant: "destructive",
-          });
-        }
-      } catch (sessionError) {
-        console.error('❌ Error obteniendo sesión:', sessionError);
-        toast({
-          title: "Error de sesión",
-          description: "No se pudo verificar tu sesión. Por favor, inicia sesión nuevamente.",
-          variant: "destructive",
-        });
-      }
-      
+      toast({
+        title: "Sesión requerida",
+        description: "Necesitas iniciar sesión para registrar una institución.",
+        variant: "destructive",
+      });
       navigate('/login', { 
         state: { 
           message: 'Inicia sesión para registrar tu institución.',
@@ -164,62 +102,13 @@ const InstitutionRegister = () => {
     setIsSubmitting(true);
 
     try {
-      // Obtener headers de autenticación
-      const headers = await getAuthHeaders();
-
-      // Procesar logo si existe
-      let logoUrl = '';
-      if (formData.logo) {
-        toast({
-          title: "Procesando logo...",
-          description: "Subiendo el logo de la institución.",
-        });
-
-        const logoResult = await LogoService.processLogo(
-          formData.logo, 
-          formData.nombre_oficial
-        );
-
-        if (!logoResult.success) {
-          toast({
-            title: "Error al subir logo",
-            description: logoResult.error || "No se pudo procesar el logo.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        logoUrl = logoResult.url || '';
-      }
-
-      // Datos de la institución con la URL del logo
-      const institutionData = {
-        nombre_oficial: formData.nombre_oficial,
-        logo: logoUrl, // URL del logo subido al bucket
-        direccion: formData.direccion,
-        colores: formData.colores,
-        admin_institucional: user.id, // UUID del usuario actual
-      };
-
-      console.log('📤 Enviando datos de institución:', institutionData);
-
-      // Llamar al endpoint para crear la institución
-      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/create-institution', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(institutionData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Error al crear la institución: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      // Usar el servicio para registrar la institución
+      const result = await InstitutionService.registerInstitution(formData, user.id);
 
       if (result.success) {
         toast({
           title: "¡Institución registrada exitosamente!",
-          description: "Tu solicitud está siendo revisada por nuestro equipo.",
+          description: result.message || "Tu solicitud está siendo revisada por nuestro equipo.",
         });
         
         // Mostrar un mensaje de confirmación y luego recargar la página 
@@ -231,7 +120,11 @@ const InstitutionRegister = () => {
           window.location.href = '/pending-validation';
         }, 2000);
       } else {
-        throw new Error(result.error || "Error al crear la institución");
+        toast({
+          title: "Error al registrar institución",
+          description: result.error || "No pudimos crear tu institución. Por favor intenta de nuevo.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Institution registration error:", error);

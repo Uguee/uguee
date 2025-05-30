@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface User {
   id: string;
   firstName?: string;
+  role?: string;
 }
 
 const Navbar = () => {
@@ -87,6 +88,7 @@ const Navbar = () => {
   };
 
   const isDriverView = location.pathname.startsWith('/driver');
+  const isInstitutionalAdmin = user?.role === 'admin_institucional';
 
   return (
     <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">

@@ -25,15 +25,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Función para obtener datos completos del usuario
-  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
+  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User | null> => {
     console.log('🔍 Fetching user data for UUID:', supabaseUser.id);
     
     try {
-      // Intentar obtener datos del endpoint con timeout
+      // Intentar obtener datos del endpoint con timeout extendido
       const userData = await Promise.race([
         UserService.getUserByUuid(supabaseUser.id),
         new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('User service timeout')), 8000)
+          setTimeout(() => reject(new Error('User service timeout')), 15000)
         )
       ]);
       
@@ -41,48 +41,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('✅ Datos obtenidos del UserService:', userData);
         return userData;
       } else {
-        throw new Error('No user data received from service');
+        console.error('❌ No se recibieron datos del endpoint');
+        return null;
       }
     } catch (error) {
-      console.warn('❌ Error fetching user data from endpoint:', error);
+      console.error('❌ Error fetching user data from endpoint:', error);
+      return null;
     }
-    
-    // Fallback a datos de Supabase metadata
-    console.log('⚠️ Usando fallback metadata');
-    
-    // Mapear roles del metadata también
-    const metadataRole = supabaseUser.user_metadata.role || 'pasajero';
-    let mappedRole: UserRole;
-    
-    switch (metadataRole.toLowerCase()) {
-      case 'driver':
-        mappedRole = 'conductor';
-        break;
-      case 'student':
-        mappedRole = 'pasajero';
-        break;
-      case 'admin':
-        mappedRole = 'admin';
-        break;
-      case 'admin_institucional':
-        mappedRole = 'admin_institucional';
-        break;
-      default:
-        mappedRole = 'pasajero';
-    }
-    
-    console.log(`📝 Rol convertido: ${metadataRole} → ${mappedRole}`);
-    
-    return {
-      id: supabaseUser.id,
-      firstName: supabaseUser.user_metadata.firstName || '',
-      lastName: supabaseUser.user_metadata.lastName || '',
-      email: supabaseUser.email || '',
-      role: mappedRole,  // ← Usar rol mapeado
-      createdAt: supabaseUser.created_at,
-      phoneNumber: supabaseUser.user_metadata.phoneNumber || '',
-      dateOfBirth: supabaseUser.user_metadata.dateOfBirth || '',
-    };
   };
 
   // Check if user is already logged in
@@ -109,8 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(true);
           try {
             const appUser = await fetchUserData(session.user);
-            setUser(appUser);
+            if (appUser) {
+              setUser(appUser);
+            } else {
+              console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
+              setUser(null);
+            }
           } catch (error) {
+            console.error('❌ Error obteniendo datos del usuario:', error);
             setUser(null);
           }
           setIsLoading(false);
@@ -136,8 +107,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(true);
         try {
           const appUser = await fetchUserData(session.user);
-          setUser(appUser);
+          if (appUser) {
+            setUser(appUser);
+          } else {
+            console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
+            setUser(null);
+          }
         } catch (error) {
+          console.error('❌ Error obteniendo datos del usuario:', error);
           setUser(null);
         }
         setIsLoading(false);
@@ -165,9 +142,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user) {
         try {
           const appUser = await fetchUserData(data.user);
-          setUser(appUser);
-          setSession(data.session);
-          return appUser;
+          if (appUser) {
+            setUser(appUser);
+            setSession(data.session);
+            return appUser;
+          } else {
+            console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
+            throw new Error('No se pudieron obtener los datos del usuario');
+          }
         } catch (fetchError) {
           console.log('🔄 Usuario no encontrado en la base de datos. Intentando sincronizar...');
           
@@ -190,31 +172,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Intentar obtener los datos nuevamente
             try {
               const appUser = await fetchUserData(data.user);
-              setUser(appUser);
-              setSession(data.session);
-              return appUser;
+              if (appUser) {
+                setUser(appUser);
+                setSession(data.session);
+                return appUser;
+              } else {
+                console.warn('⚠️ Sincronización exitosa pero no se pudieron obtener los datos del usuario');
+                throw new Error('Usuario sincronizado pero datos no disponibles');
+              }
             } catch (secondFetchError) {
               console.warn('⚠️ Sincronización exitosa pero no se pudieron obtener los datos del usuario');
+              throw new Error('Usuario sincronizado pero datos no disponibles');
             }
           } else {
             console.warn('❌ Fallo la sincronización del usuario');
+            throw new Error('No se pudo sincronizar el usuario');
           }
-          
-          // Como último recurso, crear un usuario temporal con los datos de Supabase
-          const tempUser: User = {
-            id: data.user.id,
-            firstName: data.user.user_metadata?.firstName || '',
-            lastName: data.user.user_metadata?.lastName || '',
-            email: data.user.email || '',
-            role: data.user.user_metadata?.role || 'usuario',
-            createdAt: data.user.created_at || new Date().toISOString(),
-            phoneNumber: data.user.user_metadata?.phoneNumber || '',
-            dateOfBirth: data.user.user_metadata?.dateOfBirth || '',
-          };
-          
-          setUser(tempUser);
-          setSession(data.session);
-          return tempUser;
         }
       }
       
