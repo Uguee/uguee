@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
-import { UserService } from "./services/userService";
+import { AuthFlowService } from "./services/authFlowService";
 import { UserRole } from "./types";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
@@ -44,39 +44,55 @@ const ProtectedRoute = ({
   allowedRoles?: UserRole[];
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [registrationStatus, setRegistrationStatus] = React.useState<any>(null);
-  const [isCheckingStatus, setIsCheckingStatus] = React.useState(false);
+  const [redirectResult, setRedirectResult] = React.useState<any>(null);
+  const [isCheckingAccess, setIsCheckingAccess] = React.useState(false);
+  const [hasChecked, setHasChecked] = React.useState(false);
 
   console.log('🛡️ ProtectedRoute check:', {
     isAuthenticated,
     isLoading,
     userRole: user?.role,
     allowedRoles,
-    currentPath: window.location.pathname
+    currentPath: window.location.pathname,
+    hasChecked,
+    isCheckingAccess
   });
 
-  // Verificar estado de registro para usuarios con rol "usuario"
+  // Verificar acceso a la ruta
   React.useEffect(() => {
-    const checkUserStatus = async () => {
-      if (user && user.role === 'usuario' && !isCheckingStatus) {
-        setIsCheckingStatus(true);
-        console.log('🔍 Verificando estado de registro para usuario:', user.id);
+    const checkAccess = async () => {
+      if (user && !isCheckingAccess && !hasChecked) {
+        setIsCheckingAccess(true);
+        console.log('🔍 Verificando acceso para usuario:', user.role);
         
-        const status = await UserService.getUserRegistrationStatus(user.id);
-        console.log('📋 Estado de registro obtenido:', status);
-        
-        setRegistrationStatus(status);
-        setIsCheckingStatus(false);
+        try {
+          const result = await AuthFlowService.checkRouteAccess(user, allowedRoles);
+          console.log('📋 Resultado de verificación de acceso:', result);
+          
+          setRedirectResult(result);
+          setHasChecked(true);
+        } catch (error) {
+          console.error('❌ Error verificando acceso:', error);
+          setRedirectResult({ shouldRedirect: false });
+        } finally {
+          setIsCheckingAccess(false);
+        }
       }
     };
 
-    if (user && user.role === 'usuario') {
-      checkUserStatus();
+    if (user && !hasChecked) {
+      checkAccess();
     }
-  }, [user, isCheckingStatus]);
+  }, [user, allowedRoles, hasChecked]);
 
-  if (isLoading || (user?.role === 'usuario' && isCheckingStatus)) {
-    console.log('⏳ Still loading...');
+  // Reset when user changes
+  React.useEffect(() => {
+    setHasChecked(false);
+    setRedirectResult(null);
+  }, [user?.id]);
+
+  if (isLoading) {
+    console.log('⏳ App loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -89,71 +105,18 @@ const ProtectedRoute = ({
     return <Navigate to="/login" />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    console.log('❌ Role not allowed:', user.role, 'Allowed:', allowedRoles);
-    
-    // Lógica especial para usuarios con rol "usuario"
-    if (user.role === 'usuario') {
-      if (!registrationStatus) {
-        console.log('⏳ Esperando estado de registro...');
-        return (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        );
-      }
+  if (isCheckingAccess && !hasChecked) {
+    console.log('⏳ Checking access...');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
-      // Determinar redirección basada en el estado
-      if (!registrationStatus.hasDocuments) {
-        console.log('📄 Usuario sin documentos verificados → /verify-documents');
-        return <Navigate to="/verify-documents" />;
-      } else if (!registrationStatus.hasInstitution) {
-        console.log('🏛️ Usuario sin institución → /select-institution');
-        return <Navigate to="/select-institution" />;
-      } else {
-        // Usuario completó ambos pasos, redirigir según estado de validación
-        const { institutionStatus, institutionalRole } = registrationStatus;
-        
-        if (institutionStatus === 'pendiente') {
-          console.log('⏳ Solicitud pendiente → /pending-validation');
-          return <Navigate to="/pending-validation" />;
-        } else if (institutionStatus === 'validado') {
-          // Mapear rol institucional a rol del sistema y redirigir al dashboard apropiado
-          const systemRole = institutionalRole?.toLowerCase();
-          console.log('✅ Usuario validado con rol:', systemRole, '→ /dashboard');
-          return <Navigate to="/dashboard" />;
-        } else if (institutionStatus === 'denegado') {
-          console.log('❌ Solicitud denegada → mensaje de error');
-          // Aquí podrías redirigir a una página de "solicitud denegada"
-          return <Navigate to="/pending-validation" />;
-        }
-      }
-    }
-    
-    // Redirigir a la página correspondiente según el rol para otros casos
-    switch (user.role) {
-      case 'externo':
-      case 'estudiante':
-      case 'profesor':
-      case 'administrativo':
-        console.log('🔄 Redirecting user to /dashboard');
-        return <Navigate to="/dashboard" />;
-      case 'conductor':
-        console.log('🔄 Redirecting conductor to /driver/dashboard');
-        return <Navigate to="/driver/dashboard" />;
-      case 'admin_institucional':
-        console.log('🔄 Redirecting admin_institucional to /institution/dashboard');
-        return <Navigate to="/institution/dashboard" />;
-      case 'admin':
-        console.log('🔄 Redirecting admin to /admin/dashboard');
-        return <Navigate to="/admin/dashboard" />;
-      case 'validacion':
-        console.log('🔄 Redirecting validacion to /pending-validation');
-        return <Navigate to="/pending-validation" />;
-      default:
-        console.log('🔄 Unknown role, redirecting to /dashboard');
-        return <Navigate to="/dashboard" />;
-    }
+  if (redirectResult?.shouldRedirect && redirectResult?.redirectTo) {
+    console.log('🔄 Redirecting to:', redirectResult.redirectTo);
+    return <Navigate to={redirectResult.redirectTo} />;
   }
 
   console.log('✅ Access granted to:', window.location.pathname);
@@ -170,11 +133,11 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       
-      {/* Ruta para validación pendiente - solo para usuarios con rol "validacion" */}
+      {/* Ruta para validación pendiente - para usuarios en validación Y usuarios que están en estado pendiente/denegado */}
       <Route 
         path="/pending-validation" 
         element={
-          <ProtectedRoute allowedRoles={['validacion']}>
+          <ProtectedRoute allowedRoles={['validacion', 'usuario', 'externo', 'estudiante', 'profesor', 'administrativo']}>
             <PendingValidation />
           </ProtectedRoute>
         } 

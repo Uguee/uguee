@@ -1,23 +1,32 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
-import { UserService } from '@/services/userService';
+import { AuthFlowService } from '@/services/authFlowService';
 
 const PendingValidation = () => {
   const { user } = useAuth();
-  const [registrationStatus, setRegistrationStatus] = useState<any>(null);
+  const [userStatus, setUserStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkStatus = async () => {
+    const loadUserStatus = async () => {
       if (user?.id) {
-        const status = await UserService.getUserRegistrationStatus(user.id);
-        setRegistrationStatus(status);
+        const status = await AuthFlowService.getUserStatus(user.id);
+        setUserStatus(status);
         setIsLoading(false);
       }
     };
     
-    checkStatus();
+    loadUserStatus();
   }, [user?.id]);
+
+  const handleRefreshStatus = async () => {
+    if (user?.id) {
+      setIsLoading(true);
+      const status = await AuthFlowService.getUserStatus(user.id);
+      setUserStatus(status);
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -27,13 +36,11 @@ const PendingValidation = () => {
     );
   }
 
-  const isDenied = registrationStatus?.institutionStatus === 'denegado';
-
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
         <div className="text-center">
-          {isDenied ? (
+          {userStatus?.isDenied ? (
             <>
               {/* Solicitud Denegada */}
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -100,10 +107,18 @@ const PendingValidation = () => {
                 </div>
               </div>
               <button 
-                onClick={() => window.location.reload()}
-                className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
+                onClick={handleRefreshStatus}
+                disabled={isLoading}
+                className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                Verificar Estado
+                {isLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Verificando...
+                  </div>
+                ) : (
+                  'Verificar Estado'
+                )}
               </button>
             </>
           )}
@@ -115,7 +130,7 @@ const PendingValidation = () => {
                 Usuario: {user.email}
               </p>
               <p className="text-xs text-gray-500">
-                Estado: {isDenied ? 'Denegado' : 'Pendiente de validación'}
+                Estado: {userStatus?.isDenied ? 'Denegado' : 'Pendiente de validación'}
               </p>
             </div>
           )}

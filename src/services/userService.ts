@@ -60,10 +60,20 @@ export class UserService {
     switch (role.toLowerCase()) {
       case 'admin':
         return 'admin';
+      case 'estudiante':
+      case 'student':
+        return 'estudiante';
+      case 'profesor':
+      case 'teacher':
+        return 'profesor';
+      case 'administrativo':
+      case 'admin_personal':
+        return 'administrativo';
+      case 'externo':
+      case 'external':
+        return 'externo';
       case 'pasajero':
       case 'usuario':
-      case 'student':
-      case 'estudiante':
         return 'usuario';
       case 'conductor':
       case 'driver':

@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { DocumentService } from '@/services/documentService';
-import { supabase } from '@/integrations/supabase/client';
+import { DocumentVerificationService, DocumentFormData } from '@/services/documentVerificationService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,78 +17,45 @@ import {
   Shield
 } from 'lucide-react';
 
-interface DocumentData {
-  tipo: string;
-  lugar_expedicion: string;
-  fecha_expedicion: string;
-  fecha_vencimiento: string;
-}
-
 const DocumentVerification = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [documentNumber, setDocumentNumber] = useState('');
-  const [documentType, setDocumentType] = useState('cedula');
-  const [documentPhoto, setDocumentPhoto] = useState<File | null>(null);
-  const [selfiePhoto, setSelfiePhoto] = useState<File | null>(null);
+  const [formData, setFormData] = useState<DocumentFormData>({
+    documentNumber: '',
+    documentType: 'cedula',
+    placeOfIssue: '',
+    issueDate: '',
+    expirationDate: '',
+    documentPhoto: null,
+    selfiePhoto: null
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
-  const [placeOfIssue, setPlaceOfIssue] = useState('');
-  const [issueDate, setIssueDate] = useState('');
-  const [expirationDate, setExpirationDate] = useState('');
 
-  // Función para convertir File a data URI
-  const fileToDataURI = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Función para obtener el id_usuario del usuario actual
-  const getUserId = async (): Promise<number | null> => {
-    try {
-      if (!user?.id) return null;
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const response = await fetch(`https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-user-data?uuid=${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
-      });
-      
-      if (!response.ok) return null;
-      
-      const result = await response.json();
-      return result.success && result.data?.id_usuario ? result.data.id_usuario : null;
-    } catch (error) {
-      console.error('Error getting user ID:', error);
-      return null;
-    }
+  const updateFormData = (field: keyof DocumentFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleDocumentPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setDocumentPhoto(e.target.files[0]);
+      updateFormData('documentPhoto', e.target.files[0]);
     }
   };
 
   const handleSelfiePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelfiePhoto(e.target.files[0]);
+      updateFormData('selfiePhoto', e.target.files[0]);
     }
   };
 
   const handleVerifyDocuments = async () => {
-    if (!documentNumber || !documentPhoto || !selfiePhoto || !placeOfIssue || !issueDate || !expirationDate) {
+    if (!user?.id) {
       toast({
-        title: "❌ Campos requeridos",
-        description: "Por favor completa todos los campos y sube las fotos requeridas",
+        title: "❌ Error",
+        description: "No se pudo obtener la información del usuario",
         variant: "destructive",
       });
       return;
@@ -98,51 +64,16 @@ const DocumentVerification = () => {
     setIsLoading(true);
     
     try {
-      console.log('📄 Iniciando verificación de documentos...');
-      
-      // Obtener el id_usuario del usuario actual
-      const userId = await getUserId();
-      if (!userId) {
-        throw new Error('No se pudo obtener el ID del usuario');
-      }
-
-      console.log('👤 ID de usuario obtenido:', userId);
-
-      // Convertir archivos a data URI
-      const frontImageURI = await fileToDataURI(documentPhoto);
-      const backImageURI = await fileToDataURI(selfiePhoto); // Usar selfie como imagen trasera
-
-      console.log('🖼️ Imágenes convertidas a data URI');
-
-      // Mapear tipo de documento a los valores esperados por la tabla
-      const tipoDocumento = documentType === 'cedula' ? 'identidad' : 
-                           documentType === 'cedula_extranjera' ? 'identidad' : 
-                           documentType === 'pasaporte' ? 'identidad' : 
-                           documentType === 'tarjeta_identidad' ? 'identidad' : 'identidad';
-
-      // Preparar datos del documento
-      const documentData = {
-        id_usuario: userId,
-        tipo: tipoDocumento,
-        lugar_expedicion: placeOfIssue,
-        fecha_expedicion: issueDate,
-        fecha_vencimiento: expirationDate
-      };
-
-      console.log('📋 Datos del documento preparados:', documentData);
-
-      // Subir documento usando el servicio
-      const result = await DocumentService.uploadDocument(
-        frontImageURI,
-        backImageURI,
-        documentData
-      );
+      const result = await DocumentVerificationService.processDocuments(formData, user.id);
 
       if (!result.success) {
-        throw new Error(result.error || 'Error subiendo documentos');
+        toast({
+          title: "❌ Error en verificación",
+          description: result.error || "No se pudieron verificar los documentos",
+          variant: "destructive",
+        });
+        return;
       }
-
-      console.log('✅ Documentos subidos exitosamente:', result.data);
       
       setIsVerified(true);
       
@@ -157,16 +88,25 @@ const DocumentVerification = () => {
       }, 1500);
       
     } catch (error: any) {
-      console.error('❌ Error en verificación:', error);
       toast({
         title: "❌ Error en verificación",
-        description: error.message || "No se pudieron verificar los documentos. Inténtalo de nuevo.",
+        description: "Error inesperado al procesar documentos",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Validar si el formulario está completo
+  const isFormValid = Boolean(
+    formData.documentNumber &&
+    formData.documentPhoto &&
+    formData.selfiePhoto &&
+    formData.placeOfIssue &&
+    formData.issueDate &&
+    formData.expirationDate
+  );
 
   if (isVerified) {
     return (
@@ -216,8 +156,8 @@ const DocumentVerification = () => {
             <Label htmlFor="documentType">Tipo de Documento</Label>
             <select
               id="documentType"
-              value={documentType}
-              onChange={(e) => setDocumentType(e.target.value)}
+              value={formData.documentType}
+              onChange={(e) => updateFormData('documentType', e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="cedula">Cédula de Ciudadanía</option>
@@ -234,8 +174,8 @@ const DocumentVerification = () => {
               id="documentNumber"
               type="text"
               placeholder="Ingresa tu número de documento"
-              value={documentNumber}
-              onChange={(e) => setDocumentNumber(e.target.value)}
+              value={formData.documentNumber}
+              onChange={(e) => updateFormData('documentNumber', e.target.value)}
               className="w-full"
             />
           </div>
@@ -247,8 +187,8 @@ const DocumentVerification = () => {
               id="placeOfIssue"
               type="text"
               placeholder="Ciudad o lugar de expedición"
-              value={placeOfIssue}
-              onChange={(e) => setPlaceOfIssue(e.target.value)}
+              value={formData.placeOfIssue}
+              onChange={(e) => updateFormData('placeOfIssue', e.target.value)}
               className="w-full"
             />
           </div>
@@ -260,8 +200,8 @@ const DocumentVerification = () => {
               <Input
                 id="issueDate"
                 type="date"
-                value={issueDate}
-                onChange={(e) => setIssueDate(e.target.value)}
+                value={formData.issueDate}
+                onChange={(e) => updateFormData('issueDate', e.target.value)}
                 className="w-full"
               />
             </div>
@@ -270,8 +210,8 @@ const DocumentVerification = () => {
               <Input
                 id="expirationDate"
                 type="date"
-                value={expirationDate}
-                onChange={(e) => setExpirationDate(e.target.value)}
+                value={formData.expirationDate}
+                onChange={(e) => updateFormData('expirationDate', e.target.value)}
                 className="w-full"
               />
             </div>
@@ -292,10 +232,10 @@ const DocumentVerification = () => {
                 id="document-photo"
               />
               <label htmlFor="document-photo" className="cursor-pointer">
-                {documentPhoto ? (
+                {formData.documentPhoto ? (
                   <div className="space-y-2">
                     <CheckCircle className="w-8 h-8 text-green-600 mx-auto" />
-                    <p className="text-green-600 font-medium">{documentPhoto.name}</p>
+                    <p className="text-green-600 font-medium">{formData.documentPhoto.name}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -323,10 +263,10 @@ const DocumentVerification = () => {
                 id="selfie-photo"
               />
               <label htmlFor="selfie-photo" className="cursor-pointer">
-                {selfiePhoto ? (
+                {formData.selfiePhoto ? (
                   <div className="space-y-2">
                     <CheckCircle className="w-8 h-8 text-green-600 mx-auto" />
-                    <p className="text-green-600 font-medium">{selfiePhoto.name}</p>
+                    <p className="text-green-600 font-medium">{formData.selfiePhoto.name}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -353,7 +293,7 @@ const DocumentVerification = () => {
           {/* Botón de verificación */}
           <Button 
             onClick={handleVerifyDocuments}
-            disabled={isLoading || !documentNumber || !documentPhoto || !selfiePhoto || !placeOfIssue || !issueDate || !expirationDate}
+            disabled={isLoading || !isFormValid}
             className="w-full h-12"
           >
             {isLoading ? (
