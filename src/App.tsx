@@ -213,7 +213,51 @@ const AppRoutes = () => {
         } 
       />
 
-     
+      {/* Rutas para conductores */}
+      <Route 
+        path="/driver/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <DriverDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/map-view" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <MapViewDriver />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/create-trip" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <CreateTrip />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/history" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <HistorialViajes />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/vehicles" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <MisVehiculos />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver-not-allowed" 
+        element={<DriverNotAllowed />} 
+      />
 
       {/* Rutas para administradores del sitio */}
       <Route 
@@ -247,8 +291,6 @@ const AppRoutes = () => {
       
       {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
-
-      <Route path="/driver-not-allowed" element={<DriverNotAllowed />} />
     </Routes>
   );
 };
