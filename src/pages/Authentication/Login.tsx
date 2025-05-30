@@ -17,6 +17,7 @@ const Login = () => {
     message?: string; 
     email?: string;
     returnTo?: string;
+    isInstitutionFlow?: boolean;
   } | null;
 
   // Pre-llenar email y mostrar mensaje si viene desde document verification
@@ -26,7 +27,7 @@ const Login = () => {
     }
     if (navigationState?.message) {
       toast({
-        title: "Verificación de documentos",
+        title: navigationState.isInstitutionFlow ? "Registro Institucional" : "Verificación de documentos",
         description: navigationState.message,
         variant: "default"
       });
@@ -55,12 +56,19 @@ const Login = () => {
         return;
       }
 
+      // Si viene del flujo de registro institucional, ir al formulario de institución
+      if (navigationState?.returnTo === 'institution-register' || navigationState?.isInstitutionFlow) {
+        console.log("➡️ Redirecting to institution registration form");
+        navigate("/institution-register");
+        return;
+      }
+
       // Redirigir según el rol del usuario devuelto por login
       if (loggedInUser) {
         console.log("🚀 Redirecting based on role:", loggedInUser.role);
 
         switch (loggedInUser.role) {
-          case "pasajero":
+          case "usuario":
             console.log("➡️ Redirecting to /dashboard");
             navigate("/dashboard");
             break;

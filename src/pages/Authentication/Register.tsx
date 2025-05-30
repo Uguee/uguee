@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { UserRole } from "../../types";
 
 const Register = () => {
+  const [searchParams] = useSearchParams();
+  const isInstitutionRegistration = searchParams.get('type') === 'institution';
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -12,7 +15,7 @@ const Register = () => {
     password: "",
     confirmPassword: "",
     phoneNumber: "",
-    role: "pasajero" as UserRole,
+    role: "usuario" as UserRole,
     dateOfBirth: "",
     cedula: "",
   });
@@ -80,49 +83,67 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
+    
+    if (formData.password !== formData.confirmPassword) {
+      setErrors({ confirmPassword: "Las contraseñas no coinciden" });
       return;
     }
 
     setIsSubmitting(true);
-
+    setErrors({});
+    
     try {
-      console.log("Submitting registration data:", formData);
-
-      const userData = {
-        id: formData.cedula,
+      console.log('Submitting registration data:', formData);
+      
+      await register({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         role: formData.role,
         dateOfBirth: formData.dateOfBirth,
-      };
+        // cedula no está en el tipo User, se manejará en el backend
+      }, formData.password, formData.cedula);
 
-      await register(userData, formData.password);
       toast({
         title: "Registro exitoso",
-        description: "Tu cuenta ha sido creada. Revisa tu correo para confirmar tu cuenta.",
+        description: isInstitutionRegistration 
+          ? "Usuario creado exitosamente. Por favor, confirma tu email para continuar con el registro institucional."
+          : "Usuario creado exitosamente. Por favor, confirma tu email."
       });
-      
-      // Redirigir al login con mensaje simple
-      navigate("/login", {
-        state: {
-          message: "Registro completado. Recuerda confirmar tu correo antes de iniciar sesión.",
-          email: formData.email,
-          returnTo: 'document-verification'
-        }
-      });
+
+      // Si es flujo institucional, ir directamente al registro de institución
+      if (isInstitutionRegistration) {
+        navigate('/institution-register');
+      } else {
+        navigate('/login', { state: { email: formData.email } });
+      }
+
     } catch (error: any) {
-      console.error("Registration error details:", error);
-      toast({
-        title: "Error de registro",
-        description:
-          error.message ||
-          "No pudimos crear tu cuenta. Por favor intenta de nuevo.",
-        variant: "destructive",
-      });
+      console.log('Registration error details:', error);
+      
+      // Manejar diferentes tipos de errores
+      if (error.message?.includes('User already registered')) {
+        setErrors({ email: 'Este email ya está registrado. Intenta iniciar sesión.' });
+      } else if (error.message?.includes('Invalid email')) {
+        setErrors({ email: 'El formato del email no es válido.' });
+      } else if (error.message?.includes('Password')) {
+        setErrors({ password: 'La contraseña debe tener al menos 6 caracteres.' });
+      } else if (error.message?.includes('Failed to fetch user data')) {
+        // Este error no es crítico - el usuario se creó pero hay problemas con el endpoint
+        toast({
+          title: "Registro exitoso",
+          description: "Usuario creado exitosamente. Por favor, confirma tu email."
+        });
+        if (isInstitutionRegistration) {
+          navigate('/institution-register');
+        } else {
+          navigate('/login', { state: { email: formData.email } });
+        }
+        return;
+      } else {
+        setErrors({ general: error.message || "Error en el registro. Por favor intenta de nuevo." });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -144,10 +165,13 @@ const Register = () => {
             Respaldado por las mejores universidades
           </p>
           <h2 className="mt-6 text-center text-2xl font-bold text-gray-900">
-            Crea tu cuenta
+            {isInstitutionRegistration ? 'Registro de Administrador Institucional' : 'Crea tu cuenta'}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Regístrate para ser parte de Ugüee
+            {isInstitutionRegistration 
+              ? 'Primero crea tu cuenta de administrador' 
+              : 'Regístrate para ser parte de Ugüee'
+            }
           </p>
         </div>
 
@@ -398,6 +422,20 @@ const Register = () => {
                 Inicia sesión aquí
               </Link>
             </p>
+            
+            {!isInstitutionRegistration && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600">
+                  ¿Representas una institución educativa?{" "}
+                  <Link
+                    to="/register?type=institution"
+                    className="font-medium text-primary hover:text-primary-hover"
+                  >
+                    Registra tu institución
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

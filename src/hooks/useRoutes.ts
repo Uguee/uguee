@@ -5,7 +5,7 @@ import { Route } from '../types';
 interface UseRoutesOptions {
   origin?: string;
   destination?: string;
-  transportType?: 'car' | 'bus' | 'bike' | 'walk';
+  transportType?: 'car' | 'bus' | 'bike';
 }
 
 export const useRoutes = (options?: UseRoutesOptions) => {

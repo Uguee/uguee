@@ -18,20 +18,24 @@ export class UserService {
     };
 
     try {
-      const { data: { session } } = await Promise.race([
+      const { data: { session }, error } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 1000)
+          setTimeout(() => reject(new Error('Session timeout')), 5000)
         )
       ]);
+      
+      if (error) {
+        throw new Error(`Session error: ${error.message}`);
+      }
       
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       } else {
         throw new Error('No active session');
       }
-    } catch (error) {
-      throw new Error('Authentication failed');
+    } catch (error: any) {
+      throw new Error(`Authentication failed: ${error.message}`);
     }
 
     return headers;
@@ -41,18 +45,26 @@ export class UserService {
    * Mapea los roles de la base de datos a los tipos de la aplicación
    */
   private static mapRole(role: string): UserRole {
+    console.log('🎯 Mapeando rol:', role);
+    
     switch (role.toLowerCase()) {
       case 'admin':
         return 'admin';
       case 'pasajero':
-        return 'pasajero';
+      case 'usuario':
+      case 'student':
+      case 'estudiante':
+        return 'usuario';
       case 'conductor':
         return 'conductor';
       case 'admin_institucional':
       case 'admin-institucion':
         return 'admin_institucional';
+      case 'validacion':
+        return 'validacion';
       default:
-        return 'pasajero';
+        console.warn('⚠️ Rol desconocido:', role, 'usando "usuario" por defecto');
+        return 'usuario';
     }
   }
 
@@ -66,7 +78,7 @@ export class UserService {
       lastName: userData.apellido || userData.lastName || '',
       email: userData.email || userData.correo || '',
       phoneNumber: userData.celular || userData.phoneNumber || '',
-      role: this.mapRole(userData.rol || userData.role || 'student'),
+      role: this.mapRole(userData.rol || userData.role),
       createdAt: userData.createdAt || userData.created_at || new Date().toISOString(),
       dateOfBirth: userData.fecha_nacimiento || userData.dateOfBirth || '',
       address: userData.address || userData.direccion || '',
@@ -82,8 +94,12 @@ export class UserService {
    */
   static async getUserByUuid(uuid: string): Promise<User | null> {
     try {
+      console.log('🔍 UserService: Consultando usuario por UUID:', uuid);
+      
       const headers = await this.getAuthHeaders();
       const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA}?uuid=${uuid}`;
+
+      console.log('📡 Llamando endpoint:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -91,17 +107,35 @@ export class UserService {
       });
 
       if (!response.ok) {
+        console.error('❌ Response not OK:', response.status, response.statusText);
         return null;
       }
 
       const result: UserDataResponse = await response.json();
+      console.log('📥 Respuesta del endpoint:', result);
 
       if (!result.success || !result.data) {
+        console.error('❌ Endpoint no devolvió datos válidos:', result);
         return null;
       }
 
-      return this.mapUserData(result.data, uuid);
+      console.log('✅ Datos recibidos del endpoint:', {
+        id_usuario: result.data.id_usuario,
+        nombre: result.data.nombre,
+        rol: result.data.rol,
+        uuid: result.data.uuid
+      });
+
+      const mappedUser = this.mapUserData(result.data, uuid);
+      console.log('🎯 Usuario final mapeado:', {
+        id: mappedUser.id,
+        firstName: mappedUser.firstName,
+        role: mappedUser.role
+      });
+
+      return mappedUser;
     } catch (error) {
+      console.error('❌ Error en getUserByUuid:', error);
       return null;
     }
   }

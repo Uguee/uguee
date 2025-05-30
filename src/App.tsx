@@ -21,6 +21,8 @@ import MapView from "./pages/passengers/MapView";
 import DriverDashboard from "./pages/drivers/Dashboard";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
+import PendingValidation from "./pages/Validation/PendingValidation";
+import UserValidation from "./pages/admin/UserValidation";
 
 const queryClient = new QueryClient();
 
@@ -60,7 +62,11 @@ const ProtectedRoute = ({
     console.log('❌ Role not allowed:', user.role, 'Allowed:', allowedRoles);
     // Redirigir a la página correspondiente según el rol
     switch (user.role) {
-      case 'pasajero':
+      case 'externo':
+      case 'estudiante':
+      case 'profesor':
+      case 'administrativo':
+      case 'usuario':
         console.log('🔄 Redirecting pasajero to /dashboard');
         return <Navigate to="/dashboard" />;
       case 'conductor':
@@ -72,6 +78,9 @@ const ProtectedRoute = ({
       case 'admin':
         console.log('🔄 Redirecting admin to /admin/dashboard');
         return <Navigate to="/admin/dashboard" />;
+      case 'validacion':
+        console.log('🔄 Redirecting validacion to /pending-validation');
+        return <Navigate to="/pending-validation" />;
       default:
         console.log('🔄 Unknown role, redirecting to /dashboard');
         return <Navigate to="/dashboard" />;
@@ -92,6 +101,16 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       
+      {/* Ruta para validación pendiente - solo para usuarios con rol "validacion" */}
+      <Route 
+        path="/pending-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['validacion']}>
+            <PendingValidation />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Ruta para verificación de documentos - protegida pero sin restricción de rol específico */}
       <Route 
         path="/verify-documents" 
@@ -106,7 +125,7 @@ const AppRoutes = () => {
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -114,7 +133,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -122,7 +141,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -130,7 +149,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -138,7 +157,7 @@ const AppRoutes = () => {
       <Route 
         path="/incidents" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <Incidents />
           </ProtectedRoute>
         } 
@@ -146,7 +165,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -154,7 +173,7 @@ const AppRoutes = () => {
       <Route 
         path="/map" 
         element={
-          <ProtectedRoute allowedRoles={['pasajero']}>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <MapView />
           </ProtectedRoute>
         } 
@@ -186,6 +205,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Ruta para validación de usuarios - solo para admins */}
+      <Route 
+        path="/admin/user-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UserValidation />
           </ProtectedRoute>
         } 
       />

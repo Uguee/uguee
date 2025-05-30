@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,6 +11,9 @@ const Navbar = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  // Determinar si el usuario es admin institucional
+  const isInstitutionalAdmin = user?.role === 'admin_institucional';
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -20,7 +22,7 @@ const Navbar = () => {
           <h1 className="text-primary text-2xl font-bold">Ugüee</h1>
           {location.pathname !== '/' && (
             <span className="text-xs text-gray-500 ml-2 hidden sm:inline">
-              Transporte universitario
+              {isInstitutionalAdmin ? 'Panel Administrativo' : 'Transporte universitario'}
             </span>
           )}
         </Link>
@@ -29,18 +31,23 @@ const Navbar = () => {
         <nav className="hidden md:flex items-center space-x-6">
           {isAuthenticated ? (
             <>
-              <Link 
-                to="/search-routes" 
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Buscar rutas
-              </Link>
-              <Link 
-                to="/my-trips" 
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Mis viajes
-              </Link>
+              {/* Solo mostrar estas opciones si NO es admin institucional */}
+              {!isInstitutionalAdmin && (
+                <>
+                  <Link 
+                    to="/search-routes" 
+                    className="text-gray-600 hover:text-primary transition-colors"
+                  >
+                    Buscar rutas
+                  </Link>
+                  <Link 
+                    to="/my-trips" 
+                    className="text-gray-600 hover:text-primary transition-colors"
+                  >
+                    Mis viajes
+                  </Link>
+                </>
+              )}
               <div className="relative group">
                 <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
                   {user?.firstName || 'Usuario'}
@@ -125,20 +132,25 @@ const Navbar = () => {
                   >
                     Dashboard
                   </Link>
-                  <Link 
-                    to="/search-routes" 
-                    className="text-gray-600 py-2 hover:text-primary transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Buscar rutas
-                  </Link>
-                  <Link 
-                    to="/my-trips" 
-                    className="text-gray-600 py-2 hover:text-primary transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Mis viajes
-                  </Link>
+                  {/* Solo mostrar estas opciones si NO es admin institucional */}
+                  {!isInstitutionalAdmin && (
+                    <>
+                      <Link 
+                        to="/search-routes" 
+                        className="text-gray-600 py-2 hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Buscar rutas
+                      </Link>
+                      <Link 
+                        to="/my-trips" 
+                        className="text-gray-600 py-2 hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Mis viajes
+                      </Link>
+                    </>
+                  )}
                   <Link 
                     to="/profile" 
                     className="text-gray-600 py-2 hover:text-primary transition-colors"
