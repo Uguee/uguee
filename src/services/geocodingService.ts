@@ -62,4 +62,29 @@ export class GeocodingService {
       return null;
     }
   }
+
+  static async reverseGeocode(lat: number, lng: number): Promise<Location | null> {
+    try {
+      // Use OpenStreetMap Nominatim API for reverse geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
+      );
+      
+      const data = await response.json();
+      
+      if (data && data.display_name) {
+        return {
+          lat: parseFloat(data.lat),
+          lng: parseFloat(data.lon),
+          address: data.display_name,
+          city: data.address?.city || data.address?.town || data.address?.village
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      return null;
+    }
+  }
 } 

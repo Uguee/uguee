@@ -36,7 +36,7 @@ interface RouteMapProps {
   route: [number, number][] | null;
   onCurrentLocationChange?: (location: Location) => void;
   onRouteGenerated?: (origin: Location, destination: Location, route: [number, number][]) => void;
-  onMapClick?: (lat: number, lng: number) => void;
+  onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
   allowClickToSetPoints?: boolean;
 }
 
@@ -98,11 +98,17 @@ function MapController({ onCurrentLocationChange }: { onCurrentLocationChange?: 
 }
 
 // Componente para manejar clics en el mapa
-function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void }) {
   useMapEvents({
     click: (e) => {
       if (onMapClick) {
-        onMapClick(e.latlng.lat, e.latlng.lng);
+        onMapClick(e.latlng.lat, e.latlng.lng, false);
+      }
+    },
+    contextmenu: (e) => {
+      e.originalEvent.preventDefault();
+      if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng, true);
       }
     },
   });
@@ -215,9 +221,7 @@ export function RouteMap({
         
         {allowClickToSetPoints && (
           <MapClickHandler 
-            onMapClick={(lat, lng) => {
-              // Implementar lógica de clic si es necesario
-            }} 
+            onMapClick={onMapClick} 
           />
         )}
 

@@ -10,11 +10,14 @@ import { useViajeManager } from '../../hooks/useViajeManager';
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { supabase } from '../../integrations/supabase/client';
+import { GeocodingService, Location } from '@/services/geocodingService';
+import { RouteMap } from '@/components/map/RouteMap';
 
 interface RoutePoint {
   lat: number;
   lng: number;
   label: string;
+  address?: string;
 }
 
 interface RutaExistente {
@@ -251,6 +254,69 @@ const CreateTrip = () => {
     );
   }
 
+  // Handle current location change
+  const handleCurrentLocationChange = (location: Location) => {
+    if (!currentRoute) {
+      setCurrentRoute({
+        origin: {
+          lat: location.lat,
+          lng: location.lng,
+          label: location.address,
+          address: location.address
+        },
+        destination: { lat: 0, lng: 0, label: '', address: '' },
+        path: []
+      });
+    }
+  };
+
+  // Handle map click
+  const handleMapClick = async (lat: number, lng: number, isRightClick: boolean = false) => {
+    try {
+      const location = await GeocodingService.reverseGeocode(lat, lng);
+      if (!location) return;
+
+      if (isRightClick) {
+        // Right click sets origin
+        setCurrentRoute({
+          origin: {
+            lat: location.lat,
+            lng: location.lng,
+            label: location.address
+          },
+          destination: currentRoute?.destination || { lat: 0, lng: 0, label: '' },
+          path: []
+        });
+      } else {
+        // Left click sets destination
+        if (!currentRoute) {
+          toast({
+            title: "Aviso",
+            description: "Primero debes establecer el origen (clic derecho)",
+            variant: "default",
+          });
+          return;
+        }
+        setCurrentRoute({
+          origin: currentRoute.origin,
+          destination: {
+            lat: location.lat,
+            lng: location.lng,
+            label: location.address
+          },
+          path: []
+        });
+      }
+    } catch (error) {
+      console.error('Error handling map click:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo establecer la ubicación",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col">
@@ -421,13 +487,19 @@ const CreateTrip = () => {
           </div>
 
           {/* Mapa - ocupa todo el espacio restante */}
-          <div className="relative h-full">
-            <DriverRouteMap 
-              onRouteGenerated={handleRouteGenerated}
-              existingRoute={rutaSeleccionadaDetalle}
-              mode={modoCreacion}
-              key={`${modoCreacion}-${rutaSeleccionada}`}
-            />
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
+            {/* Map Component */}
+            <div className="lg:col-span-2 relative z-0 h-[600px]">
+              <div className="relative h-full">
+                <DriverRouteMap 
+                  onRouteGenerated={handleRouteGenerated}
+                  existingRoute={rutaSeleccionadaDetalle}
+                  mode={modoCreacion}
+                  key={`${modoCreacion}-${rutaSeleccionada}`}
+                  onMapClick={handleMapClick}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

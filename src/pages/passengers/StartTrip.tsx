@@ -9,6 +9,11 @@ import { RouteMap } from "@/components/map/RouteMap";
 import { GeocodingService, Location } from "@/services/geocodingService";
 import { useToast } from "@/hooks/use-toast";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const StartTrip = () => {
   const [origin, setOrigin] = useState("");
@@ -30,6 +35,8 @@ const StartTrip = () => {
   const [destinationSuggestions, setDestinationSuggestions] = useState<Location[]>([]);
   const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
+  const [departureTime, setDepartureTime] = useState<Date | null>(null);
+  const [isDepartureDialogOpen, setIsDepartureDialogOpen] = useState(false);
 
   // Debounce function for address search
   const debounce = (func: Function, wait: number) => {
@@ -78,10 +85,48 @@ const StartTrip = () => {
   // Handle current location change
   const handleCurrentLocationChange = (location: Location) => {
     setCurrentLocation(location);
-    // Optionally set origin to current location
+    // Only set origin to current location if it hasn't been set yet
     if (!originLocation) {
       setOrigin(location.address);
       setOriginLocation(location);
+    }
+  };
+
+  // Handle map click
+  const handleMapClick = async (lat: number, lng: number, isRightClick: boolean = false) => {
+    try {
+      const location = await GeocodingService.reverseGeocode(lat, lng);
+      if (!location) return;
+
+      if (isRightClick) {
+        // Right click sets origin
+        setOrigin(location.address);
+        setOriginLocation(location);
+        setDestination("");
+        setDestinationLocation(null);
+        setRoute(null);
+      } else {
+        // Left click sets destination
+        if (!originLocation) {
+          toast({
+            title: "Aviso",
+            description: "Primero debes establecer el origen (clic derecho)",
+            variant: "default",
+          });
+          return;
+        }
+        setDestination(location.address);
+        setDestinationLocation(location);
+        // Generate route between origin and new destination
+        generateRoute(originLocation, location);
+      }
+    } catch (error) {
+      console.error('Error handling map click:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo establecer la ubicación",
+        variant: "destructive",
+      });
     }
   };
 
@@ -200,6 +245,42 @@ const StartTrip = () => {
     }
   };
 
+  // Add new function to reset origin to current location
+  const resetOriginToCurrentLocation = () => {
+    if (currentLocation) {
+      setOrigin(currentLocation.address);
+      setOriginLocation(currentLocation);
+      setDestination("");
+      setDestinationLocation(null);
+      setRoute(null);
+    }
+  };
+
+  // Handle new request
+  const handleNewRequest = () => {
+    setOrigin("");
+    setOriginLocation(null);
+    setDestination("");
+    setDestinationLocation(null);
+    setRoute(null);
+    setRoutes([]);
+    setError(null);
+    setDepartureTime(null);
+    setIsDepartureDialogOpen(true);
+  };
+
+  // Handle departure time selection
+  const handleDepartureTimeChange = (value: string) => {
+    if (value === "now") {
+      setDepartureTime(new Date());
+    } else {
+      const [hours, minutes] = value.split(":").map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+      setDepartureTime(date);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
@@ -212,17 +293,43 @@ const StartTrip = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Origen
                 </label>
-                <Input
-                  type="text"
-                  value={origin}
-                  onChange={handleOriginChange}
-                  onFocus={(e) => {
-                    e.target.select();
-                    if (origin.length >= 3) setShowOriginSuggestions(true);
-                  }}
-                  placeholder="Ingresa tu ubicación de origen"
-                  className="w-full"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={origin}
+                    onChange={handleOriginChange}
+                    onFocus={(e) => {
+                      e.target.select();
+                      if (origin.length >= 3) setShowOriginSuggestions(true);
+                    }}
+                    placeholder="Ingresa tu ubicación de origen"
+                    className="w-full"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={resetOriginToCurrentLocation}
+                    title="Usar mi ubicación actual"
+                    disabled={!currentLocation}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M12 2a8 8 0 0 0-8 8c0 1.892.402 3.13 1.5 4.5L12 22l6.5-7.5c1.098-1.37 1.5-2.608 1.5-4.5a8 8 0 0 0-8-8Z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                  </Button>
+                </div>
                 {showOriginSuggestions && originSuggestions.length > 0 && (
                   <div className="fixed z-[9999] w-[calc(100%-2rem)] max-w-[calc(50%-1.5rem)] mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-y-auto border border-gray-200">
                     {originSuggestions.map((suggestion, index) => (
@@ -328,6 +435,8 @@ const StartTrip = () => {
                 destination={destinationLocation}
                 route={route}
                 onCurrentLocationChange={handleCurrentLocationChange}
+                allowClickToSetPoints={true}
+                onMapClick={handleMapClick}
               />
             </div>
 
@@ -381,6 +490,45 @@ const StartTrip = () => {
                   No se encontraron rutas disponibles
                 </p>
               )}
+              <div className="mt-4">
+                <Dialog open={isDepartureDialogOpen} onOpenChange={setIsDepartureDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleNewRequest}
+                    >
+                      Hacer nueva solicitud
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Selecciona la hora de partida</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <RadioGroup
+                        defaultValue="now"
+                        onValueChange={handleDepartureTimeChange}
+                        className="space-y-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="now" id="now" />
+                          <Label htmlFor="now">Ahora mismo</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="custom" id="custom" />
+                          <Label htmlFor="custom">Personalizar hora</Label>
+                        </div>
+                      </RadioGroup>
+                      {departureTime && (
+                        <div className="mt-4 text-sm text-gray-600">
+                          Hora seleccionada: {format(departureTime, "HH:mm", { locale: es })}
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </div>

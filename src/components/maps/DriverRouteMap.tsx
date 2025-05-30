@@ -8,12 +8,18 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl,
+// Fix Leaflet default icon
+const DefaultIcon = L.icon({
   iconUrl,
+  iconRetinaUrl,
   shadowUrl,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Coordenadas de Cali
 const CALI_CENTER: [number, number] = [3.4516, -76.5320];
@@ -30,17 +36,24 @@ interface DriverRouteMapProps {
   onRouteGenerated?: (origin: RoutePoint, destination: RoutePoint, route: [number, number][]) => void;
   existingRoute?: any; // Ruta existente de la base de datos
   mode?: 'seleccionar' | 'nueva'; // Modo de operación
+  onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
 }
 
 // Componente para manejar los clics en el mapa
 const MapClickHandler: React.FC<{
-  onMapClick: (lat: number, lng: number) => void;
+  onMapClick: (lat: number, lng: number, isRightClick: boolean) => void;
   enabled: boolean;
 }> = ({ onMapClick, enabled }) => {
   useMapEvents({
     click: (e) => {
       if (enabled) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+        onMapClick(e.latlng.lat, e.latlng.lng, false);
+      }
+    },
+    contextmenu: (e) => {
+      e.originalEvent.preventDefault();
+      if (enabled) {
+        onMapClick(e.latlng.lat, e.latlng.lng, true);
       }
     },
   });
@@ -60,7 +73,8 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
   className = "", 
   onRouteGenerated,
   existingRoute,
-  mode = 'nueva'
+  mode = 'nueva',
+  onMapClick
 }) => {
   const [origin, setOrigin] = useState<RoutePoint | null>(null);
   const [destination, setDestination] = useState<RoutePoint | null>(null);
@@ -109,7 +123,12 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
   }, [existingRoute, mode]);
 
   // Función para manejar clics en el mapa
-  const handleMapClick = useCallback(async (lat: number, lng: number) => {
+  const handleMapClick = useCallback(async (lat: number, lng: number, isRightClick: boolean) => {
+    if (onMapClick) {
+      onMapClick(lat, lng, isRightClick);
+      return;
+    }
+
     if (!origin) {
       // Primer clic: establecer origen
       const newOrigin: RoutePoint = {
@@ -142,7 +161,7 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
       setDestination(null);
       setRoute(null);
     }
-  }, [origin, destination]);
+  }, [origin, destination, onMapClick]);
 
   // Función para generar la ruta usando OpenRouteService (gratuito)
   const generateRoute = async (start: RoutePoint, end: RoutePoint) => {
@@ -162,6 +181,10 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
         
         setRoute(routeCoords);
         
+        // Calcular límites para ajustar el mapa
+        const bounds = L.latLngBounds(routeCoords);
+        setRouteBounds(bounds);
+        
         // Notificar al componente padre si se proporciona callback
         if (onRouteGenerated) {
           onRouteGenerated(start, end, routeCoords);
@@ -176,22 +199,14 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
   };
 
   // Iconos personalizados para origen y destino
-  const originIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+  const originIcon = L.icon({
+    ...DefaultIcon.options,
+    className: 'origin-marker'
   });
 
-  const destinationIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+  const destinationIcon = L.icon({
+    ...DefaultIcon.options,
+    className: 'destination-marker'
   });
 
   return (
@@ -205,13 +220,13 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
           <p className="text-xs text-green-600">✅ Mostrando ruta #{existingRoute.id_ruta}</p>
         )}
         {mode === 'nueva' && !origin && (
-          <p className="text-xs text-gray-600">1. Haz clic para seleccionar el origen</p>
+          <p className="text-xs text-gray-600">1. Haz clic derecho para seleccionar el origen</p>
         )}
         {mode === 'nueva' && origin && !destination && (
-          <p className="text-xs text-gray-600">2. Haz clic para seleccionar el destino</p>
+          <p className="text-xs text-gray-600">2. Haz clic izquierdo para seleccionar el destino</p>
         )}
         {mode === 'nueva' && origin && destination && !isGeneratingRoute && (
-          <p className="text-xs text-green-600">✅ Ruta generada. Clic para reiniciar</p>
+          <p className="text-xs text-green-600">✅ Ruta generada. Clic derecho para reiniciar</p>
         )}
         {isGeneratingRoute && (
           <p className="text-xs text-blue-600">🔄 Generando ruta...</p>
@@ -267,6 +282,16 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
           />
         )}
       </MapContainer>
+
+      {/* Estilos para los marcadores */}
+      <style>{`
+        .origin-marker {
+          filter: hue-rotate(120deg);
+        }
+        .destination-marker {
+          filter: hue-rotate(0deg);
+        }
+      `}</style>
     </div>
   );
 };
