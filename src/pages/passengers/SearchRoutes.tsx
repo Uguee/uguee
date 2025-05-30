@@ -11,6 +11,7 @@ import { es } from "date-fns/locale";
 import { TripService, Trip } from "@/services/tripService";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouteManager } from "@/hooks/useRouteManager";
+import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 
 const SearchRoutes = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -22,10 +23,12 @@ const SearchRoutes = () => {
   const [selectedRouteDetails, setSelectedRouteDetails] = useState<any>(null);
   const { toast } = useToast();
   const { fetchRoutes } = useRouteManager();
+  const { vehicleTypes, isLoading: isLoadingTypes, error: typesError, fetchVehicleTypes } = useVehicleTypes();
 
   useEffect(() => {
     fetchTrips();
     fetchAvailableRoutes();
+    fetchVehicleTypes();
   }, []);
 
   useEffect(() => {
@@ -159,10 +162,21 @@ const SearchRoutes = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los vehículos</SelectItem>
-                  <SelectItem value="automóvil">Automóvil</SelectItem>
-                  <SelectItem value="camioneta">Camioneta</SelectItem>
-                  <SelectItem value="motocicleta">Motocicleta</SelectItem>
-                  <SelectItem value="bicicleta">Bicicleta</SelectItem>
+                  {isLoadingTypes ? (
+                    <SelectItem value="loading" disabled>
+                      Cargando tipos...
+                    </SelectItem>
+                  ) : vehicleTypes.length > 0 ? (
+                    vehicleTypes.map((type) => (
+                      <SelectItem key={type.id_tipo} value={type.tipo}>
+                        {type.tipo}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-types" disabled>
+                      No hay tipos disponibles
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <Button 

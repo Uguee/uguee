@@ -88,7 +88,7 @@ export interface Route {
   capacity: number;
   availableSeats: number;
   createdAt: string;
-  transportType: 'car' | 'bus' | 'bike' | 'walk';
+  transportType: string;
 }
 
 // Trip represents a reservation made by a user for a specific route

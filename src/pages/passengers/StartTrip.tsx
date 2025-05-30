@@ -8,16 +8,18 @@ import { useRoutes } from "@/hooks/useRoutes";
 import { RouteMap } from "@/components/map/RouteMap";
 import { GeocodingService, Location } from "@/services/geocodingService";
 import { useToast } from "@/hooks/use-toast";
+import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 
 const StartTrip = () => {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
-  const [transportType, setTransportType] = useState<"car" | "bus" | "bike" | "walk">("car");
+  const [transportType, setTransportType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [routes, setRoutes] = useState<any[]>([]);
   const { searchRoutes } = useRoutes();
   const { toast } = useToast();
+  const { vehicleTypes, isLoading: isLoadingTypes, error: typesError, fetchVehicleTypes } = useVehicleTypes();
 
   // New state for map functionality
   const [originLocation, setOriginLocation] = useState<Location | null>(null);
@@ -162,14 +164,19 @@ const StartTrip = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Add useEffect to fetch vehicle types
+  useEffect(() => {
+    fetchVehicleTypes();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      if (!originLocation || !destinationLocation) {
-        throw new Error("Por favor selecciona ubicaciones válidas");
+      if (!originLocation || !destinationLocation || !transportType) {
+        throw new Error("Por favor completa todos los campos");
       }
 
       // Get route between points
@@ -272,22 +279,40 @@ const StartTrip = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Transporte
               </label>
-              <Select value={transportType} onValueChange={(value: "car" | "bus" | "bike" | "walk") => setTransportType(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo de transporte" />
+              <Select
+                value={transportType || ''}
+                onValueChange={(value: string) => setTransportType(value)}
+                disabled={isLoadingTypes}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={isLoadingTypes ? "Cargando tipos..." : "Selecciona el tipo de transporte"} />
                 </SelectTrigger>
-                <SelectContent className="z-[9999]">
-                  <SelectItem value="car">Carro</SelectItem>
-                  <SelectItem value="bus">Bus</SelectItem>
-                  <SelectItem value="bike">Bicicleta</SelectItem>
-                  <SelectItem value="walk">A pie</SelectItem>
+                <SelectContent>
+                  {isLoadingTypes ? (
+                    <SelectItem value="loading" disabled>
+                      Cargando tipos...
+                    </SelectItem>
+                  ) : vehicleTypes.length > 0 ? (
+                    vehicleTypes.map((type) => (
+                      <SelectItem key={type.id_tipo} value={type.tipo}>
+                        {type.tipo}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-types" disabled>
+                      No hay tipos disponibles
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {typesError && (
+                <p className="text-sm text-red-500 mt-1">{typesError}</p>
+              )}
             </div>
 
             <Button
               type="submit"
-              disabled={isLoading || !originLocation || !destinationLocation}
+              disabled={isLoading || !originLocation || !destinationLocation || !transportType}
               className="w-full"
             >
               {isLoading ? "Buscando..." : "Buscar ruta"}
