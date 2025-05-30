@@ -13,9 +13,10 @@ import {
   DriverRegisterScreen,
   DriverHomeScreen,
   MyVehiclesScreen,
+  AddVehicleScreen,
+  InstProfileScreen,
+  ProfileScreen,
 } from "./screens";
-import InstProfileScreen from "./screens/InstProfileScreen";
-import ProfileScreen from "./screens/ProfileScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -38,7 +39,12 @@ type Screen =
   | "register-to-inst"
   | "driver-register"
   | "driver-home"
-  | "my-vehicles";
+  | "my-vehicles"
+  | "vehicle-registration"
+  | "inst-profile"
+  | "profile"
+  | "inst-profile-from-driver"
+  | "profile-from-driver";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -72,6 +78,10 @@ const AppNavigator = () => {
 
   const handleRegister = () => {
     setCurrentScreen("register");
+  };
+
+  const handleGoToAddVehicleScreen = () => {
+    setCurrentScreen("vehicle-registration");
   };
 
   const handleLoginSubmit = async (email: string, password: string) => {
@@ -201,6 +211,26 @@ const AppNavigator = () => {
     setCurrentScreen("dashboard");
   };
 
+  const handleGoToHomeScreen = () => {
+    setCurrentScreen("dashboard");
+  };
+
+  const handleGoToInstProfile = () => {
+    setCurrentScreen("inst-profile");
+  };
+
+  const handleGoToProfile = () => {
+    setCurrentScreen("profile");
+  };
+
+  const handleGoToInstProfileFromDriver = () => {
+    setCurrentScreen("inst-profile-from-driver");
+  };
+
+  const handleGoToProfileFromDriver = () => {
+    setCurrentScreen("profile-from-driver");
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -214,6 +244,8 @@ const AppNavigator = () => {
           onGoToBecomeDriver={handleGoToDriverRegister}
           onGoToDriverView={handleGoToDriverView}
           onGoToMyInstitution={() => {}}
+          onGoToProfile={handleGoToProfile}
+          onGoToInstitutionProfile={handleGoToInstProfile}
         />
       </ProtectedRoute>
     );
@@ -320,6 +352,7 @@ const AppNavigator = () => {
           <RegisterToInstScreen
             institution={selectedInstitution}
             onGoBack={() => setCurrentScreen("selected-institution")}
+            onGoToHomeScreen={handleGoToHomeScreen}
           />
         );
       case "driver-register":
@@ -334,11 +367,55 @@ const AppNavigator = () => {
             onGoToHomeScreen={handleGoToHomeScreenFromDriver}
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToInstitutions={handleGoToInstitutions}
+            onGoToProfile={handleGoToProfileFromDriver}
+            onGoToInstitutionProfile={handleGoToInstProfileFromDriver}
           />
         );
       case "my-vehicles":
         return (
-          <MyVehiclesScreen onGoToDriverHomeScreen={handleGoToDriverView} />
+          <MyVehiclesScreen
+            onGoToDriverHomeScreen={handleGoToDriverView}
+            onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
+            onGoToProfileScreen={handleGoToProfileFromDriver}
+          />
+        );
+      case "vehicle-registration":
+        return (
+          <AddVehicleScreen
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToHomeScreen={handleGoToDriverView}
+            onGoToProfile={handleGoToProfileFromDriver}
+          />
+        );
+      case "inst-profile":
+        return (
+          <InstProfileScreen
+            onGoToHomeScreen={handleGoToHomeScreen}
+            onGoToProfile={handleGoToProfileFromDriver}
+          />
+        );
+      case "profile":
+        return (
+          <ProfileScreen
+            onGoToHomeScreen={handleGoToHomeScreen}
+            onGoToProfile={handleGoToProfile}
+          />
+        );
+      case "inst-profile-from-driver":
+        return (
+          <InstProfileScreen
+            onGoToHomeScreen={handleGoToDriverView}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToProfile={handleGoToProfile}
+          />
+        );
+      case "profile-from-driver":
+        return (
+          <ProfileScreen
+            onGoToHomeScreen={handleGoToDriverView}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToProfile={handleGoToProfileFromDriver}
+          />
         );
       default:
         return (

@@ -6,7 +6,17 @@ import AddVehicleButton from "../components/AddVehicleButton";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 
-export default function AddVehicleScreen() {
+interface AddVehicleScreenProps {
+  onGoToMyVehicles?: () => void;
+  onGoToHomeScreen?: () => void;
+  onGoToProfile?: () => void;
+}
+
+export default function AddVehicleScreen({
+  onGoToMyVehicles = () => {},
+  onGoToHomeScreen = () => {},
+  onGoToProfile = () => {},
+}: AddVehicleScreenProps) {
   const [form, setForm] = useState<{
     placa: string;
     color: string;
@@ -44,14 +54,12 @@ export default function AddVehicleScreen() {
     {
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: false,
-      onPress: () => alert("Ya te encuentras en inicio"),
+      onPress: onGoToHomeScreen,
     },
     {
       label: "Mis vehiculos",
-      active: false,
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => alert("Mis vehiculos"),
+      onPress: onGoToMyVehicles,
     },
     {
       label: "Mis viajes",
@@ -61,7 +69,7 @@ export default function AddVehicleScreen() {
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => alert("Perfil"),
+      onPress: onGoToProfile,
     },
   ];
 

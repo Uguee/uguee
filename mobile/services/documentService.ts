@@ -10,6 +10,7 @@ export interface DocumentData {
   fecha_vencimiento: string;
   imagen_front?: string;
   imagen_back?: string;
+  numero: string;
 }
 
 export interface UploadResponse {
@@ -27,20 +28,20 @@ export class DocumentService {
    * Sube una imagen al bucket de documentos usando la API REST de Supabase
    */
   static async uploadImage(
-    imageUri: string, 
-    fileName: string, 
+    imageUri: string,
+    fileName: string,
     userId: number
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
       // Crear un nombre único para el archivo
-      const fileExtension = imageUri.split('.').pop() || 'jpg';
+      const fileExtension = imageUri.split(".").pop() || "jpg";
       const uniqueFileName = `${userId}/${fileName}_${Date.now()}.${fileExtension}`;
-      
+
       // Preparar FormData
       const formData = new FormData();
-      formData.append('file', {
+      formData.append("file", {
         uri: imageUri,
-        type: 'image/jpeg',
+        type: "image/jpeg",
         name: uniqueFileName,
       } as any);
 
@@ -48,10 +49,10 @@ export class DocumentService {
       const uploadResponse = await fetch(
         `${supabaseUrl}/storage/v1/object/documentos/${uniqueFileName}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${supabaseAnonKey}`,
+            "Content-Type": "multipart/form-data",
           },
           body: formData,
         }
@@ -59,19 +60,19 @@ export class DocumentService {
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
-        console.error('❌ Error uploading image:', errorText);
+        console.error("❌ Error uploading image:", errorText);
         return { success: false, error: `Error uploading: ${errorText}` };
       }
 
       // Construir URL pública
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/documentos/${uniqueFileName}`;
 
-      return { 
-        success: true, 
-        url: publicUrl 
+      return {
+        success: true,
+        url: publicUrl,
       };
     } catch (error: any) {
-      console.error('❌ Error in uploadImage:', error);
+      console.error("❌ Error in uploadImage:", error);
       return { success: false, error: error.message };
     }
   }
@@ -79,25 +80,24 @@ export class DocumentService {
   /**
    * Guarda los datos del documento en la tabla usando la API REST de Supabase
    */
-  static async saveDocumentData(documentData: DocumentData): Promise<UploadResponse> {
+  static async saveDocumentData(
+    documentData: DocumentData
+  ): Promise<UploadResponse> {
     try {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/documento`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'apikey': supabaseAnonKey,
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(documentData),
-        }
-      );
+      const response = await fetch(`${supabaseUrl}/rest/v1/documento`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          apikey: supabaseAnonKey,
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(documentData),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Error saving document data:', errorText);
+        console.error("❌ Error saving document data:", errorText);
         return { success: false, error: `Error saving: ${errorText}` };
       }
 
@@ -107,11 +107,11 @@ export class DocumentService {
       return {
         success: true,
         data: {
-          documentId
-        }
+          documentId,
+        },
       };
     } catch (error: any) {
-      console.error('❌ Error in saveDocumentData:', error);
+      console.error("❌ Error in saveDocumentData:", error);
       return { success: false, error: error.message };
     }
   }
@@ -122,49 +122,55 @@ export class DocumentService {
   static async uploadDocument(
     frontImageUri: string | null,
     backImageUri: string | null,
-    documentData: Omit<DocumentData, 'imagen_front' | 'imagen_back'>
+    documentData: Omit<DocumentData, "imagen_front" | "imagen_back">
   ): Promise<UploadResponse> {
     try {
-      let frontUrl = '';
-      let backUrl = '';
+      let frontUrl = "";
+      let backUrl = "";
 
       // Subir imagen frontal
       if (frontImageUri) {
         const frontResult = await this.uploadImage(
-          frontImageUri, 
-          'front', 
+          frontImageUri,
+          "front",
           documentData.id_usuario
         );
-        
+
         if (!frontResult.success) {
-          return { success: false, error: `Error subiendo imagen frontal: ${frontResult.error}` };
+          return {
+            success: false,
+            error: `Error subiendo imagen frontal: ${frontResult.error}`,
+          };
         }
-        frontUrl = frontResult.url || '';
+        frontUrl = frontResult.url || "";
       }
 
       // Subir imagen trasera
       if (backImageUri) {
         const backResult = await this.uploadImage(
-          backImageUri, 
-          'back', 
+          backImageUri,
+          "back",
           documentData.id_usuario
         );
-        
+
         if (!backResult.success) {
-          return { success: false, error: `Error subiendo imagen trasera: ${backResult.error}` };
+          return {
+            success: false,
+            error: `Error subiendo imagen trasera: ${backResult.error}`,
+          };
         }
-        backUrl = backResult.url || '';
+        backUrl = backResult.url || "";
       }
 
       // Guardar metadata en la tabla
       const completeDocumentData: DocumentData = {
         ...documentData,
         imagen_front: frontUrl,
-        imagen_back: backUrl
+        imagen_back: backUrl,
       };
 
       const saveResult = await this.saveDocumentData(completeDocumentData);
-      
+
       if (!saveResult.success) {
         return { success: false, error: saveResult.error };
       }
@@ -174,12 +180,12 @@ export class DocumentService {
         data: {
           frontUrl,
           backUrl,
-          documentId: saveResult.data?.documentId
-        }
+          documentId: saveResult.data?.documentId,
+        },
       };
     } catch (error: any) {
-      console.error('❌ Error in uploadDocument:', error);
+      console.error("❌ Error in uploadDocument:", error);
       return { success: false, error: error.message };
     }
   }
-} 
+}

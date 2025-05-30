@@ -9,17 +9,21 @@ import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 
 // Agrega las props
-interface HomeScreenProps {
+interface DriverHomeScreenProps {
   onGoToInstitutions?: () => void;
   onGoToHomeScreen?: () => void;
   onGoToMyVehicles?: () => void;
+  onGoToProfile?: () => void;
+  onGoToInstitutionProfile?: () => void;
 }
 
 export default function DriverHomeScreen({
   onGoToInstitutions,
   onGoToHomeScreen,
-  onGoToMyVehicles,
-}: HomeScreenProps) {
+  onGoToMyVehicles = () => {},
+  onGoToProfile = () => {},
+  onGoToInstitutionProfile = () => {},
+}: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
 
   const suggestions = [
@@ -48,7 +52,7 @@ export default function DriverHomeScreen({
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => alert("Perfil"),
+      onPress: onGoToProfile ?? (() => alert("Perfil")),
     },
   ];
 
@@ -88,7 +92,7 @@ export default function DriverHomeScreen({
               image={require("../assets/building3D.png")}
               title="¿Tu institución?"
               description="Presiona aquí para acceder a los detalles de tu institución"
-              onPress={onGoToInstitutions}
+              onPress={onGoToInstitutionProfile}
             />
             <BigCard
               image={require("../assets/bus.png")}

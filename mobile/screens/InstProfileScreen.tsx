@@ -6,7 +6,17 @@ import { BottomNavigation } from "../components/BottomNavigationBar";
 import ProfileImage from "../components/ProfileImage";
 import ProfileTextRow from "../components/ProfileTextRow";
 
-const InstProfileScreen = () => {
+interface InstProfileScreenProps {
+  onGoToHomeScreen?: () => void;
+  onGoToProfile?: () => void;
+  onGoToMyVehicles?: () => void;
+}
+
+const InstProfileScreen = ({
+  onGoToHomeScreen = () => {},
+  onGoToProfile = () => {},
+  onGoToMyVehicles = () => {},
+}: InstProfileScreenProps) => {
   // Hooks para datos de la institución (modificable para Supabase)
   const [inst, setInst] = useState({
     nombreOficial: "123.456.789 - CC",
@@ -20,15 +30,15 @@ const InstProfileScreen = () => {
     {
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      onPress: () => {},
+      onPress: onGoToHomeScreen,
     },
     {
-      label: "Gestionar",
+      label: "Mis viajes",
       icon: <MaterialIcons name="manage-accounts" size={28} color="#000" />,
-      onPress: () => {},
+      onPress: onGoToMyVehicles,
     },
     {
-      label: "Solicitudes",
+      label: "Drei punkt",
       icon: <Ionicons name="settings-outline" size={28} color="#000" />,
       onPress: () => {},
     },
@@ -36,7 +46,7 @@ const InstProfileScreen = () => {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
       active: true,
-      onPress: () => {},
+      onPress: onGoToProfile,
     },
   ];
 

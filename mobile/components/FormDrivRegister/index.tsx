@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -122,6 +123,41 @@ export default function DriverRegisterForm({
             style={{ marginLeft: 8 }}
           />
         </TouchableOpacity>
+      </View>
+      {/* Previews de imágenes seleccionadas */}
+      <View style={{ flexDirection: "row", marginTop: 8 }}>
+        {value.files[0] ? (
+          <View style={{ alignItems: "center", marginRight: 12 }}>
+            <Image
+              source={{ uri: value.files[0] }}
+              style={{
+                width: 80,
+                height: 60,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "#D1D5DB",
+              }}
+              resizeMode="cover"
+            />
+            <Text style={{ fontSize: 12, marginTop: 2 }}>Frontal</Text>
+          </View>
+        ) : null}
+        {value.files[1] ? (
+          <View style={{ alignItems: "center" }}>
+            <Image
+              source={{ uri: value.files[1] }}
+              style={{
+                width: 80,
+                height: 60,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "#D1D5DB",
+              }}
+              resizeMode="cover"
+            />
+            <Text style={{ fontSize: 12, marginTop: 2 }}>Trasera</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );

@@ -20,9 +20,11 @@ interface Institution {
 export default function RegisterToInstScreen({
   institution,
   onGoBack,
+  onGoToHomeScreen,
 }: {
   institution: Institution | null;
   onGoBack: () => void;
+  onGoToHomeScreen: () => void;
 }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
@@ -70,18 +72,24 @@ export default function RegisterToInstScreen({
         setLoading(false);
         return;
       }
-      const response = await sendRegisterToInstitutionApplication({
+      const bodyToSend = {
         id_usuario,
         id_institucion: institution.id_institucion,
         correo_institucional: form.email,
-        codigo_institucional: form.code,
+        codigo_institucional: Number(form.code),
         direccion_de_residencia: form.address,
-      });
+        rol_institucional: form.role,
+      };
+      console.log("[RegisterToInstScreen] Body enviado:", bodyToSend);
+      console.log(bodyToSend);
+      const response = await sendRegisterToInstitutionApplication(bodyToSend);
+      console.log("[RegisterToInstScreen] Respuesta edgefunction:", response);
       if (response.success) {
         Alert.alert(
           "Registro enviado",
           "Tu solicitud ha sido enviada a la institución."
         );
+        onGoToHomeScreen();
       } else {
         Alert.alert(
           "No se pudo realizar el registro",

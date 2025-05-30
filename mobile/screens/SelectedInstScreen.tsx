@@ -1,9 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Alert } from "react-native";
 import { TopMenu } from "../components/TopMenu";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import ShowInstitution from "../components/ShowInstSelected";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { getRegisterValidationStatus } from "../services/institutionService";
+import { getCedulaByUUID } from "../services/userDataService";
+import { useAuth } from "../hooks/useAuth";
 
 interface Institution {
   id_institucion: number;
@@ -25,6 +28,8 @@ export default function SelectedInstScreen({
   onGoHome,
   onRequestRegister,
 }: SelectedInstScreenProps) {
+  const { user } = useAuth();
+
   if (!institution) return null; // O un mensaje de error
 
   // Construir el logo correctamente
@@ -33,6 +38,55 @@ export default function SelectedInstScreen({
         uri: `https://ezuujivxstyuziclhvhp.supabase.co/storage/v1/object/public/logos/${institution.logo}`,
       }
     : require("../assets/univalle-logo.png");
+
+  const handleRequest = async () => {
+    if (!user?.id) {
+      Alert.alert("Error", "No se pudo obtener el usuario autenticado.");
+      return;
+    }
+    const id_usuario = await getCedulaByUUID(user.id);
+    if (!id_usuario) {
+      Alert.alert(
+        "Error",
+        "No se pudo obtener el id_usuario real del usuario."
+      );
+      return;
+    }
+    try {
+      const status = await getRegisterValidationStatus({
+        id_usuario,
+        id_institucion: institution.id_institucion,
+      });
+      if (status === "denegado") {
+        Alert.alert(
+          "Solicitud denegada",
+          "Te han denegado la solicitud a esta institución."
+        );
+        return;
+      }
+      if (status === "pendiente") {
+        Alert.alert(
+          "Solicitud pendiente",
+          "Tu solicitud está pendiente de aprobación por la institución."
+        );
+        return;
+      }
+      if (status === "validado") {
+        Alert.alert(
+          "Solicitud aceptada",
+          "Ya has sido aceptado en esta institución."
+        );
+        return;
+      }
+      // Si es null, permitir continuar
+      onRequestRegister(institution);
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err.message || "No se pudo verificar el estado de la solicitud."
+      );
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -43,7 +97,7 @@ export default function SelectedInstScreen({
           name={institution.nombre_oficial}
           address={institution.direccion || "Dirección no disponible"}
           logo={logoSource}
-          onRequest={() => onRequestRegister(institution)}
+          onRequest={handleRequest}
         />
         {/* Mostrar información adicional si se desea */}
         <Text style={styles.info}>ID: {institution.id_institucion}</Text>

@@ -6,30 +6,39 @@ import { BottomNavigation } from "../components/BottomNavigationBar";
 import ProfileImage from "../components/ProfileImage";
 import ProfileTextRow from "../components/ProfileTextRow";
 
-const ProfileScreen = () => {
-  // Hooks para datos de usuario (modificable para Supabase)
+interface ProfileScreenProps {
+  onGoToHomeScreen?: () => void;
+  onGoToProfile?: () => void;
+  onGoToMyVehicles?: () => void;
+}
+
+const ProfileScreen = ({
+  onGoToHomeScreen = () => {},
+  onGoToProfile = () => {},
+  onGoToMyVehicles = () => {},
+}: ProfileScreenProps) => {
+  // Datos de ejemplo para el perfil
   const [profile, setProfile] = useState({
-    identificacion: "123.456.789 - CC",
-    nombre: "John",
-    apellido: "Doe",
-    nacimiento: "11/22/3333",
-    direccion: "Calle 123 #45-6A",
-    institucion: "Universidad del Valle: Sede Meléndez",
-    conductor: "Sí",
-    imagen: require("../assets/driver.png"),
+    imagen: require("../assets/univalle-logo.png"),
+    identificacion: "123456789",
+    nombre: "Juan",
+    apellido: "Pérez",
+    nacimiento: "01/01/1990",
+    direccion: "Calle 123 #45-67",
+    institucion: "Universidad del Valle",
+    conductor: "No",
   });
 
-  // Botones de navegación inferior
   const navButtons = [
     {
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      onPress: () => {},
+      onPress: onGoToHomeScreen,
     },
     {
       label: "Mis viajes",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => {},
+      onPress: onGoToMyVehicles,
     },
     {
       label: "Servicios",
@@ -40,7 +49,7 @@ const ProfileScreen = () => {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
       active: true,
-      onPress: () => {},
+      onPress: onGoToProfile,
     },
   ];
 

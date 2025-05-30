@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const roles = ["Estudiante", "Docente", "Administrativo", "Externo"];
+const roles = ["Estudiante", "Docente", "Administrativo", "Otro"];
 
 interface Props {
   onChange: (data: {

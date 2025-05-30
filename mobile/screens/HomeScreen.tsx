@@ -19,6 +19,8 @@ interface HomeScreenProps {
   onGoToMyInstitution?: () => void;
   onGoToBecomeDriver?: () => void;
   onGoToDriverView?: () => void;
+  onGoToProfile?: () => void;
+  onGoToInstitutionProfile?: () => void;
 }
 
 export default function HomeScreen({
@@ -26,6 +28,8 @@ export default function HomeScreen({
   onGoToMyInstitution,
   onGoToBecomeDriver,
   onGoToDriverView,
+  onGoToProfile,
+  onGoToInstitutionProfile,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -95,7 +99,7 @@ export default function HomeScreen({
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => alert("Perfil"),
+      onPress: onGoToProfile ?? (() => alert("Perfil")),
     },
   ];
 
@@ -118,6 +122,51 @@ export default function HomeScreen({
 
     const cards: JSX.Element[] = [];
 
+    // Tarjeta de solicitud pendiente de conductor
+    if (conductorStatus === "pendiente") {
+      // Si la institución está validada, mostrar también la tarjeta de institución
+      if (institutionStatus === "validado") {
+        cards.push(
+          <BigCard
+            key="inst-yes"
+            image={require("../assets/building3D.png")}
+            title="¿Tu institución?"
+            description="Presiona aquí para acceder a los detalles de tu institución"
+            onPress={
+              onGoToInstitutionProfile ?? (() => alert("pertenece Institución"))
+            }
+          />
+        );
+      }
+      cards.push(
+        <BigCard
+          key="cond-pending"
+          image={require("../assets/car3D.png")}
+          title="Tu solicitud está pendiente"
+          description={
+            "Tienes que esperar un poco, hasta que la institución te acepte como conductor."
+          }
+        />
+      );
+      // No mostrar las otras tarjetas si está pendiente
+      return cards;
+    }
+
+    // Tarjeta de solicitud pendiente
+    if (institutionStatus === "pendiente") {
+      cards.push(
+        <BigCard
+          key="inst-pending"
+          image={require("../assets/building3D.png")}
+          title="Tu solicitud está pendiente"
+          description="No tardará mucho en ser aceptada por la institución"
+          onPress={() => {}}
+        />
+      );
+      // No mostrar las otras tarjetas si está pendiente
+      return cards;
+    }
+
     // Tarjeta institución
     if (institutionStatus !== "validado") {
       cards.push(
@@ -136,7 +185,9 @@ export default function HomeScreen({
           image={require("../assets/building3D.png")}
           title="¿Tu institución?"
           description="Presiona aquí para acceder a los detalles de tu institución"
-          onPress={onGoToInstitutions ?? (() => alert("pertenece Institución"))}
+          onPress={
+            onGoToInstitutionProfile ?? (() => alert("pertenece Institución"))
+          }
         />
       );
     }
