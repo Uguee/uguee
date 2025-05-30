@@ -7,6 +7,15 @@ import { UserService } from '../../services/userService';
 import { Button } from '../../components/ui/button';
 import AgregarVehiculoForm from '../../components/forms/AgregarVehiculoForm';
 import { User } from '../../types';
+import { Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
 
 interface Vehiculo {
   placa: string;
@@ -16,6 +25,8 @@ interface Vehiculo {
     tipo: string;
   };
   validacion: string | null;
+  vigencia_soat: string;
+  fecha_tecnicomecanica: string;
 }
 
 interface ExtendedUser extends User {
@@ -69,6 +80,31 @@ const MisVehiculos = () => {
     }
   };
 
+  const handleDeleteVehicle = async (placa: string) => {
+    try {
+      const { error } = await supabase
+        .from('vehiculo')
+        .delete()
+        .eq('placa', placa);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Vehículo eliminado correctamente",
+      });
+
+      cargarVehiculos();
+    } catch (err) {
+      console.error('Error eliminando vehículo:', err);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el vehículo",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     cargarVehiculos();
   }, [user, toast]);
@@ -77,12 +113,12 @@ const MisVehiculos = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-text">Mis Vehículos</h1>
+          <h1 className="text-3xl font-bold text-text">Tus vehículos</h1>
           <Button 
             onClick={() => setShowForm(true)}
             className="bg-primary hover:bg-primary/90"
           >
-            Agregar Vehículo
+            Añadir
           </Button>
         </div>
 
@@ -117,35 +153,51 @@ const MisVehiculos = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {vehiculos.map((vehiculo) => (
-              <div
-                key={vehiculo.placa}
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-5"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-medium text-lg">{vehiculo.tipo_vehiculo.tipo}</h3>
-                    <p className="text-gray-500">Placa: {vehiculo.placa}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    vehiculo.validacion === 'validado'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {vehiculo.validacion === 'validado' ? 'Validado' : 'Pendiente'}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-gray-600">
-                    <span className="font-medium">Color:</span> {vehiculo.color}
-                  </p>
-                  <p className="text-gray-600">
-                    <span className="font-medium">Modelo:</span> {vehiculo.modelo}
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Placa</TableHead>
+                  <TableHead>Color</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Vencimiento Soat</TableHead>
+                  <TableHead>Vencimiento tecnomecánica</TableHead>
+                  <TableHead>Validación</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vehiculos.map((vehiculo) => (
+                  <TableRow key={vehiculo.placa}>
+                    <TableCell>{vehiculo.placa}</TableCell>
+                    <TableCell>{vehiculo.color}</TableCell>
+                    <TableCell>{vehiculo.modelo}</TableCell>
+                    <TableCell>{vehiculo.tipo_vehiculo.tipo}</TableCell>
+                    <TableCell>{vehiculo.vigencia_soat || 'No disponible'}</TableCell>
+                    <TableCell>{vehiculo.fecha_tecnicomecanica || 'No disponible'}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-sm ${
+                        vehiculo.validacion === 'validado'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {vehiculo.validacion === 'validado' ? 'Validado' : 'Pendiente'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteVehicle(vehiculo.placa)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
 

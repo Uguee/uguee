@@ -167,7 +167,7 @@ export class AuthFlowService {
       console.log('✅ Sin restricciones de roles');
       return { shouldRedirect: false };
     }
-
+    
     if (!user || !allowedRoles.includes(user.role)) {
       console.log('❌ Rol no permitido, determinando redirección...');
       return await this.determineUserRedirection(user);
