@@ -87,21 +87,21 @@ export type Database = {
           colores: string
           direccion: string
           id_institucion: number
-          logo: string
+          logo: string | null
           nombre_oficial: string
         }
         Insert: {
           colores: string
           direccion: string
           id_institucion?: number
-          logo: string
+          logo?: string | null
           nombre_oficial: string
         }
         Update: {
           colores?: string
           direccion?: string
           id_institucion?: number
-          logo?: string
+          logo?: string | null
           nombre_oficial?: string
         }
         Relationships: []
@@ -144,6 +144,7 @@ export type Database = {
           fecha_registro: string
           id_institucion: number
           id_usuario: number
+          rol_institucional: string | null
           validacion: string | null
           validacion_conductor: string | null
         }
@@ -154,6 +155,7 @@ export type Database = {
           fecha_registro?: string
           id_institucion: number
           id_usuario: number
+          rol_institucional?: string | null
           validacion?: string | null
           validacion_conductor?: string | null
         }
@@ -164,6 +166,7 @@ export type Database = {
           fecha_registro?: string
           id_institucion?: number
           id_usuario?: number
+          rol_institucional?: string | null
           validacion?: string | null
           validacion_conductor?: string | null
         }

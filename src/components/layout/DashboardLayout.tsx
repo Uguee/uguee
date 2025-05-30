@@ -19,7 +19,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="p-4">
               <SidebarTrigger />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 px-6 pb-6">
               {children}
             </div>
           </main>

@@ -24,6 +24,7 @@ import MapViewDriver from "./pages/drivers/MapView";
 import CreateTrip from "./pages/drivers/CreateTrip";
 import DriverNotAllowed from './pages/DriverNotAllowed';
 import HistorialViajes from "./pages/drivers/HistorialViajes";
+import MisVehiculos from "./pages/drivers/MisVehiculos";
 import 'leaflet/dist/leaflet.css';
 
 const queryClient = new QueryClient();
@@ -176,6 +177,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <CreateTrip />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/driver/mis-vehiculos" 
+        element={
+          <ProtectedRoute allowedRoles={['conductor']}>
+            <MisVehiculos />
           </ProtectedRoute>
         } 
       />
