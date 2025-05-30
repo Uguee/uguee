@@ -12,16 +12,24 @@ export class UserService {
   /**
    * Obtiene los headers de autorización necesarios
    */
-  private static async getAuthHeaders(): Promise<Record<string, string>> {
+  private static async getAuthHeaders(accessToken?: string): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
     try {
+      // Si se proporciona un token directamente, usarlo
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        console.log('✅ Usando token proporcionado directamente');
+        return headers;
+      }
+
+      // Solo hacer getSession si no se proporciona token
       const { data: { session }, error } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 10000)
+          setTimeout(() => reject(new Error('Session timeout')), 15000)
         )
       ]);
       
@@ -115,11 +123,11 @@ export class UserService {
   /**
    * Obtiene los datos del usuario por UUID
    */
-  static async getUserByUuid(uuid: string): Promise<User | null> {
+  static async getUserByUuid(uuid: string, accessToken?: string): Promise<User | null> {
     try {
       console.log('🔍 UserService: Consultando usuario por UUID:', uuid);
       
-      const headers = await this.getAuthHeaders();
+      const headers = await this.getAuthHeaders(accessToken);
       const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA}?uuid=${uuid}`;
 
       console.log('📡 Llamando endpoint:', url);
@@ -220,6 +228,109 @@ export class UserService {
     } catch (error) {
       console.error('Error fetching user data from usuarios:', error);
       return null;
+    }
+  }
+
+  /**
+   * Verifica si el usuario ya completó la verificación de documentos
+   */
+  static async hasCompletedDocumentVerification(userId: number): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('documento')
+        .select('numero')
+        .eq('id_usuario', userId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking document verification:', error);
+        return false;
+      }
+
+      return data && data.length > 0;
+    } catch (error) {
+      console.error('Error in hasCompletedDocumentVerification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Verifica si el usuario ya se registró en una institución
+   */
+  static async hasInstitutionRegistration(userId: number): Promise<{
+    hasRegistration: boolean;
+    status?: string;
+    institutionalRole?: string;
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('registro')
+        .select('validacion, rol_institucional')
+        .eq('id_usuario', userId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking institution registration:', error);
+        return { hasRegistration: false };
+      }
+
+      if (data && data.length > 0) {
+        return {
+          hasRegistration: true,
+          status: data[0].validacion,
+          institutionalRole: data[0].rol_institucional
+        };
+      }
+
+      return { hasRegistration: false };
+    } catch (error) {
+      console.error('Error in hasInstitutionRegistration:', error);
+      return { hasRegistration: false };
+    }
+  }
+
+  /**
+   * Obtiene el estado completo del proceso de registro del usuario
+   */
+  static async getUserRegistrationStatus(uuid: string): Promise<{
+    hasDocuments: boolean;
+    hasInstitution: boolean;
+    institutionStatus?: string;
+    institutionalRole?: string;
+    userId?: number;
+  }> {
+    try {
+      // Primero obtener el id_usuario
+      const userData = await this.getUserDataFromUsuarios(uuid);
+      
+      if (!userData || !userData.id_usuario) {
+        return {
+          hasDocuments: false,
+          hasInstitution: false
+        };
+      }
+
+      const userId = userData.id_usuario;
+
+      // Verificar documentos e institución en paralelo
+      const [hasDocuments, institutionInfo] = await Promise.all([
+        this.hasCompletedDocumentVerification(userId),
+        this.hasInstitutionRegistration(userId)
+      ]);
+
+      return {
+        hasDocuments,
+        hasInstitution: institutionInfo.hasRegistration,
+        institutionStatus: institutionInfo.status,
+        institutionalRole: institutionInfo.institutionalRole,
+        userId
+      };
+    } catch (error) {
+      console.error('Error getting user registration status:', error);
+      return {
+        hasDocuments: false,
+        hasInstitution: false
+      };
     }
   }
 } 

@@ -25,25 +25,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Función para obtener datos completos del usuario
-  const fetchUserData = async (supabaseUser: SupabaseUser): Promise<User | null> => {
+  const fetchUserData = async (supabaseUser: SupabaseUser, accessToken?: string): Promise<User | null> => {
     console.log('🔍 Fetching user data for UUID:', supabaseUser.id);
     
     try {
-      // Intentar obtener datos del endpoint con timeout extendido
-      const userData = await Promise.race([
-        UserService.getUserByUuid(supabaseUser.id),
-        new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('User service timeout')), 15000)
-        )
-      ]);
+      // Intentar obtener datos del endpoint con timeout aumentado y retry
+      const maxRetries = 2;
+      let attempt = 0;
       
-      if (userData) {
-        console.log('✅ Datos obtenidos del UserService:', userData);
-        return userData;
-      } else {
-        console.error('❌ No se recibieron datos del endpoint');
-        return null;
+      while (attempt < maxRetries) {
+        try {
+          const userData = await Promise.race([
+            UserService.getUserByUuid(supabaseUser.id, accessToken), // Pasar token directamente
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('User service timeout')), 20000) // Aumentado a 20 segundos
+            )
+          ]);
+          
+          if (userData) {
+            console.log('✅ Datos obtenidos del UserService:', userData);
+            
+            // Si no hay email en los datos del endpoint, usar el de Supabase como respaldo
+            if (!userData.email && supabaseUser.email) {
+              console.log('🔧 Usando email de Supabase como respaldo:', supabaseUser.email);
+              userData.email = supabaseUser.email;
+            }
+            
+            return userData;
+          } else {
+            console.warn(`⚠️ Intento ${attempt + 1}: No se recibieron datos del endpoint`);
+          }
+        } catch (error: any) {
+          console.warn(`⚠️ Intento ${attempt + 1} falló:`, error.message);
+          if (attempt === maxRetries - 1) {
+            throw error;
+          }
+        }
+        
+        attempt++;
+        if (attempt < maxRetries) {
+          console.log(`🔄 Reintentando en 2 segundos... (intento ${attempt + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
+      
+      console.error('❌ Todos los intentos fallaron');
+      return null;
     } catch (error) {
       console.error('❌ Error fetching user data from endpoint:', error);
       return null;
@@ -52,79 +79,132 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check if user is already logged in
   useEffect(() => {
+    let isMounted = true;
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔐 Auth state change:', event, 'session exists:', !!session);
+        
         // Solo procesar eventos importantes, no TOKEN_REFRESHED
         if (event === 'TOKEN_REFRESHED') {
-          setSession(session);
+          if (isMounted) {
+            setSession(session);
+          }
           return;
         }
+        
+        if (!isMounted) return;
         
         setSession(session);
         
         if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-          // Evitar llamadas duplicadas si ya tenemos el usuario correcto
-          if (user && user.id === session.user.id) {
-            setIsLoading(false);
-            return;
-          }
+          console.log('🔍 Processing auth event:', event, 'for user:', session.user.id);
           
-          // Solo hacer fetch si realmente no tenemos usuario
           setIsLoading(true);
           try {
-            const appUser = await fetchUserData(session.user);
-            if (appUser) {
+            const appUser = await fetchUserData(session.user, session.access_token);
+            if (appUser && isMounted) {
+              console.log('✅ User data loaded successfully');
               setUser(appUser);
-            } else {
+            } else if (isMounted) {
               console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
               setUser(null);
             }
           } catch (error) {
             console.error('❌ Error obteniendo datos del usuario:', error);
-            setUser(null);
+            if (isMounted) {
+              setUser(null);
+            }
           }
-          setIsLoading(false);
+          if (isMounted) {
+            console.log('🔄 Setting isLoading to false, user loaded:', !!user);
+            setIsLoading(false);
+          }
         } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setIsLoading(false);
+          if (isMounted) {
+            console.log('🚪 User signed out, clearing state');
+            setUser(null);
+            setIsLoading(false);
+          }
         }
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      
-      if (session?.user) {
-        // Si ya tenemos el usuario correcto, no hacer fetch
-        if (user && user.id === session.user.id) {
-          setIsLoading(false);
+    const checkSession = async () => {
+      try {
+        console.log('🔍 Checking for existing session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Error getting session:', error);
+          if (isMounted) {
+            setIsLoading(false);
+          }
           return;
         }
         
-        // Solo hacer fetch si no tenemos usuario
-        setIsLoading(true);
-        try {
-          const appUser = await fetchUserData(session.user);
-          if (appUser) {
-            setUser(appUser);
+        if (!isMounted) return;
+        
+        setSession(session);
+        
+        if (session?.user) {
+          console.log('✅ Existing session found for user:', session.user.id);
+          
+          // Solo procesar si NO tenemos usuario ya cargado (evitar condición de carrera)
+          if (!user) {
+            console.log('🔄 Loading user data from session...');
+            setIsLoading(true);
+            try {
+              const appUser = await fetchUserData(session.user, session.access_token);
+              if (appUser && isMounted) {
+                console.log('✅ User data restored from session');
+                setUser(appUser);
+              } else if (isMounted) {
+                console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
+                setUser(null);
+              }
+            } catch (error) {
+              console.error('❌ Error obteniendo datos del usuario:', error);
+              if (isMounted) {
+                setUser(null);
+              }
+            }
+            if (isMounted) {
+              console.log('🔄 Setting isLoading to false from checkSession, user loaded successfully');
+              setIsLoading(false);
+            }
           } else {
-            console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
-            setUser(null);
+            console.log('ℹ️ User already loaded, skipping session check');
+            if (isMounted) {
+              console.log('🔄 Setting isLoading to false, user already exists');
+              setIsLoading(false);
+            }
           }
-        } catch (error) {
-          console.error('❌ Error obteniendo datos del usuario:', error);
-          setUser(null);
+        } else {
+          console.log('ℹ️ No existing session found');
+          if (isMounted) {
+            console.log('🔄 Setting isLoading to false, no session');
+            setIsLoading(false);
+          }
         }
-        setIsLoading(false);
-      } else {
-        setIsLoading(false);
+      } catch (error) {
+        console.error('❌ Error checking session:', error);
+        if (isMounted) {
+          console.log('🔄 Setting isLoading to false due to error');
+          setIsLoading(false);
+        }
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
-  }, [user]);
+    checkSession();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []); // Sin dependencias para evitar bucles infinitos
 
   // Login function
   const login = async (email: string, password: string): Promise<User | null> => {
@@ -141,7 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (data.user) {
         try {
-          const appUser = await fetchUserData(data.user);
+          const appUser = await fetchUserData(data.user, data.session?.access_token);
           if (appUser) {
             setUser(appUser);
             setSession(data.session);
@@ -171,7 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('✅ Usuario sincronizado exitosamente');
             // Intentar obtener los datos nuevamente
             try {
-              const appUser = await fetchUserData(data.user);
+              const appUser = await fetchUserData(data.user, data.session?.access_token);
               if (appUser) {
                 setUser(appUser);
                 setSession(data.session);

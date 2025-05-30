@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { UserService } from "./services/userService";
 import { UserRole } from "./types";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,9 @@ import MisVehiculos from "./pages/drivers/MisVehiculos";
 import 'leaflet/dist/leaflet.css';
 import PendingValidation from "./pages/Validation/PendingValidation";
 import UserValidation from "./pages/admin/UserValidation";
+import RegistrationRequests from "./pages/admin/RegistrationRequests";
+import SelectInstitution from "./pages/Authentication/SelectInstitution";
+import React from "react";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +44,8 @@ const ProtectedRoute = ({
   allowedRoles?: UserRole[];
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [registrationStatus, setRegistrationStatus] = React.useState<any>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = React.useState(false);
 
   console.log('🛡️ ProtectedRoute check:', {
     isAuthenticated,
@@ -49,7 +55,27 @@ const ProtectedRoute = ({
     currentPath: window.location.pathname
   });
 
-  if (isLoading) {
+  // Verificar estado de registro para usuarios con rol "usuario"
+  React.useEffect(() => {
+    const checkUserStatus = async () => {
+      if (user && user.role === 'usuario' && !isCheckingStatus) {
+        setIsCheckingStatus(true);
+        console.log('🔍 Verificando estado de registro para usuario:', user.id);
+        
+        const status = await UserService.getUserRegistrationStatus(user.id);
+        console.log('📋 Estado de registro obtenido:', status);
+        
+        setRegistrationStatus(status);
+        setIsCheckingStatus(false);
+      }
+    };
+
+    if (user && user.role === 'usuario') {
+      checkUserStatus();
+    }
+  }, [user, isCheckingStatus]);
+
+  if (isLoading || (user?.role === 'usuario' && isCheckingStatus)) {
     console.log('⏳ Still loading...');
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -65,14 +91,52 @@ const ProtectedRoute = ({
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     console.log('❌ Role not allowed:', user.role, 'Allowed:', allowedRoles);
-    // Redirigir a la página correspondiente según el rol
+    
+    // Lógica especial para usuarios con rol "usuario"
+    if (user.role === 'usuario') {
+      if (!registrationStatus) {
+        console.log('⏳ Esperando estado de registro...');
+        return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        );
+      }
+
+      // Determinar redirección basada en el estado
+      if (!registrationStatus.hasDocuments) {
+        console.log('📄 Usuario sin documentos verificados → /verify-documents');
+        return <Navigate to="/verify-documents" />;
+      } else if (!registrationStatus.hasInstitution) {
+        console.log('🏛️ Usuario sin institución → /select-institution');
+        return <Navigate to="/select-institution" />;
+      } else {
+        // Usuario completó ambos pasos, redirigir según estado de validación
+        const { institutionStatus, institutionalRole } = registrationStatus;
+        
+        if (institutionStatus === 'pendiente') {
+          console.log('⏳ Solicitud pendiente → /pending-validation');
+          return <Navigate to="/pending-validation" />;
+        } else if (institutionStatus === 'validado') {
+          // Mapear rol institucional a rol del sistema y redirigir al dashboard apropiado
+          const systemRole = institutionalRole?.toLowerCase();
+          console.log('✅ Usuario validado con rol:', systemRole, '→ /dashboard');
+          return <Navigate to="/dashboard" />;
+        } else if (institutionStatus === 'denegado') {
+          console.log('❌ Solicitud denegada → mensaje de error');
+          // Aquí podrías redirigir a una página de "solicitud denegada"
+          return <Navigate to="/pending-validation" />;
+        }
+      }
+    }
+    
+    // Redirigir a la página correspondiente según el rol para otros casos
     switch (user.role) {
       case 'externo':
       case 'estudiante':
       case 'profesor':
       case 'administrativo':
-      case 'usuario':
-        console.log('🔄 Redirecting pasajero to /dashboard');
+        console.log('🔄 Redirecting user to /dashboard');
         return <Navigate to="/dashboard" />;
       case 'conductor':
         console.log('🔄 Redirecting conductor to /driver/dashboard');
@@ -116,21 +180,31 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Ruta para verificación de documentos - protegida pero sin restricción de rol específico */}
+      {/* Ruta para verificación de documentos - solo para usuarios con rol "usuario" */}
       <Route 
         path="/verify-documents" 
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['usuario']}>
             <DocumentVerification />
           </ProtectedRoute>
         } 
       />
       
-      {/* Rutas para pasajeros - PERMITIR TAMBIÉN CONDUCTORES */}
+      {/* Ruta para selección de institución - solo para usuarios con rol "usuario" */}
+      <Route 
+        path="/select-institution" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario']}>
+            <SelectInstitution />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Rutas para estudiantes, profesores, administrativos, externos */}
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -138,7 +212,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -146,7 +220,7 @@ const AppRoutes = () => {
       <Route 
         path="/start-trip" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <StartTrip />
           </ProtectedRoute>
         } 
@@ -154,7 +228,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -162,7 +236,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -170,7 +244,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'usuario', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -244,6 +318,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <UserValidation />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Ruta para gestión de solicitudes - solo para admins */}
+      <Route 
+        path="/admin/registration-requests" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'admin_institucional']}>
+            <RegistrationRequests />
           </ProtectedRoute>
         } 
       />

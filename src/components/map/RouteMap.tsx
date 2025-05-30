@@ -115,6 +115,49 @@ function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: numbe
   return null;
 }
 
+// Componente para ajustar el mapa a los límites de la ruta
+function FitBounds({ origin, destination, route }: { 
+  origin: Location | null; 
+  destination: Location | null; 
+  route: [number, number][] | null; 
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const points: [number, number][] = [];
+    
+    // Agregar puntos de origen y destino
+    if (origin) {
+      points.push([origin.lat, origin.lng]);
+    }
+    if (destination) {
+      points.push([destination.lat, destination.lng]);
+    }
+    
+    // Agregar puntos de la ruta si existen
+    if (route && route.length > 0) {
+      points.push(...route);
+    }
+    
+    // Si tenemos puntos, ajustar el mapa para mostrarlos todos
+    if (points.length > 0) {
+      if (points.length === 1) {
+        // Si solo hay un punto, centrarlo con zoom 15
+        map.setView(points[0], 15);
+      } else {
+        // Si hay múltiples puntos, ajustar bounds con padding
+        const bounds = L.latLngBounds(points);
+        map.fitBounds(bounds, { 
+          padding: [20, 20],
+          maxZoom: 16 
+        });
+      }
+    }
+  }, [map, origin, destination, route]);
+
+  return null;
+}
+
 export function RouteMap({ 
   origin, 
   destination, 
@@ -124,20 +167,7 @@ export function RouteMap({
   onMapClick,
   allowClickToSetPoints = false 
 }: RouteMapProps) {
-  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
-
-  useEffect(() => {
-    if (origin && destination) {
-      const centerLat = (origin.lat + destination.lat) / 2;
-      const centerLng = (origin.lng + destination.lng) / 2;
-      setMapCenter([centerLat, centerLng]);
-    } else if (origin) {
-      setMapCenter([origin.lat, origin.lng]);
-    } else if (destination) {
-      setMapCenter([destination.lat, destination.lng]);
-    }
-  }, [origin, destination]);
 
   // Función para generar la ruta usando OSRM
   const generateRoute = async (start: Location, end: Location) => {
@@ -204,7 +234,7 @@ export function RouteMap({
       )}
 
       <MapContainer
-        center={mapCenter ?? [0, 0]}
+        center={origin ? [origin.lat, origin.lng] : [3.4516, -76.5320]}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
@@ -231,9 +261,9 @@ export function RouteMap({
               <div>
                 <strong>Origen:</strong> {origin.address}
                 <br />
-                Lat: {origin.lat.toFixed(6)}
+                Lat: {origin.lat && typeof origin.lat === 'number' ? origin.lat.toFixed(6) : 'N/A'}
                 <br />
-                Lng: {origin.lng.toFixed(6)}
+                Lng: {origin.lng && typeof origin.lng === 'number' ? origin.lng.toFixed(6) : 'N/A'}
               </div>
             </Popup>
           </Marker>
@@ -245,9 +275,9 @@ export function RouteMap({
               <div>
                 <strong>Destino:</strong> {destination.address}
                 <br />
-                Lat: {destination.lat.toFixed(6)}
+                Lat: {destination.lat && typeof destination.lat === 'number' ? destination.lat.toFixed(6) : 'N/A'}
                 <br />
-                Lng: {destination.lng.toFixed(6)}
+                Lng: {destination.lng && typeof destination.lng === 'number' ? destination.lng.toFixed(6) : 'N/A'}
               </div>
             </Popup>
           </Marker>
@@ -261,6 +291,8 @@ export function RouteMap({
             opacity={0.7}
           />
         )}
+
+        <FitBounds origin={origin} destination={destination} route={route} />
       </MapContainer>
     </div>
   );

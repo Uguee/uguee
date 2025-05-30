@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import InstitutionalLayout from '@/components/layout/InstitutionalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RouteMap } from '@/components/map/RouteMap';
+import { InstitutionService } from '@/services/institutionService';
 import { 
   Users, 
   Car, 
@@ -29,92 +34,182 @@ import {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
-  const [userCount, setUserCount] = useState(0);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [institution, setInstitution] = useState<any>(null);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalVehicles: 0,
+    activeDrivers: 0,
+    activeRoutes: 0,
+    pendingRequests: 0,
+    students: 0,
+    teachers: 0,
+    others: 0
+  });
+  const [users, setUsers] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [registrationRequests, setRegistrationRequests] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [activeRoutes, setActiveRoutes] = useState<any[]>([]);
+  const [selectedRoute, setSelectedRoute] = useState<any>(null);
+  const [showRouteMap, setShowRouteMap] = useState(false);
 
-  // Datos de ejemplo - En producción vendrían de una API
-  const stats = {
-    totalStudents: userCount, // Ahora usa el valor real del endpoint
-    totalVehicles: 24,
-    activeDrivers: 12,
-    activeRoutes: 8,
-    pendingRequests: 5,
-  };
-
-  // Función para obtener los headers de autorización
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
+  // Función para cargar solicitudes de registro
+  const loadRegistrationRequests = async (institutionId: number) => {
     try {
-      const { data: { session }, error } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
-        )
-      ]);
+      console.log('🔍 Iniciando carga de solicitudes para institución ID:', institutionId);
       
+      const { data, error } = await supabase
+        .from('registro')
+        .select(`
+          *,
+          usuario (
+            nombre,
+            apellido,
+            celular
+          )
+        `)
+        .eq('id_institucion', institutionId)
+        .eq('validacion', 'pendiente')
+        .order('fecha_registro', { ascending: false });
+
       if (error) {
-        throw new Error(`Session error: ${error.message}`);
+        console.error('❌ Error cargando solicitudes de registro:', error);
+        return;
       }
-      
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      } else {
-        throw new Error('No active session');
-      }
-    } catch (error: any) {
-      throw new Error(`Authentication failed: ${error.message}`);
-    }
 
-    return headers;
+      console.log('✅ Consulta exitosa. Datos obtenidos:', data);
+      console.log('📊 Número de solicitudes pendientes encontradas:', data?.length || 0);
+      
+      if (data && data.length > 0) {
+        console.log('📋 Primera solicitud como ejemplo:', data[0]);
+      } else {
+        console.log('ℹ️ No se encontraron solicitudes pendientes para esta institución');
+        
+        // Verificar si hay alguna solicitud en cualquier estado para esta institución
+        const { data: allRequests, error: allError } = await supabase
+          .from('registro')
+          .select('id_usuario, validacion, rol_institucional')
+          .eq('id_institucion', institutionId);
+          
+        if (allError) {
+          console.error('❌ Error verificando todas las solicitudes:', allError);
+        } else {
+          console.log('📊 Total de registros para esta institución:', allRequests?.length || 0);
+          if (allRequests && allRequests.length > 0) {
+            console.log('🔍 Estados de validación encontrados:', allRequests.map(r => r.validacion));
+          }
+        }
+      }
+
+      setRegistrationRequests(data || []);
+    } catch (error) {
+      console.error('❌ Error inesperado cargando solicitudes:', error);
+    }
   };
 
-  // Función para obtener el número de usuarios
-  const fetchUserCount = async () => {
+  // Función para cargar datos de la institución
+  const loadInstitutionData = async () => {
+    if (!user?.id) return;
+
     try {
-      setLoadingUsers(true);
+      setIsLoading(true);
+      console.log('🔍 Cargando datos para admin:', user.id);
+
+      // 1. Obtener la institución que administra este usuario
+      const institutionResult = await InstitutionService.getInstitutionByAdmin(user.id);
       
-      // Obtener headers de autenticación
-      const headers = await getAuthHeaders();
-      
-      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-user-data', {
-        method: 'GET',
-        headers,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error al obtener los datos de usuarios: ${response.status} ${response.statusText}`);
+      if (!institutionResult.success || !institutionResult.data) {
+        console.error('❌ No se encontró institución para este admin:', institutionResult.error);
+        return;
       }
-      
-      const result = await response.json();
-      
-      // Verificar que la respuesta sea exitosa
-      if (result.success) {
-        // Usar el campo count si está disponible, o contar el array data
-        const count = result.count || (Array.isArray(result.data) ? result.data.length : 0);
-        setUserCount(count);
-      } else {
-        console.error('Error en la respuesta del endpoint:', result);
-        setUserCount(0);
+
+      console.log('🏛️ Institución encontrada:', institutionResult.data);
+      setInstitution(institutionResult.data);
+
+      const institutionId = institutionResult.data.id_institucion;
+      console.log('🆔 ID de institución obtenido:', institutionId, typeof institutionId);
+
+      // 2. Cargar datos en paralelo incluyendo rutas activas
+      const [statsResult, usersResult, driversResult, requestsResult, vehiclesResult, routesResult] = await Promise.all([
+        InstitutionService.getInstitutionStats(institutionId),
+        InstitutionService.getUsersByInstitution(institutionId),
+        InstitutionService.getDriversByInstitution(institutionId),
+        InstitutionService.getPendingRequestsByInstitution(institutionId),
+        InstitutionService.getVehiclesByInstitution(institutionId),
+        InstitutionService.getActiveRoutesByInstitution(institutionId)
+      ]);
+
+      // Cargar solicitudes de registro
+      await loadRegistrationRequests(institutionId);
+
+      // 3. Actualizar estado con los datos obtenidos
+      if (statsResult.success) {
+        console.log('📊 Estadísticas cargadas:', statsResult.data);
+        
+        setStats({
+          totalStudents: statsResult.data.total_users || 0,
+          totalVehicles: statsResult.data.total_vehicles || 0,
+          activeDrivers: statsResult.data.total_drivers || 0,
+          activeRoutes: routesResult.success ? routesResult.data?.length || 0 : 0,
+          pendingRequests: statsResult.data.pending_requests || 0,
+          students: statsResult.data.students || 0,
+          teachers: statsResult.data.teachers || 0,
+          others: statsResult.data.others || 0
+        });
       }
+
+      if (usersResult.success) {
+        console.log('👥 Usuarios cargados:', usersResult.data?.length || 0);
+        setUsers(usersResult.data || []);
+      }
+
+      if (driversResult.success) {
+        console.log('🚗 Conductores cargados:', driversResult.data?.length || 0);
+        setDrivers(driversResult.data || []);
+      }
+
+      if (requestsResult.success) {
+        console.log('📋 Solicitudes cargadas:', requestsResult.data?.length || 0);
+        setRequests(requestsResult.data || []);
+      }
+
+      if (vehiclesResult.success) {
+        console.log('🚙 Vehículos cargados:', vehiclesResult.data?.length || 0);
+        setVehicles(vehiclesResult.data || []);
+      }
+
+      if (routesResult.success) {
+        console.log('🛣️ Rutas activas cargadas:', routesResult.data?.length || 0);
+        setActiveRoutes(routesResult.data || []);
+      }
+
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      // Mantener un valor por defecto en caso de error
-      setUserCount(1500);
+      console.error('❌ Error cargando datos de institución:', error);
     } finally {
-      setLoadingUsers(false);
+      setIsLoading(false);
     }
   };
 
   // Cargar datos al montar el componente
   useEffect(() => {
-    fetchUserCount();
-  }, []);
+    loadInstitutionData();
+  }, [user?.id]);
 
-  const drivers = [
+  // Actualizar el conteo de solicitudes pendientes cuando cambien las solicitudes de registro
+  useEffect(() => {
+    setStats(prev => ({
+      ...prev,
+      pendingRequests: registrationRequests.length
+    }));
+  }, [registrationRequests]);
+
+  // Datos de ejemplo temporales (mantener solo para development)
+  const exampleDrivers = [
     {
       id: 1,
       name: 'Juan Carlos Pérez',
@@ -153,7 +248,7 @@ const Dashboard = () => {
     }
   ];
 
-  const requests = [
+  const exampleRequests = [
     {
       id: 1,
       type: 'driver',
@@ -190,30 +285,6 @@ const Dashboard = () => {
     }
   ];
 
-  const activeRoutes = [
-    {
-      id: 1,
-      name: 'Ruta 1 - Universidad',
-      driver: 'Juan Carlos Pérez',
-      vehicle: 'Toyota Hiace - ABC123',
-      passengers: 15,
-      capacity: 20,
-      status: 'active',
-      estimatedTime: '25 min'
-    },
-    {
-      id: 2,
-      name: 'Ruta 2 - Centro',
-      driver: 'María García López',
-      vehicle: 'Mercedes Sprinter - XYZ789',
-      passengers: 12,
-      capacity: 16,
-      status: 'active',
-      estimatedTime: '30 min'
-    },
-  ];
-
-  // Datos para reportes
   const mobilityReports = {
     frequencyByUser: [
       { name: 'Laura Hernández', trips: 45, type: 'Estudiante' },
@@ -294,14 +365,90 @@ const Dashboard = () => {
     ]
   };
 
-  const handleApproveRequest = (requestId: number) => {
-    console.log('Aprobar solicitud:', requestId);
-    // Implementar lógica de aprobación
+  const handleApproveRequest = async (registrationId: number) => {
+    try {
+      console.log('✅ Aprobando solicitud de registro:', registrationId);
+      
+      const { error } = await supabase
+        .from('registro')
+        .update({ validacion: 'validado' })
+        .eq('id_usuario', registrationId); // Usar id_usuario como identificador
+
+      if (error) {
+        console.error('Error aprobando solicitud:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudo aprobar la solicitud. Inténtalo de nuevo.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Recargar las solicitudes para actualizar la lista
+      if (institution?.id_institucion) {
+        await loadRegistrationRequests(institution.id_institucion);
+      }
+      
+      console.log('✅ Solicitud aprobada exitosamente');
+      toast({
+        title: 'Solicitud aprobada',
+        description: 'La solicitud de registro se ha aprobado exitosamente.',
+      });
+    } catch (error) {
+      console.error('Error inesperado aprobando solicitud:', error);
+    }
   };
 
-  const handleRejectRequest = (requestId: number) => {
-    console.log('Rechazar solicitud:', requestId);
-    // Implementar lógica de rechazo
+  const handleRejectRequest = async (registrationId: number) => {
+    try {
+      console.log('❌ Rechazando solicitud de registro:', registrationId);
+      
+      const { error } = await supabase
+        .from('registro')
+        .update({ validacion: 'denegado' })
+        .eq('id_usuario', registrationId); // Usar id_usuario como identificador
+
+      if (error) {
+        console.error('Error rechazando solicitud:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudo rechazar la solicitud. Inténtalo de nuevo.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Recargar las solicitudes para actualizar la lista
+      if (institution?.id_institucion) {
+        await loadRegistrationRequests(institution.id_institucion);
+      }
+      
+      console.log('❌ Solicitud rechazada exitosamente');
+      toast({
+        title: 'Solicitud rechazada',
+        description: 'La solicitud de registro se ha rechazado exitosamente.',
+      });
+    } catch (error) {
+      console.error('Error inesperado rechazando solicitud:', error);
+    }
+  };
+
+  const handleShowRouteMap = (route: any) => {
+    console.log('🗺️ Mostrar mapa de ruta:', route);
+    console.log('📊 Datos de la ruta completa:', JSON.stringify(route, null, 2));
+    if (route.ruta) {
+      console.log('🛣️ Datos específicos de la ruta:', JSON.stringify(route.ruta, null, 2));
+      console.log('📍 Punto partida:', route.ruta.punto_partida);
+      console.log('🏁 Punto llegada:', route.ruta.punto_llegada);
+      console.log('🗺️ Trayecto:', route.ruta.trayecto);
+    }
+    setSelectedRoute(route);
+    setShowRouteMap(true);
+  };
+
+  const handleCloseRouteMap = () => {
+    setShowRouteMap(false);
+    setSelectedRoute(null);
   };
 
   const getRequestTypeLabel = (type: string) => {
@@ -325,6 +472,10 @@ const Dashboard = () => {
               <UserCheck className="w-4 h-4 mr-2" />
               Gestionar Conductores
             </Button>
+            <Button variant="outline" onClick={() => setActiveTab('vehicles')}>
+              <Car className="w-4 h-4 mr-2" />
+              Vehículos ({stats.totalVehicles})
+            </Button>
             <Button variant="outline" onClick={() => setActiveTab('requests')}>
               <UserPlus className="w-4 h-4 mr-2" />
               Solicitudes ({stats.pendingRequests})
@@ -345,16 +496,18 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {loadingUsers ? (
+                {isLoading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
                     Cargando...
                   </div>
                 ) : (
-                  stats.totalStudents.toLocaleString()
+                  stats.totalStudents
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">Registrados</p>
+              <p className="text-xs text-muted-foreground">
+                Total de usuarios registrados en {institution?.nombre_oficial || 'la institución'}
+              </p>
             </CardContent>
           </Card>
           
@@ -365,7 +518,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalVehicles}</div>
-              <p className="text-xs text-muted-foreground">Registrados</p>
+              <p className="text-xs text-muted-foreground">Registrados en la institución</p>
             </CardContent>
           </Card>
 
@@ -376,7 +529,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeDrivers}</div>
-              <p className="text-xs text-muted-foreground">Activos</p>
+              <p className="text-xs text-muted-foreground">Validados como conductores</p>
             </CardContent>
           </Card>
 
@@ -407,6 +560,7 @@ const Dashboard = () => {
           <TabsList>
             <TabsTrigger value="overview">Vista General</TabsTrigger>
             <TabsTrigger value="drivers">Conductores</TabsTrigger>
+            <TabsTrigger value="vehicles">Vehículos</TabsTrigger>
             <TabsTrigger value="requests">Solicitudes</TabsTrigger>
             <TabsTrigger value="routes">Rutas Activas</TabsTrigger>
             <TabsTrigger value="reports">Reportes</TabsTrigger>
@@ -443,56 +597,133 @@ const Dashboard = () => {
           <TabsContent value="drivers" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Lista de Conductores</CardTitle>
+                <CardTitle>Conductores Validados</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {drivers.map((driver) => (
-                    <div key={driver.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarFallback>{driver.avatar}</AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1">
-                          <h4 className="font-semibold">{driver.name}</h4>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Mail className="w-3 h-3 mr-1" />
-                            {driver.email}
-                          </div>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Phone className="w-3 h-3 mr-1" />
-                            {driver.phone}
+                  {drivers.length > 0 ? (
+                    drivers.map((driver) => (
+                      <div key={driver.id_usuario} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <Avatar>
+                            <AvatarFallback>
+                              {driver.usuario?.nombre?.charAt(0)}{driver.usuario?.apellido?.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="space-y-1">
+                            <h4 className="font-semibold">
+                              {driver.usuario?.nombre} {driver.usuario?.apellido}
+                            </h4>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Mail className="w-3 h-3 mr-1" />
+                              {driver.correo_institucional}
+                            </div>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Phone className="w-3 h-3 mr-1" />
+                              {driver.usuario?.celular}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="space-y-1 text-right">
-                        <div className="text-sm font-medium">{driver.vehicle}</div>
-                        {driver.activeRoute ? (
+                        
+                        <div className="space-y-1 text-right">
+                          <div className="text-sm font-medium">
+                            Código: {driver.codigo_institucional}
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                            {driver.activeRoute} - {driver.passengers} pasajeros
+                            Rol: {driver.rol_institucional}
                           </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">Sin ruta asignada</div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Badge variant={driver.status === 'active' ? 'default' : 'secondary'}>
-                            {driver.status === 'active' ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                          <span className="text-sm">⭐ {driver.rating}</span>
+                          <div className="text-sm text-muted-foreground">
+                            Registro: {new Date(driver.fecha_registro).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default" className="bg-green-600">
+                              <Shield className="w-3 h-3 mr-1" />
+                              Conductor Validado
+                            </Badge>
+                            <Badge variant={driver.validacion === 'validado' ? 'default' : 'secondary'}>
+                              {driver.validacion === 'validado' ? 'Usuario Validado' : 'Usuario Pendiente'}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Editar
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Editar
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay conductores validados en esta institución
                     </div>
-                  ))}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="vehicles" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Vehículos de la Institución</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {vehicles.length > 0 ? (
+                    vehicles.map((vehicle) => (
+                      <div key={vehicle.placa} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Car className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-semibold">Placa: {vehicle.placa}</h4>
+                            <div className="text-sm text-muted-foreground">
+                              Propietario: {vehicle.usuario?.nombre} {vehicle.usuario?.apellido}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Modelo: {vehicle.modelo} | Color: {vehicle.color}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1 text-right">
+                          <div className="text-sm font-medium">
+                            SOAT: {new Date(vehicle.vigencia_soat).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Tecnicomecanica: {new Date(vehicle.fecha_tecnicomecanica).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              vehicle.validacion === 'validado' ? 'default' : 
+                              vehicle.validacion === 'pendiente' ? 'secondary' : 'destructive'
+                            }>
+                              {vehicle.validacion === 'validado' ? 'Validado' : 
+                               vehicle.validacion === 'pendiente' ? 'Pendiente' : 'Denegado'}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Editar
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay vehículos registrados en esta institución
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -573,65 +804,48 @@ const Dashboard = () => {
             {/* Solicitudes de Usuarios (Estudiantes, Profesores, etc.) */}
             <Card>
               <CardHeader>
-                <CardTitle>Solicitudes de Usuarios</CardTitle>
+                <CardTitle>Solicitudes de Registro de Usuarios</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {requests.filter(request => request.type !== 'driver').length > 0 ? (
-                    requests.filter(request => request.type !== 'driver').map((request) => (
-                      <div key={request.id} className="p-4 border rounded-lg">
+                  {registrationRequests.length > 0 ? (
+                    registrationRequests.map((request) => (
+                      <div key={request.id_usuario} className="p-4 border rounded-lg">
                         <div className="flex justify-between items-start mb-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <h4 className="font-semibold">{request.name}</h4>
-                              <Badge variant="outline">{getRequestTypeLabel(request.type)}</Badge>
+                              <h4 className="font-semibold">
+                                {request.usuario?.nombre} {request.usuario?.apellido}
+                              </h4>
+                              <Badge variant="outline">{request.rol_institucional}</Badge>
                             </div>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Mail className="w-3 h-3 mr-1" />
-                              {request.email}
+                              {request.correo_institucional}
                             </div>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Phone className="w-3 h-3 mr-1" />
-                              {request.phone}
+                              {request.usuario?.celular || 'No especificado'}
                             </div>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Solicitado: {request.requestDate}
+                            Solicitado: {new Date(request.fecha_registro).toLocaleDateString()}
                           </div>
                         </div>
 
-                        {/* Información específica por tipo de usuario */}
+                        {/* Información específica del usuario */}
                         <div className="mb-3 p-3 bg-gray-50 rounded">
-                          {request.type === 'student' && (
-                            <div className="space-y-1 text-sm">
-                              <div><strong>Programa:</strong> {request.program}</div>
-                              <div><strong>Semestre:</strong> {request.semester}</div>
-                              <div><strong>ID Estudiante:</strong> {request.studentId}</div>
-                            </div>
-                          )}
-                          {request.type === 'teacher' && (
-                            <div className="space-y-1 text-sm">
-                              <div><strong>Departamento:</strong> {request.department}</div>
-                              <div><strong>Cargo:</strong> {request.position}</div>
-                            </div>
-                          )}
-                          {request.type === 'admin' && (
-                            <div className="space-y-1 text-sm">
-                              <div><strong>Departamento:</strong> {request.department}</div>
-                              <div><strong>Cargo:</strong> {request.position}</div>
-                            </div>
-                          )}
-                          {request.type === 'external' && (
-                            <div className="space-y-1 text-sm">
-                              <div><strong>Tipo:</strong> Usuario externo</div>
-                            </div>
-                          )}
+                          <div className="space-y-1 text-sm">
+                            <div><strong>Código Institucional:</strong> {request.codigo_institucional}</div>
+                            <div><strong>Dirección:</strong> {request.direccion_de_residencia}</div>
+                            <div><strong>Rol Solicitado:</strong> {request.rol_institucional}</div>
+                          </div>
                         </div>
 
                         <div className="flex gap-2">
                           <Button 
                             size="sm" 
-                            onClick={() => handleApproveRequest(request.id)}
+                            onClick={() => handleApproveRequest(request.id_usuario)}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
@@ -640,7 +854,7 @@ const Dashboard = () => {
                           <Button 
                             variant="destructive" 
                             size="sm" 
-                            onClick={() => handleRejectRequest(request.id)}
+                            onClick={() => handleRejectRequest(request.id_usuario)}
                           >
                             <XCircle className="w-4 h-4 mr-1" />
                             Rechazar
@@ -654,7 +868,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      No hay solicitudes de usuarios pendientes
+                      No hay solicitudes de registro pendientes
                     </div>
                   )}
                 </div>
@@ -663,38 +877,67 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="routes" className="space-y-4">
-            {activeRoutes.map((route) => (
-              <Card key={route.id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                      <h3 className="font-semibold">{route.name}</h3>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <UserCheck className="w-4 h-4 mr-1" />
-                        {route.driver}
-                      </div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Car className="w-4 h-4 mr-1" />
-                        {route.vehicle}
-                      </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Rutas Activas de la Institución</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {activeRoutes.length > 0 ? (
+                    activeRoutes.map((route, index) => (
+                      <Card key={`${route.id_ruta}-${index}`}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <h3 className="font-semibold">Ruta ID: {route.id_ruta}</h3>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <UserCheck className="w-4 h-4 mr-1" />
+                                {route.conductor?.nombre} {route.conductor?.apellido}
+                              </div>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Car className="w-4 h-4 mr-1" />
+                                {route.vehiculo?.placa} - {route.vehiculo?.color} {route.vehiculo?.modelo}
+                              </div>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Phone className="w-4 h-4 mr-1" />
+                                {route.conductor?.celular}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-4">
+                              <div className="text-right">
+                                <div className="flex items-center text-sm">
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  Distancia: {route.ruta?.longitud ? `${(route.ruta.longitud / 1000).toFixed(2)} km` : 'N/A'}
+                                </div>
+                                <div className="flex items-center text-sm text-muted-foreground">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  {route.fecha} | {route.hora_salida} - {route.hora_llegada}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleShowRouteMap(route)}
+                                >
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  Ver Mapa
+                                </Button>
+                                <Badge variant="default">Activa</Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No hay rutas activas programadas para conductores de esta institución
                     </div>
-                    <div className="flex items-center gap-4 text-right">
-                      <div className="space-y-1">
-                      <div className="flex items-center text-sm">
-                        <Users className="w-4 h-4 mr-1" />
-                          {route.passengers}/{route.capacity} pasajeros
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {route.estimatedTime}
-                        </div>
-                      </div>
-                      <Badge variant="default">Activa</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6">
@@ -947,6 +1190,109 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal del mapa de ruta */}
+      <Dialog open={showRouteMap} onOpenChange={handleCloseRouteMap}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Mapa de Ruta {selectedRoute?.id_ruta ? `#${selectedRoute.id_ruta}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedRoute && (
+            <div className="space-y-4">
+              {/* Información de la ruta */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-gray-700">Información del Conductor</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center text-sm">
+                      <UserCheck className="w-4 h-4 mr-2 text-blue-600" />
+                      {selectedRoute.conductor?.nombre} {selectedRoute.conductor?.apellido}
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Phone className="w-4 h-4 mr-2" />
+                      {selectedRoute.conductor?.celular}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-gray-700">Información del Viaje</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center text-sm">
+                      <Car className="w-4 h-4 mr-2 text-green-600" />
+                      {selectedRoute.vehiculo?.placa} - {selectedRoute.vehiculo?.color} {selectedRoute.vehiculo?.modelo}
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4 mr-2" />
+                      {selectedRoute.fecha} | {selectedRoute.hora_salida} - {selectedRoute.hora_llegada}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mapa */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-gray-700">Visualización de la Ruta</h4>
+                <div className="h-[400px] w-full rounded-lg overflow-hidden border">
+                  {selectedRoute.ruta ? (
+                    <RouteMap
+                      origin={
+                        selectedRoute.ruta.punto_partida
+                          ? {
+                              lat: selectedRoute.ruta.punto_partida.y || selectedRoute.ruta.punto_partida.lat,
+                              lng: selectedRoute.ruta.punto_partida.x || selectedRoute.ruta.punto_partida.lng,
+                              address: 'Punto de partida'
+                            }
+                          : null
+                      }
+                      destination={
+                        selectedRoute.ruta.punto_llegada
+                          ? {
+                              lat: selectedRoute.ruta.punto_llegada.y || selectedRoute.ruta.punto_llegada.lat,
+                              lng: selectedRoute.ruta.punto_llegada.x || selectedRoute.ruta.punto_llegada.lng,
+                              address: 'Punto de llegada'
+                            }
+                          : null
+                      }
+                      route={
+                        selectedRoute.ruta.trayecto && Array.isArray(selectedRoute.ruta.trayecto)
+                          ? selectedRoute.ruta.trayecto.map((point: any) => [
+                              point.y || point.lat,
+                              point.x || point.lng
+                            ])
+                          : null
+                      }
+                      allowClickToSetPoints={false}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full bg-gray-100">
+                      <div className="text-center">
+                        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-500">No hay información de trayecto disponible</p>
+                        <p className="text-sm text-gray-400">
+                          Distancia: {selectedRoute.ruta?.longitud ? `${(selectedRoute.ruta.longitud / 1000).toFixed(2)} km` : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Información adicional */}
+              <div className="flex justify-between items-center pt-2 border-t">
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">Distancia estimada:</span> {selectedRoute.ruta?.longitud ? `${(selectedRoute.ruta.longitud / 1000).toFixed(2)} km` : 'No disponible'}
+                </div>
+                <Badge variant="default">Ruta Activa</Badge>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </InstitutionalLayout>
   );
 };

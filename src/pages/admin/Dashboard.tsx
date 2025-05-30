@@ -99,6 +99,31 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Botón para gestionar solicitudes de usuarios */}
+        <Card className="border-2 border-green-500/20">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <Users className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Gestionar Solicitudes de Usuarios
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Aprueba o rechaza las solicitudes de usuarios para unirse a instituciones
+              </p>
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/admin/registration-requests')}
+                className="w-full sm:w-auto px-8 py-3 bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Ver Solicitudes de Registro
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
