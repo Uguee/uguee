@@ -95,6 +95,7 @@ export class UserService {
       institutionalEmail: userData.institutionalEmail || userData.correo_institucional || '',
       institutionalCode: userData.institutionalCode || userData.codigo_institucional || '',
       avatarUrl: userData.avatarUrl || userData.foto || '',
+      id_usuario: userData.id_usuario,
     };
   }
 

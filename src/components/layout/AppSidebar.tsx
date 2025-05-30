@@ -70,9 +70,9 @@ const driverItems = [
     icon: Plus,
   },
   {
-    title: "Mapa conductor",
-    url: "/driver/map",
-    icon: Map,
+    title: "Historial de viajes",
+    url: "/driver/historial-viajes",
+    icon: History,
   },
 ]
 

@@ -9,6 +9,7 @@ import { useRouteManager } from '../../hooks/useRouteManager';
 import { useViajeManager } from '../../hooks/useViajeManager';
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { supabase } from '../../integrations/supabase/client';
 
 interface RoutePoint {
   lat: number;
@@ -19,6 +20,17 @@ interface RoutePoint {
 interface RutaExistente {
   id_ruta: number;
   longitud: number;
+  punto_partida?: any;
+  punto_llegada?: any;
+  trayecto?: any;
+}
+
+interface RutaDetalle {
+  id_ruta: number;
+  longitud: number;
+  origen_coords: { x: number; y: number };
+  destino_coords: { x: number; y: number };
+  trayecto_coords: Array<{ x: number; y: number }>;
 }
 
 const CreateTrip = () => {
@@ -33,6 +45,7 @@ const CreateTrip = () => {
   const [modoCreacion, setModoCreacion] = useState<'seleccionar' | 'nueva'>('seleccionar');
   const [rutaSeleccionada, setRutaSeleccionada] = useState<number | null>(null);
   const [rutasDisponibles, setRutasDisponibles] = useState<RutaExistente[]>([]);
+  const [rutaSeleccionadaDetalle, setRutaSeleccionadaDetalle] = useState<any>(null);
   
   // Datos del viaje
   const [fecha, setFecha] = useState('');
@@ -57,6 +70,37 @@ const CreateTrip = () => {
     };
     cargarRutas();
   }, []);
+
+  // Cargar detalles de la ruta seleccionada
+  useEffect(() => {
+    const cargarDetalleRuta = async () => {
+      if (!rutaSeleccionada || modoCreacion !== 'seleccionar') {
+        setRutaSeleccionadaDetalle(null);
+        return;
+      }
+
+      try {
+        // Llamar a función RPC que convierte la geometría PostGIS a formato usable
+        const { data, error } = await supabase.rpc('obtener_ruta_con_coordenadas', {
+          p_id_ruta: rutaSeleccionada
+        }) as { data: RutaDetalle[] | null, error: any };
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setRutaSeleccionadaDetalle(data[0]);
+        }
+      } catch (error) {
+        console.error('Error cargando detalle de ruta:', error);
+        toast({
+          title: "❌ Error",
+          description: "No se pudo cargar el detalle de la ruta",
+          variant: "destructive",
+        });
+      }
+    };
+
+    cargarDetalleRuta();
+  }, [rutaSeleccionada, modoCreacion]);
 
   const handleRouteGenerated = (
     origin: RoutePoint, 
@@ -209,26 +253,29 @@ const CreateTrip = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-text flex items-center gap-2">
-            <Car className="w-8 h-8" />
+      <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b bg-white">
+          <h1 className="text-2xl font-bold text-text flex items-center gap-2">
+            <Car className="w-7 h-7" />
             Crear Viaje
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 text-sm mt-1">
             Programa un nuevo viaje seleccionando una ruta existente o creando una nueva
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main content */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[400px_1fr] overflow-hidden">
           {/* Panel de configuración del viaje */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="bg-gray-50 p-6 overflow-y-auto border-r">
+            <div className="space-y-4">
             {/* Selección de modo */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h2 className="text-xl font-semibold mb-4">Modo de Creación</h2>
-              <div className="space-y-3">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold mb-3">Modo de Creación</h2>
+                <div className="space-y-2">
                 <div>
-                  <label className="flex items-center space-x-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
                       name="modo"
@@ -241,7 +288,7 @@ const CreateTrip = () => {
                   </label>
                 </div>
                 <div>
-                  <label className="flex items-center space-x-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="radio"
                       name="modo"
@@ -258,8 +305,8 @@ const CreateTrip = () => {
 
             {/* Selección de ruta existente */}
             {modoCreacion === 'seleccionar' && (
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold mb-4">Ruta Existente</h2>
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <h2 className="text-lg font-semibold mb-3">Ruta Existente</h2>
                 <Select 
                   value={rutaSeleccionada?.toString() || ''} 
                   onValueChange={(value) => setRutaSeleccionada(Number(value))}
@@ -280,8 +327,8 @@ const CreateTrip = () => {
 
             {/* Información de nueva ruta */}
             {modoCreacion === 'nueva' && (
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold mb-4">Nueva Ruta</h2>
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <h2 className="text-lg font-semibold mb-3">Nueva Ruta</h2>
                 {currentRoute ? (
                   <div className="space-y-2 text-sm">
                     <p><strong>Origen:</strong> {currentRoute.origin.label}</p>
@@ -297,9 +344,9 @@ const CreateTrip = () => {
             )}
 
             {/* Detalles del viaje */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h2 className="text-xl font-semibold mb-4">Detalles del Viaje</h2>
-              <div className="space-y-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <h2 className="text-lg font-semibold mb-3">Detalles del Viaje</h2>
+                <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fecha
@@ -309,6 +356,7 @@ const CreateTrip = () => {
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
+                      className="w-full"
                   />
                 </div>
 
@@ -320,6 +368,7 @@ const CreateTrip = () => {
                     type="time"
                     value={horaSalida}
                     onChange={(e) => setHoraSalida(e.target.value)}
+                      className="w-full"
                   />
                 </div>
 
@@ -331,6 +380,7 @@ const CreateTrip = () => {
                     type="time"
                     value={horaLlegada}
                     onChange={(e) => setHoraLlegada(e.target.value)}
+                      className="w-full"
                   />
                 </div>
 
@@ -343,13 +393,13 @@ const CreateTrip = () => {
                     value={vehiculo}
                     onChange={(e) => setVehiculo(e.target.value)}
                     placeholder="Ingresa el ID del vehículo"
+                      className="w-full"
                   />
                 </div>
               </div>
             </div>
 
             {/* Botón de crear viaje */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
               <Button 
                 onClick={handleCrearViaje}
                 disabled={isLoading}
@@ -370,14 +420,14 @@ const CreateTrip = () => {
             </div>
           </div>
 
-          {/* Mapa */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden h-[800px]">
-              <DriverRouteMap 
-                onRouteGenerated={handleRouteGenerated}
-                key={modoCreacion} // Force re-render when mode changes
-              />
-            </div>
+          {/* Mapa - ocupa todo el espacio restante */}
+          <div className="relative h-full">
+            <DriverRouteMap 
+              onRouteGenerated={handleRouteGenerated}
+              existingRoute={rutaSeleccionadaDetalle}
+              mode={modoCreacion}
+              key={`${modoCreacion}-${rutaSeleccionada}`}
+            />
           </div>
         </div>
       </div>

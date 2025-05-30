@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
+import React, { useState, useCallback, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -28,28 +28,85 @@ interface RoutePoint {
 interface DriverRouteMapProps {
   className?: string;
   onRouteGenerated?: (origin: RoutePoint, destination: RoutePoint, route: [number, number][]) => void;
+  existingRoute?: any; // Ruta existente de la base de datos
+  mode?: 'seleccionar' | 'nueva'; // Modo de operación
 }
 
 // Componente para manejar los clics en el mapa
 const MapClickHandler: React.FC<{
   onMapClick: (lat: number, lng: number) => void;
-}> = ({ onMapClick }) => {
+  enabled: boolean;
+}> = ({ onMapClick, enabled }) => {
   useMapEvents({
     click: (e) => {
+      if (enabled) {
       onMapClick(e.latlng.lat, e.latlng.lng);
+      }
     },
   });
   return null;
 };
 
+// Componente para ajustar el mapa a los límites de la ruta
+const FitBounds: React.FC<{ bounds: L.LatLngBounds }> = ({ bounds }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }, [map, bounds]);
+  return null;
+};
+
 const DriverRouteMap: React.FC<DriverRouteMapProps> = ({ 
   className = "", 
-  onRouteGenerated 
+  onRouteGenerated,
+  existingRoute,
+  mode = 'nueva'
 }) => {
   const [origin, setOrigin] = useState<RoutePoint | null>(null);
   const [destination, setDestination] = useState<RoutePoint | null>(null);
   const [route, setRoute] = useState<[number, number][] | null>(null);
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
+  const [routeBounds, setRouteBounds] = useState<L.LatLngBounds | null>(null);
+
+  // Efecto para manejar la ruta existente
+  useEffect(() => {
+    if (existingRoute && mode === 'seleccionar') {
+      console.log('Cargando ruta existente:', existingRoute);
+      
+      // Parsear los datos de la ruta existente
+      if (existingRoute.origen_coords && existingRoute.destino_coords) {
+        setOrigin({
+          lat: existingRoute.origen_coords.y,
+          lng: existingRoute.origen_coords.x,
+          label: 'Origen'
+        });
+        
+        setDestination({
+          lat: existingRoute.destino_coords.y,
+          lng: existingRoute.destino_coords.x,
+          label: 'Destino'
+        });
+      }
+      
+      // Parsear el trayecto
+      if (existingRoute.trayecto_coords) {
+        const routeCoords: [number, number][] = existingRoute.trayecto_coords.map((coord: any) => 
+          [coord.y, coord.x]
+        );
+        setRoute(routeCoords);
+        
+        // Calcular límites para ajustar el mapa
+        const bounds = L.latLngBounds(routeCoords);
+        setRouteBounds(bounds);
+      }
+    } else if (mode === 'nueva') {
+      // Limpiar cuando se cambia a modo nueva
+      setOrigin(null);
+      setDestination(null);
+      setRoute(null);
+      setRouteBounds(null);
+    }
+  }, [existingRoute, mode]);
 
   // Función para manejar clics en el mapa
   const handleMapClick = useCallback(async (lat: number, lng: number) => {
@@ -141,14 +198,19 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
     <div className="relative w-full h-full">
       {/* Instrucciones */}
       <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
-        <h3 className="font-medium text-sm mb-2">📍 Crear Ruta</h3>
-        {!origin && (
+        <h3 className="font-medium text-sm mb-2">
+          {mode === 'seleccionar' ? '📍 Ruta Existente' : '📍 Crear Ruta'}
+        </h3>
+        {mode === 'seleccionar' && existingRoute && (
+          <p className="text-xs text-green-600">✅ Mostrando ruta #{existingRoute.id_ruta}</p>
+        )}
+        {mode === 'nueva' && !origin && (
           <p className="text-xs text-gray-600">1. Haz clic para seleccionar el origen</p>
         )}
-        {origin && !destination && (
+        {mode === 'nueva' && origin && !destination && (
           <p className="text-xs text-gray-600">2. Haz clic para seleccionar el destino</p>
         )}
-        {origin && destination && !isGeneratingRoute && (
+        {mode === 'nueva' && origin && destination && !isGeneratingRoute && (
           <p className="text-xs text-green-600">✅ Ruta generada. Clic para reiniciar</p>
         )}
         {isGeneratingRoute && (
@@ -167,8 +229,11 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         
-        {/* Componente para manejar clics */}
-        <MapClickHandler onMapClick={handleMapClick} />
+        {/* Ajustar el mapa a los límites de la ruta si existe */}
+        {routeBounds && <FitBounds bounds={routeBounds} />}
+        
+        {/* Componente para manejar clics solo en modo nueva */}
+        <MapClickHandler onMapClick={handleMapClick} enabled={mode === 'nueva'} />
         
         {/* Marcador de origen */}
         {origin && (
@@ -196,7 +261,7 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
         {route && (
           <Polyline 
             positions={route} 
-            color="blue" 
+            color={mode === 'seleccionar' ? '#8B5CF6' : 'blue'} 
             weight={5}
             opacity={0.7}
           />

@@ -25,6 +25,7 @@ export interface User {
   createdAt: string;
   avatarUrl?: string;
   dateOfBirth?: string;
+  id_usuario?: number;
 }
 
 // Driver extends User with additional properties
