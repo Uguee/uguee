@@ -87,6 +87,18 @@ const Navbar = () => {
     setIsViewMenuOpen(false);
   };
 
+  const handleDriverAccess = async () => {
+    if (!user?.id) return false;
+
+    const isConductor = await UserService.isConductor(user.id);
+    
+    if (isConductor) {
+      navigate('/driver/dashboard');
+    } else {
+      navigate('/driver-not-allowed');
+    }
+  };
+
   const isDriverView = location.pathname.startsWith('/driver');
   const isInstitutionalAdmin = user?.role === 'admin_institucional';
 

@@ -271,11 +271,12 @@ export class UserService {
     hasRegistration: boolean;
     status?: string;
     institutionalRole?: string;
+    validacion_conductor?: string;
   }> {
     try {
       const { data, error } = await supabase
         .from('registro')
-        .select('validacion, rol_institucional')
+        .select('validacion, rol_institucional, validacion_conductor')
         .eq('id_usuario', userId)
         .limit(1);
 
@@ -288,7 +289,8 @@ export class UserService {
         return {
           hasRegistration: true,
           status: data[0].validacion,
-          institutionalRole: data[0].rol_institucional
+          institutionalRole: data[0].rol_institucional,
+          validacion_conductor: data[0].validacion_conductor
         };
       }
 
@@ -308,6 +310,7 @@ export class UserService {
     institutionStatus?: string;
     institutionalRole?: string;
     userId?: number;
+    validacion_conductor?: string;
   }> {
     try {
       // Primero obtener el id_usuario
@@ -333,7 +336,8 @@ export class UserService {
         hasInstitution: institutionInfo.hasRegistration,
         institutionStatus: institutionInfo.status,
         institutionalRole: institutionInfo.institutionalRole,
-        userId
+        userId,
+        validacion_conductor: institutionInfo.validacion_conductor
       };
     } catch (error) {
       console.error('Error getting user registration status:', error);
@@ -341,6 +345,16 @@ export class UserService {
         hasDocuments: false,
         hasInstitution: false
       };
+    }
+  }
+
+  static async isConductor(userId: string): Promise<boolean> {
+    try {
+      const status = await this.getUserRegistrationStatus(userId);
+      return status?.validacion_conductor === 'validado';
+    } catch (error) {
+      console.error('Error verificando estado de conductor:', error);
+      return false;
     }
   }
 } 

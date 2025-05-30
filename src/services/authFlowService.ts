@@ -161,19 +161,26 @@ export class AuthFlowService {
    * Verifica si un usuario tiene acceso a una ruta específica
    */
   static async checkRouteAccess(user: any, allowedRoles?: UserRole[]): Promise<AuthFlowResult> {
-    console.log('🔐 Verificando acceso - Usuario:', user?.role, 'Roles permitidos:', allowedRoles);
-    
-    if (!allowedRoles) {
-      console.log('✅ Sin restricciones de roles');
-      return { shouldRedirect: false };
+    // Si la ruta es para conductores, verificar validacion_conductor
+    if (allowedRoles?.includes('conductor')) {
+      try {
+        const status = await UserService.getUserRegistrationStatus(user.id);
+        if (status?.validacion_conductor === 'validado') {
+          return { shouldRedirect: false };
+        }
+        // Si no está validado como conductor, redirigir
+        return await this.determineUserRedirection(user);
+      } catch (error) {
+        console.error('Error verificando estado de conductor:', error);
+        return await this.determineUserRedirection(user);
+      }
     }
-    
-    if (!user || !allowedRoles.includes(user.role)) {
-      console.log('❌ Rol no permitido, determinando redirección...');
+
+    // Para otros roles, verificación normal
+    if (!user || !allowedRoles?.includes(user.role)) {
       return await this.determineUserRedirection(user);
     }
 
-    console.log('✅ Rol permitido, acceso concedido');
     return { shouldRedirect: false };
   }
 
