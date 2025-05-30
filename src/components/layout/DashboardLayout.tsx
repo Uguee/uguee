@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from './AppSidebar'
 import Navbar from './Navbar';
 
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }

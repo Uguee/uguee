@@ -54,7 +54,7 @@ const passengerItems = [
 // Menu items for driver navigation
 const driverItems = [
   {
-    title: "Dashboard",
+    title: "Inicio",
     url: "/driver/dashboard",
     icon: Home,
   },

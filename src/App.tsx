@@ -16,7 +16,7 @@ import StartTrip from "./pages/passengers/StartTrip";
 import RouteDetail from "./pages/passengers/RouteDetail";
 import MyTrips from "./pages/passengers/MyTrips";
 import FavoriteRoutes from "./pages/passengers/FavoriteRoutes";
-import DriverDashboard from "./pages/drivers/Dashboard";
+import DriverDashboard from "./pages/drivers/index";
 import InstitutionDashboard from "./pages/institution/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import MapViewDriver from "./pages/drivers/MapView";
