@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
-import RouteMap from '../../components/RouteMap';
+import { RouteMap } from '../../components/map/RouteMap';
 import { useRouteDetail } from '../../hooks/useRouteDetail';
 import { useToast } from '@/hooks/use-toast';
 
@@ -246,7 +245,12 @@ const RouteDetail = () => {
               {/* Map */}
               <div className="mb-6">
                 <h3 className="font-medium text-text mb-2">Mapa de ruta</h3>
-                <RouteMap route={route} className="h-64 lg:h-80 w-full" />
+                <RouteMap 
+                  origin={route.origin}
+                  destination={route.destination}
+                  route={route.coordinates}
+                  allowClickToSetPoints={false}
+                />
               </div>
             </div>
           </div>

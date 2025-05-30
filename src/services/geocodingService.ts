@@ -4,6 +4,7 @@ export interface Location {
   lat: number;
   lng: number;
   address: string;
+  city?: string;
 }
 
 export interface Route {
@@ -13,18 +14,20 @@ export interface Route {
 }
 
 export class GeocodingService {
-  static async searchAddress(query: string): Promise<Location[]> {
+  static async searchAddress(query: string, currentLocation?: Location): Promise<Location[]> {
     try {
-      const { data, error } = await supabase.rpc('search_addresses', {
-        search_query: query
-      });
-
-      if (error) throw error;
-
+      // Use OpenStreetMap Nominatim API for address search
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      );
+      
+      const data = await response.json();
+      
       return data.map((item: any) => ({
-        lat: item.lat,
-        lng: item.lng,
-        address: item.address
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        address: item.display_name,
+        city: item.address?.city || item.address?.town || item.address?.village
       }));
     } catch (error) {
       console.error('Error searching addresses:', error);
@@ -34,20 +37,26 @@ export class GeocodingService {
 
   static async getRoute(origin: Location, destination: Location): Promise<Route | null> {
     try {
-      const { data, error } = await supabase.rpc('calculate_route', {
-        origin_lat: origin.lat,
-        origin_lng: origin.lng,
-        dest_lat: destination.lat,
-        dest_lng: destination.lng
-      });
-
-      if (error) throw error;
-
-      return {
-        coordinates: data.coordinates,
-        distance: data.distance,
-        duration: data.duration
-      };
+      // Use OSRM API for route calculation
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`
+      );
+      
+      const data = await response.json();
+      
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        // Convert coordinates from [lng, lat] to [lat, lng] for consistency
+        const coordinates: [number, number][] = route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+        
+        return {
+          coordinates,
+          distance: route.distance, // in meters
+          duration: route.duration // in seconds
+        };
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error calculating route:', error);
       return null;

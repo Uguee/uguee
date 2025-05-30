@@ -23,6 +23,7 @@ const StartTrip = () => {
   const [originLocation, setOriginLocation] = useState<Location | null>(null);
   const [destinationLocation, setDestinationLocation] = useState<Location | null>(null);
   const [route, setRoute] = useState<[number, number][] | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [originSuggestions, setOriginSuggestions] = useState<Location[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<Location[]>([]);
   const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
@@ -40,40 +41,74 @@ const StartTrip = () => {
   // Debounced search functions
   const debouncedOriginSearch = useRef(
     debounce(async (query: string) => {
+      console.log('Searching origin with query:', query);
       if (query.length < 3) {
         setOriginSuggestions([]);
         return;
       }
-      const suggestions = await GeocodingService.searchAddress(query);
-      setOriginSuggestions(suggestions);
+      try {
+        const suggestions = await GeocodingService.searchAddress(query, currentLocation);
+        console.log('Origin suggestions received:', suggestions);
+        setOriginSuggestions(suggestions);
+      } catch (error) {
+        console.error('Error searching origin:', error);
+      }
     }, 300)
   ).current;
 
   const debouncedDestinationSearch = useRef(
     debounce(async (query: string) => {
+      console.log('Searching destination with query:', query);
       if (query.length < 3) {
         setDestinationSuggestions([]);
         return;
       }
-      const suggestions = await GeocodingService.searchAddress(query);
-      setDestinationSuggestions(suggestions);
+      try {
+        const suggestions = await GeocodingService.searchAddress(query, currentLocation);
+        console.log('Destination suggestions received:', suggestions);
+        setDestinationSuggestions(suggestions);
+      } catch (error) {
+        console.error('Error searching destination:', error);
+      }
     }, 300)
   ).current;
+
+  // Handle current location change
+  const handleCurrentLocationChange = (location: Location) => {
+    setCurrentLocation(location);
+    // Optionally set origin to current location
+    if (!originLocation) {
+      setOrigin(location.address);
+      setOriginLocation(location);
+    }
+  };
 
   // Handle origin input change
   const handleOriginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    console.log('Origin input changed:', value);
     setOrigin(value);
-    debouncedOriginSearch(value);
     setShowOriginSuggestions(true);
+    
+    if (value.length >= 3) {
+      debouncedOriginSearch(value);
+    } else {
+      setOriginSuggestions([]);
+    }
   };
 
   // Handle destination input change
   const handleDestinationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    console.log('Destination input changed:', value);
     setDestination(value);
-    debouncedDestinationSearch(value);
     setShowDestinationSuggestions(true);
+    
+    if (value.length >= 3) {
+      debouncedDestinationSearch(value);
+    } else {
+      setDestinationSuggestions([]);
+    }
   };
 
   // Handle suggestion selection
@@ -82,14 +117,50 @@ const StartTrip = () => {
     setOriginLocation(location);
     setOriginSuggestions([]);
     setShowOriginSuggestions(false);
-  };
+    
+    // If we have both origin and destination, generate the route
+    if (destinationLocation) {
+      generateRoute(location, destinationLocation);
+    }
+  };  
 
   const handleDestinationSelect = (location: Location) => {
     setDestination(location.address);
     setDestinationLocation(location);
     setDestinationSuggestions([]);
     setShowDestinationSuggestions(false);
+    
+    // If we have both origin and destination, generate the route
+    if (originLocation) {
+      generateRoute(originLocation, location);
+    }
   };
+
+  // Generate route between two points
+  const generateRoute = async (start: Location, end: Location) => {
+    try {
+      const routeData = await GeocodingService.getRoute(start, end);
+      if (routeData) {
+        setRoute(routeData.coordinates);
+      }
+    } catch (error) {
+      console.error('Error generating route:', error);
+    }
+  };
+
+  // Handle clicking outside suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.suggestions-container')) {
+        setShowOriginSuggestions(false);
+        setShowDestinationSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +201,7 @@ const StartTrip = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="relative">
+              <div className="relative suggestions-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Origen
                 </label>
@@ -138,25 +209,32 @@ const StartTrip = () => {
                   type="text"
                   value={origin}
                   onChange={handleOriginChange}
+                  onFocus={(e) => {
+                    e.target.select();
+                    if (origin.length >= 3) setShowOriginSuggestions(true);
+                  }}
                   placeholder="Ingresa tu ubicación de origen"
                   className="w-full"
                 />
                 {showOriginSuggestions && originSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
+                  <div className="fixed z-[9999] w-[calc(100%-2rem)] max-w-[calc(50%-1.5rem)] mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-y-auto border border-gray-200">
                     {originSuggestions.map((suggestion, index) => (
                       <div
                         key={index}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
                         onClick={() => handleOriginSelect(suggestion)}
                       >
-                        {suggestion.address}
+                        <div className="font-medium text-gray-900">{suggestion.address}</div>
+                        {suggestion.city && (
+                          <div className="text-sm text-gray-500">{suggestion.city}</div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="relative">
+              <div className="relative suggestions-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Destino
                 </label>
@@ -164,18 +242,25 @@ const StartTrip = () => {
                   type="text"
                   value={destination}
                   onChange={handleDestinationChange}
+                  onFocus={(e) => {
+                    e.target.select();
+                    if (destination.length >= 3) setShowDestinationSuggestions(true);
+                  }}
                   placeholder="Ingresa tu destino"
                   className="w-full"
                 />
                 {showDestinationSuggestions && destinationSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg">
+                  <div className="fixed z-[9999] w-[calc(100%-2rem)] max-w-[calc(50%-1.5rem)] mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-y-auto border border-gray-200">
                     {destinationSuggestions.map((suggestion, index) => (
                       <div
                         key={index}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
                         onClick={() => handleDestinationSelect(suggestion)}
                       >
-                        {suggestion.address}
+                        <div className="font-medium text-gray-900">{suggestion.address}</div>
+                        {suggestion.city && (
+                          <div className="text-sm text-gray-500">{suggestion.city}</div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -183,7 +268,7 @@ const StartTrip = () => {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Transporte
               </label>
@@ -191,7 +276,7 @@ const StartTrip = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Tipo de transporte" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999]">
                   <SelectItem value="car">Carro</SelectItem>
                   <SelectItem value="bus">Bus</SelectItem>
                   <SelectItem value="bike">Bicicleta</SelectItem>
@@ -210,18 +295,19 @@ const StartTrip = () => {
           </form>
 
           {/* Map and Routes Container */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
             {/* Map Component */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 relative z-0 h-[600px]">
               <RouteMap
                 origin={originLocation}
                 destination={destinationLocation}
                 route={route}
+                onCurrentLocationChange={handleCurrentLocationChange}
               />
             </div>
 
             {/* Routes List */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 h-[600px] overflow-y-auto">
               <h2 className="text-xl font-semibold mb-4">Rutas Disponibles</h2>
               {error && (
                 <div className="bg-red-50 text-red-700 p-4 rounded-md mb-4">
@@ -233,7 +319,7 @@ const StartTrip = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : routes.length > 0 ? (
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div className="space-y-4 pr-2">
                   {routes.map((route, index) => (
                     <div
                       key={index}
