@@ -18,6 +18,19 @@ interface ViajeDetalle {
   origen: string;
   destino: string;
   pasajeros: number;
+  ruta?: {
+    id_ruta: number;
+    punto_partida: any;
+    punto_llegada: any;
+    longitud: number;
+  };
+  vehiculo?: {
+    placa: string;
+    tipo: number;
+    tipo_vehiculo: {
+      tipo: string;
+    };
+  };
 }
 
 interface RegistroData {
@@ -66,6 +79,16 @@ const HistorialViajes = () => {
               punto_partida,
               punto_llegada,
               longitud
+            ),
+            vehiculo (
+              placa,
+              tipo,
+              tipo_vehiculo (
+                tipo
+              )
+            ),
+            pasajeros (
+              id_usuario
             )
           `)
           .eq('id_conductor', id_usuario)
@@ -74,6 +97,7 @@ const HistorialViajes = () => {
         if (viajesError) throw viajesError;
 
         if (viajesData) {
+          console.log('Viajes data:', viajesData);
           setViajes(viajesData.map(viaje => {
             const fechaViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
             const now = new Date();
@@ -81,10 +105,15 @@ const HistorialViajes = () => {
 
             return {
               ...viaje,
-              origen: 'Origen',
-              destino: 'Destino',
-              pasajeros: 0,
-              estado
+              origen: 'Origen',  // Placeholder simple
+              destino: 'Destino', // Placeholder simple
+              pasajeros: Array.isArray(viaje.pasajeros) ? viaje.pasajeros.length : 0,
+              estado,
+              vehiculo: {
+                placa: viaje.vehiculo?.placa || 'No disponible',
+                tipo: viaje.vehiculo?.tipo || 0,
+                tipo_vehiculo: viaje.vehiculo?.tipo_vehiculo || { tipo: 'No disponible' }
+              }
             };
           }));
         }
@@ -233,22 +262,9 @@ const HistorialViajes = () => {
                         Salida: {formatTime(viaje.hora_salida)} | Llegada estimada: {formatTime(viaje.hora_llegada)}
                       </p>
                       <div className="mt-2 flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5 text-gray-500 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
                         <span className="text-gray-700">
-                          {viaje.pasajeros} pasajero{viaje.pasajeros !== 1 && 's'}
+                          Vehículo ID: {viaje.vehiculo?.placa || 'No asignado'}
+                          {viaje.vehiculo?.tipo_vehiculo ? ` | Tipo: ${viaje.vehiculo.tipo_vehiculo.tipo}` : ''}
                         </span>
                       </div>
                     </div>
