@@ -3,6 +3,7 @@ import { supabase } from '../../integrations/supabase/client';
 import { useToast } from '../../hooks/use-toast';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { addYears, format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,8 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
     color: '',
     modelo: new Date().getFullYear(),
     tipo: '',
+    vencimiento_soat: '',
+    vencimiento_tecnicomecanica: '',
   });
   const { toast } = useToast();
 
@@ -49,8 +52,8 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
           tipo: parseInt(formData.tipo),
           id_usuario: userId,
           validacion: 'pendiente',
-          fecha_tecnicomecanica: new Date().toISOString(), // Temporal
-          vigencia_soat: new Date().toISOString(), // Temporal
+          fecha_tecnicomecanica: formData.vencimiento_tecnicomecanica,
+          vigencia_soat: formData.vencimiento_soat,
         });
 
       if (error) throw error;
@@ -120,16 +123,43 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
             <Select
               value={formData.tipo}
               onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona un tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Carro</SelectItem>
-                <SelectItem value="2">Moto</SelectItem>
-                {/* Agregar más tipos según tu base de datos */}
+                <SelectItem value="1">Automóvil</SelectItem>
+                <SelectItem value="2">Motocicleta</SelectItem>
+                <SelectItem value="3">Bicicleta</SelectItem>
+                <SelectItem value="4">Camioneta</SelectItem>
+                <SelectItem value="5">Van</SelectItem>
+                <SelectItem value="6">Monopatín</SelectItem>
+                <SelectItem value="7">Bus</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha de Vencimiento SOAT</label>
+            <Input
+              type="date"
+              value={formData.vencimiento_soat}
+              onChange={(e) => setFormData({ ...formData, vencimiento_soat: e.target.value })}
+              min={format(new Date(), 'yyyy-MM-dd')}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Fecha Vencimiento Tecnomecánica</label>
+            <Input
+              type="date"
+              value={formData.vencimiento_tecnicomecanica}
+              onChange={(e) => setFormData({ ...formData, vencimiento_tecnicomecanica: e.target.value })}
+              min={format(new Date(), 'yyyy-MM-dd')}
+              required
+            />
           </div>
 
           <DialogFooter>
