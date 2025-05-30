@@ -328,7 +328,7 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <ListTripsUserScreen />
+      <AppNavigator />
     </AuthProvider>
   );
 }
