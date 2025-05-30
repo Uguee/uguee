@@ -15,6 +15,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../../components/ui/accordion";
+import { RouteMap } from '../../components/map/RouteMap';
 
 interface ViajeDetalle {
   id_viaje: number;
@@ -61,6 +68,7 @@ const HistorialViajes = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [viajeACancelar, setViajeACancelar] = useState<number | null>(null);
+  const [expandedViajes, setExpandedViajes] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     const cargarViajes = async () => {
@@ -109,11 +117,19 @@ const HistorialViajes = () => {
         if (viajesData) {
           console.log('Viajes data:', viajesData);
           setViajes(viajesData.map(viaje => {
+            // Verificar si ruta es un error o es el objeto esperado
+            const rutaSegura = viaje.ruta && 
+                              typeof viaje.ruta === 'object' && 
+                              !Object.prototype.hasOwnProperty.call(viaje.ruta, 'error')
+                                ? viaje.ruta 
+                                : undefined;
+            
             return {
               ...viaje,
-              origen: 'Origen',  // Placeholder simple
-              destino: 'Destino', // Placeholder simple
+              origen: 'Origen',
+              destino: 'Destino',
               pasajeros: Array.isArray(viaje.pasajeros) ? viaje.pasajeros.length : 0,
+              ruta: rutaSegura,
               vehiculo: {
                 placa: viaje.vehiculo?.placa || 'No disponible',
                 tipo: viaje.vehiculo?.tipo || 0,
@@ -188,6 +204,37 @@ const HistorialViajes = () => {
     } finally {
       setViajeACancelar(null);
     }
+  };
+
+  // Función para convertir coordenadas de la BD a formato de RouteMap
+  const getRouteData = (viaje: ViajeDetalle) => {
+    if (
+      !viaje.ruta ||
+      !viaje.ruta.punto_partida ||
+      !viaje.ruta.punto_llegada ||
+      !Array.isArray(viaje.ruta.punto_partida.coordinates) ||
+      !Array.isArray(viaje.ruta.punto_llegada.coordinates)
+    ) {
+      return null;
+    }
+
+    // Extraer coordenadas: [longitud, latitud]
+    const [lngPartida, latPartida] = viaje.ruta.punto_partida.coordinates;
+    const [lngLlegada, latLlegada] = viaje.ruta.punto_llegada.coordinates;
+
+    const origin = {
+      lat: latPartida,
+      lng: lngPartida,
+      address: viaje.origen || 'Origen'
+    };
+
+    const destination = {
+      lat: latLlegada,
+      lng: lngLlegada,
+      address: viaje.destino || 'Destino'
+    };
+
+    return { origin, destination, route: [] };
   };
 
   return (
@@ -267,57 +314,137 @@ const HistorialViajes = () => {
           ) : (
             <div className="space-y-4">
               {viajesFiltrados.map((viaje) => (
-                <div
+                <Accordion
                   key={viaje.id_viaje}
-                  className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-5"
+                  type="single"
+                  collapsible
                 >
-                  <div className="flex flex-col md:flex-row justify-between">
-                    <div className="mb-4 md:mb-0">
-                      <div className="flex items-center mb-1">
-                        <span className="font-medium mr-2">
-                          {formatDate(viaje.fecha)}
-                        </span>
-                        <span className={`text-sm px-2 py-0.5 rounded-full ${
-                          new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date()
-                            ? 'bg-blue-100 text-blue-800'  // Viaje próximo
-                            : 'bg-green-100 text-green-800' // Viaje pasado
-                        }`}>
-                          {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
-                        </span>
+                  <AccordionItem value={`viaje-${viaje.id_viaje}`} className="border-none">
+                    <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-5">
+                      <div className="flex flex-col md:flex-row justify-between">
+                        <div className="mb-4 md:mb-0">
+                          <div className="flex items-center mb-1">
+                            <span className="font-medium mr-2">
+                              {formatDate(viaje.fecha)}
+                            </span>
+                            <span className={`text-sm px-2 py-0.5 rounded-full ${
+                              new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date()
+                                ? 'bg-blue-100 text-blue-800'  // Viaje próximo
+                                : 'bg-green-100 text-green-800' // Viaje pasado
+                            }`}>
+                              {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-medium text-text">
+                            De {viaje.origen} a {viaje.destino}
+                          </h3>
+                          <p className="text-gray-500">
+                            Salida: {formatTime(viaje.hora_salida)} | Llegada estimada: {formatTime(viaje.hora_llegada)}
+                          </p>
+                          <div className="mt-2 flex items-center">
+                            <span className="text-gray-700">
+                              Vehículo ID: {viaje.vehiculo?.placa || 'No asignado'}
+                              {viaje.vehiculo?.tipo_vehiculo ? ` | Tipo: ${viaje.vehiculo.tipo_vehiculo.tipo}` : ''}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row md:flex-col justify-end gap-2">
+                          <AccordionTrigger className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md transition-colors text-center hover:no-underline justify-center">
+                            Ver detalles
+                          </AccordionTrigger>
+                          
+                          {activeTab === 'proximos' && (
+                            <button 
+                              onClick={() => setViajeACancelar(viaje.id_viaje)}
+                              className="border border-red-500 text-red-500 hover:bg-red-50 py-2 px-4 rounded-md transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <h3 className="text-lg font-medium text-text">
-                        De {viaje.origen} a {viaje.destino}
-                      </h3>
-                      <p className="text-gray-500">
-                        Salida: {formatTime(viaje.hora_salida)} | Llegada estimada: {formatTime(viaje.hora_llegada)}
-                      </p>
-                      <div className="mt-2 flex items-center">
-                        <span className="text-gray-700">
-                          Vehículo ID: {viaje.vehiculo?.placa || 'No asignado'}
-                          {viaje.vehiculo?.tipo_vehiculo ? ` | Tipo: ${viaje.vehiculo.tipo_vehiculo.tipo}` : ''}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row md:flex-col justify-end gap-2">
-                      <button
-                        onClick={() => {/* TODO: Implementar vista detalle */}}
-                        className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md transition-colors text-center"
-                      >
-                        Ver detalles
-                      </button>
                       
-                      {activeTab === 'proximos' && (
-                        <button 
-                          onClick={() => setViajeACancelar(viaje.id_viaje)}
-                          className="border border-red-500 text-red-500 hover:bg-red-50 py-2 px-4 rounded-md transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                      )}
+                      <AccordionContent>
+                        <div className="mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="text-md font-medium mb-3 text-gray-800">Detalles del viaje</h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">Información del viaje</h5>
+                              <ul className="space-y-2 text-sm">
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Origen:</span>
+                                  <span>{viaje.origen}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Destino:</span>
+                                  <span>{viaje.destino}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Fecha:</span>
+                                  <span>{formatDate(viaje.fecha)}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Hora de salida:</span>
+                                  <span>{formatTime(viaje.hora_salida)}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Hora estimada de llegada:</span>
+                                  <span>{formatTime(viaje.hora_llegada)}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Pasajeros:</span>
+                                  <span>{viaje.pasajeros}</span>
+                                </li>
+                              </ul>
+                            </div>
+                            
+                            <div>
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">Información del vehículo</h5>
+                              <ul className="space-y-2 text-sm">
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Placa:</span>
+                                  <span>{viaje.vehiculo?.placa || 'No asignado'}</span>
+                                </li>
+                                <li className="flex items-start">
+                                  <span className="font-medium mr-2">Tipo:</span>
+                                  <span>{viaje.vehiculo?.tipo_vehiculo?.tipo || 'No asignado'}</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                          
+                          {/* Mapa de la ruta */}
+                          <div className="mt-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Ruta del viaje</h5>
+                            <div className="h-[300px] rounded-lg overflow-hidden border border-gray-300">
+                              {(() => {
+                                const routeData = getRouteData(viaje);
+                                if (routeData && routeData.origin && routeData.destination) {
+                                  return (
+                                    <RouteMap
+                                      origin={routeData.origin}
+                                      destination={routeData.destination}
+                                      route={routeData.route || []}
+                                      allowClickToSetPoints={false}
+                                    />
+                                  );
+                                } else {
+                                  return (
+                                    <div className="flex items-center justify-center h-full bg-gray-100">
+                                      <p className="text-gray-500">No hay información de ruta disponible</p>
+                                    </div>
+                                  );
+                                }
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
                     </div>
-                  </div>
-                </div>
+                  </AccordionItem>
+                </Accordion>
               ))}
             </div>
           )}
