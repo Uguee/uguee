@@ -18,8 +18,15 @@ interface Props {
     email: string;
     role: string;
     files: string[];
+    address: string;
   }) => void;
-  value: { code: string; email: string; role: string; files: string[] };
+  value: {
+    code: string;
+    email: string;
+    role: string;
+    files: string[];
+    address: string;
+  };
   onPickFiles: () => void;
 }
 
@@ -84,6 +91,14 @@ export default function InstitutionRequestForm({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <Text style={styles.label}>Dirección de residencia</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ingresa tu dirección de residencia"
+        value={value.address}
+        onChangeText={(address) => onChange({ ...value, address })}
+      />
 
       <Text style={styles.label}>Fotos de documento institucional</Text>
       <View style={styles.fileInputRow}>

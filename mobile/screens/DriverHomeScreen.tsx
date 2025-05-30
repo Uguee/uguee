@@ -11,12 +11,14 @@ import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 // Agrega las props
 interface HomeScreenProps {
   onGoToInstitutions?: () => void;
-  onGoToDriverRegister?: () => void;
+  onGoToHomeScreen?: () => void;
+  onGoToMyVehicles?: () => void;
 }
 
 export default function DriverHomeScreen({
   onGoToInstitutions,
-  onGoToDriverRegister,
+  onGoToHomeScreen,
+  onGoToMyVehicles,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -31,12 +33,12 @@ export default function DriverHomeScreen({
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Ya te encuentras en inicio"),
+      onPress: () => {},
     },
     {
       label: "Mis vehiculos",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => alert("Mis vehiculos"),
+      onPress: onGoToMyVehicles,
     },
     {
       label: "Mis viajes",
@@ -92,7 +94,7 @@ export default function DriverHomeScreen({
               image={require("../assets/bus.png")}
               title="¿Vas a algún lado?"
               description="Presiona aquí para cambiar a la vista de pasajero"
-              onPress={onGoToDriverRegister}
+              onPress={onGoToHomeScreen}
             />
           </>
         }

@@ -90,32 +90,19 @@ const vehicles = [
   // ...más vehículos
 ];
 
-const navButtons = [
-  {
-    label: "Inicio",
-    icon: <Ionicons name="home-outline" size={28} color="#000" />,
-    active: false,
-    onPress: () => alert("Ya te encuentras en inicio"),
-  },
-  {
-    label: "Mis vehiculos",
-    active: true,
-    icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-    onPress: () => alert("Mis vehiculos"),
-  },
-  {
-    label: "Mis viajes",
-    icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-    onPress: () => alert("Mis viajes"),
-  },
-  {
-    label: "Perfil",
-    icon: <FontAwesome name="user-o" size={26} color="#000" />,
-    onPress: () => alert("Perfil"),
-  },
-];
+interface MyVehiclesScreenProps {
+  onGoToDriverHomeScreen?: () => void;
+  onGoToProfileScreen?: () => void;
+  onGoToTravelScreen?: () => void;
+  onGoToAddVehicleScreen?: () => void;
+}
 
-export default function MyVehiclesScreen() {
+export default function MyVehiclesScreen({
+  onGoToDriverHomeScreen = () => {},
+  onGoToProfileScreen = () => {},
+  onGoToTravelScreen = () => {},
+  onGoToAddVehicleScreen = () => {},
+}: MyVehiclesScreenProps) {
   const [search, setSearch] = useState("");
 
   const filtered = vehicles.filter(
@@ -123,6 +110,31 @@ export default function MyVehiclesScreen() {
       v.title.toLowerCase().includes(search.toLowerCase()) ||
       v.plate.toLowerCase().includes(search.toLowerCase())
   );
+
+  const navButtons = [
+    {
+      label: "Inicio",
+      icon: <Ionicons name="home-outline" size={28} color="#000" />,
+      active: false,
+      onPress: onGoToDriverHomeScreen,
+    },
+    {
+      label: "Mis vehiculos",
+      active: true,
+      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
+      onPress: () => {}, // Ya estás en esta pantalla
+    },
+    {
+      label: "Mis viajes",
+      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
+      onPress: onGoToTravelScreen,
+    },
+    {
+      label: "Perfil",
+      icon: <FontAwesome name="user-o" size={26} color="#000" />,
+      onPress: onGoToProfileScreen,
+    },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -144,7 +156,7 @@ export default function MyVehiclesScreen() {
         </ScrollView>
       </View>
       <View style={styles.addButtonContainer}>
-        <AddVehicleButton onPress={() => alert("Añadir vehículo")} />
+        <AddVehicleButton onPress={onGoToAddVehicleScreen} />
       </View>
       <View style={styles.bottomNavContainer}>
         <BottomNavigation buttons={navButtons} />

@@ -16,19 +16,15 @@ import {
 
 interface HomeScreenProps {
   onGoToInstitutions?: () => void;
+  onGoToMyInstitution?: () => void;
   onGoToBecomeDriver?: () => void;
   onGoToDriverView?: () => void;
 }
 
-// Agrega las props
-interface HomeScreenProps {
-  onGoToInstitutions?: () => void;
-  onGoToDriverRegister?: () => void;
-}
-
 export default function HomeScreen({
   onGoToInstitutions,
-  onGoToDriverRegister,
+  onGoToMyInstitution,
+  onGoToBecomeDriver,
   onGoToDriverView,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
@@ -59,7 +55,7 @@ export default function HomeScreen({
           const userRow = await getUserDataByUUID(user.id);
           console.log(
             "[HomeScreen] id_usuario (tabla usuarios):",
-            userRow?.id_usuario ?? userRow?.id
+            userRow?.id_usuario
           );
 
           const cedula = await getCedulaByUUID(user.id);
@@ -84,7 +80,7 @@ export default function HomeScreen({
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Ya te encuentras en inicio"),
+      onPress: () => HomeScreen,
     },
     {
       label: "Mis viajes",
@@ -130,7 +126,7 @@ export default function HomeScreen({
           image={require("../assets/building3D.png")}
           title="Ingresa a una institución"
           description="Para poder tomar ver rutas específicas y tomar viajes"
-          onPress={onGoToInstitutions ?? (() => alert("Institución"))}
+          onPress={onGoToInstitutions ?? (() => alert("Ir a instituciones"))}
         />
       );
     } else {
@@ -164,7 +160,7 @@ export default function HomeScreen({
         <BigCard
           key="cond-yes"
           image={require("../assets/car3D.png")}
-          title="¿Vas a algún lado?"
+          title="¿Vas a manejar?"
           description="Presiona aquí para cambiar a la vista de conductor"
           onPress={
             onGoToDriverView ?? (() => alert("cambiar a vista conductor"))

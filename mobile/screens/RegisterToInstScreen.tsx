@@ -4,20 +4,35 @@ import InstitutionRequestHeader from "../components/HeaderInstRequest";
 import InstitutionRequestForm from "../components/FormInstRequest";
 import InstitutionRequestButton from "../components/ButtonInstRequest";
 import ReturnButton from "../components/ReturnButton";
+import { sendRegisterToInstitutionApplication } from "../services/institutionService";
+import { getCedulaByUUID } from "../services/userDataService";
+import { useAuth } from "../hooks/useAuth";
 
-export default function InstitutionRequestScreen({
-  institutionName,
+interface Institution {
+  id_institucion: number;
+  nombre_oficial: string;
+  logo: any;
+  direccion?: string;
+  colores?: string;
+  [key: string]: any;
+}
+
+export default function RegisterToInstScreen({
+  institution,
   onGoBack,
 }: {
-  institutionName: string;
+  institution: Institution | null;
   onGoBack: () => void;
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     code: "",
     email: "",
     role: "",
     files: [] as string[],
+    address: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handlePickFiles = () => {
     // Aquí iría la lógica para seleccionar imágenes
@@ -27,19 +42,68 @@ export default function InstitutionRequestScreen({
     );
   };
 
-  const handleSubmit = () => {
-    // Aquí iría la lógica para enviar la solicitud
-    Alert.alert(
-      "Registro enviado",
-      "Tu solicitud ha sido enviada a la institución."
-    );
+  const handleSubmit = async () => {
+    if (!institution) {
+      Alert.alert("Error", "No se ha seleccionado una institución.");
+      return;
+    }
+    if (!form.code || !form.email || !form.address) {
+      Alert.alert(
+        "Campos requeridos",
+        "Por favor completa todos los campos obligatorios."
+      );
+      return;
+    }
+    setLoading(true);
+    try {
+      if (!user?.id) {
+        Alert.alert("Error", "No se pudo obtener el usuario autenticado.");
+        setLoading(false);
+        return;
+      }
+      const id_usuario = await getCedulaByUUID(user.id);
+      if (!id_usuario) {
+        Alert.alert(
+          "Error",
+          "No se pudo obtener el id_usuario real del usuario."
+        );
+        setLoading(false);
+        return;
+      }
+      const response = await sendRegisterToInstitutionApplication({
+        id_usuario,
+        id_institucion: institution.id_institucion,
+        correo_institucional: form.email,
+        codigo_institucional: form.code,
+        direccion_de_residencia: form.address,
+      });
+      if (response.success) {
+        Alert.alert(
+          "Registro enviado",
+          "Tu solicitud ha sido enviada a la institución."
+        );
+      } else {
+        Alert.alert(
+          "No se pudo realizar el registro",
+          response.message || "Ocurrió un error."
+        );
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo realizar el registro.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <ReturnButton onPress={onGoBack} />
       <ScrollView contentContainerStyle={styles.container}>
-        <InstitutionRequestHeader institutionName={institutionName} />
+        <InstitutionRequestHeader
+          institutionName={`${institution?.nombre_oficial || ""} (ID: ${
+            institution?.id_institucion || ""
+          })`}
+        />
         <InstitutionRequestForm
           value={form}
           onChange={setForm}

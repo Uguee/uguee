@@ -11,6 +11,8 @@ import {
   DocumentVerificationScreen,
   RegisterToInstScreen,
   DriverRegisterScreen,
+  DriverHomeScreen,
+  MyVehiclesScreen,
 } from "./screens";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
@@ -18,8 +20,6 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
-import DriverHomeScreen from "./screens/DriverHomeScreen";
-import MyVehiclesScreen from "./screens/MyVehiclesScreen";
 
 type Screen =
   | "welcome"
@@ -34,7 +34,9 @@ type Screen =
   | "institutions"
   | "selected-institution"
   | "register-to-inst"
-  | "driver-register";
+  | "driver-register"
+  | "driver-home"
+  | "my-vehicles";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -181,6 +183,22 @@ const AppNavigator = () => {
 
   const handleGoToDriverRegister = () => setCurrentScreen("driver-register");
 
+  const handleGoToDriverView = () => {
+    setCurrentScreen("driver-home");
+  };
+
+  const handleGoToMyInstitution = () => {
+    setCurrentScreen("institutions");
+  };
+
+  const handleGoToMyVehicles = () => {
+    setCurrentScreen("my-vehicles");
+  };
+
+  const handleGoToHomeScreenFromDriver = () => {
+    setCurrentScreen("dashboard");
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -190,13 +208,10 @@ const AppNavigator = () => {
         allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
       >
         <HomeScreen
-          onGoToInstitutions={() => console.log("Navegar a Instituciones")}
-          onGoToBecomeDriver={() => console.log("Navegar a proceso Conductor")}
-          onGoToDriverView={() => console.log("Cambiar a vista Conductor")}
-        />
-        <HomeScreen
           onGoToInstitutions={handleGoToInstitutions}
-          onGoToDriverRegister={handleGoToDriverRegister}
+          onGoToBecomeDriver={handleGoToDriverRegister}
+          onGoToDriverView={handleGoToDriverView}
+          onGoToMyInstitution={() => {}}
         />
       </ProtectedRoute>
     );
@@ -292,7 +307,8 @@ const AppNavigator = () => {
           <SelectedInstScreen
             institution={selectedInstitution}
             onGoHome={() => setCurrentScreen("dashboard")}
-            onRequestRegister={(institutionName) => {
+            onRequestRegister={(institution) => {
+              setSelectedInstitution(institution);
               setCurrentScreen("register-to-inst");
             }}
           />
@@ -300,7 +316,7 @@ const AppNavigator = () => {
       case "register-to-inst":
         return (
           <RegisterToInstScreen
-            institutionName={selectedInstitution?.name || ""}
+            institution={selectedInstitution}
             onGoBack={() => setCurrentScreen("selected-institution")}
           />
         );
@@ -309,6 +325,18 @@ const AppNavigator = () => {
           <DriverRegisterScreen
             onGoBack={() => setCurrentScreen("dashboard")}
           />
+        );
+      case "driver-home":
+        return (
+          <DriverHomeScreen
+            onGoToHomeScreen={handleGoToHomeScreenFromDriver}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToInstitutions={handleGoToInstitutions}
+          />
+        );
+      case "my-vehicles":
+        return (
+          <MyVehiclesScreen onGoToDriverHomeScreen={handleGoToDriverView} />
         );
       default:
         return (
