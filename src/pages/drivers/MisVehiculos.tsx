@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../integrations/supabase/client';
 import { UserService } from '../../services/userService';
 import { Button } from '../../components/ui/button';
+import AgregarVehiculoForm from '../../components/forms/AgregarVehiculoForm';
+import { User } from '../../types';
 
 interface Vehiculo {
   placa: string;
@@ -16,48 +18,58 @@ interface Vehiculo {
   validacion: string | null;
 }
 
+interface ExtendedUser extends User {
+  raw_data?: {
+    id_usuario: number;
+  };
+}
+
 const MisVehiculos = () => {
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [userData, setUserData] = useState<{ id_usuario: number } | null>(null);
+
+  const cargarVehiculos = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const userDataResponse = await UserService.getUserByUuid(user.id);
+      const id_usuario = userDataResponse?.id_usuario;
+      
+      if (!id_usuario) {
+        throw new Error('No se pudo obtener el ID del usuario');
+      }
+
+      setUserData({ id_usuario });
+
+      const { data, error } = await supabase
+        .from('vehiculo')
+        .select(`
+          *,
+          tipo_vehiculo (
+            tipo
+          )
+        `)
+        .eq('id_usuario', id_usuario);
+
+      if (error) throw error;
+      setVehiculos(data || []);
+    } catch (err) {
+      console.error('Error cargando vehículos:', err);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los vehículos",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const cargarVehiculos = async () => {
-      if (!user?.id) return;
-
-      try {
-        const userData = await UserService.getUserByUuid(user.id);
-        const id_usuario = userData?.id_usuario;
-
-        if (!id_usuario) {
-          throw new Error('No se pudo obtener el ID del usuario');
-        }
-
-        const { data, error } = await supabase
-          .from('vehiculo')
-          .select(`
-            *,
-            tipo_vehiculo (
-              tipo
-            )
-          `)
-          .eq('id_usuario', id_usuario);
-
-        if (error) throw error;
-        setVehiculos(data || []);
-      } catch (err) {
-        console.error('Error cargando vehículos:', err);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los vehículos",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     cargarVehiculos();
   }, [user, toast]);
 
@@ -67,7 +79,7 @@ const MisVehiculos = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-text">Mis Vehículos</h1>
           <Button 
-            onClick={() => {/* TODO: Implementar agregar vehículo */}}
+            onClick={() => setShowForm(true)}
             className="bg-primary hover:bg-primary/90"
           >
             Agregar Vehículo
@@ -135,6 +147,18 @@ const MisVehiculos = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {user?.id && (
+          <AgregarVehiculoForm
+            isOpen={showForm}
+            onClose={() => setShowForm(false)}
+            onSuccess={() => {
+              setShowForm(false);
+              cargarVehiculos();
+            }}
+            userId={userData?.id_usuario || 0}
+          />
         )}
       </div>
     </DashboardLayout>
