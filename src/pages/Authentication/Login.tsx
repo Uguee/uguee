@@ -82,10 +82,6 @@ const Login = () => {
             console.log("➡️ Redirecting to /dashboard");
             navigate("/dashboard");
             break;
-          case "conductor":
-            console.log("➡️ Redirecting to /driver/dashboard");
-            navigate("/driver/dashboard");
-            break;
           case "admin_institucional":
             console.log("➡️ Redirecting to /institution/dashboard");
             navigate("/institution/dashboard");
