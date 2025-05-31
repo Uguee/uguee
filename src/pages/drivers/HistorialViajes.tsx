@@ -42,6 +42,7 @@ interface ViajeDetalle {
     punto_partida: any;
     punto_llegada: any;
     longitud: number;
+    trayecto?: any;
   };
   vehiculo?: {
     placa: string;
@@ -100,7 +101,8 @@ const HistorialViajes = () => {
               id_ruta,
               punto_partida,
               punto_llegada,
-              longitud
+              longitud,
+              trayecto
             ),
             vehiculo (
               placa,
@@ -236,30 +238,44 @@ const HistorialViajes = () => {
     if (
       !viaje.ruta ||
       !viaje.ruta.punto_partida ||
-      !viaje.ruta.punto_llegada ||
-      !Array.isArray(viaje.ruta.punto_partida.coordinates) ||
-      !Array.isArray(viaje.ruta.punto_llegada.coordinates)
+      !viaje.ruta.punto_llegada 
     ) {
       return null;
     }
 
-    // Extraer coordenadas: [longitud, latitud]
-    const [lngPartida, latPartida] = viaje.ruta.punto_partida.coordinates;
-    const [lngLlegada, latLlegada] = viaje.ruta.punto_llegada.coordinates;
+    try {
+      // Los datos ya vienen como objetos, no necesitamos parsearlos
+      const puntoPartida = viaje.ruta.punto_partida;
+      const puntoLlegada = viaje.ruta.punto_llegada;
+      const trayecto = viaje.ruta.trayecto;
 
-    const origin = {
-      lat: latPartida,
-      lng: lngPartida,
-      address: viaje.origen || 'Origen'
-    };
+      // Extraer coordenadas: [longitud, latitud] -> [latitud, longitud]
+      const [lngPartida, latPartida] = puntoPartida.coordinates;
+      const [lngLlegada, latLlegada] = puntoLlegada.coordinates;
 
-    const destination = {
-      lat: latLlegada,
-      lng: lngLlegada,
-      address: viaje.destino || 'Destino'
-    };
+      const origin = {
+        lat: latPartida,
+        lng: lngPartida,
+        address: viaje.origen || 'Origen'
+      };
 
-    return { origin, destination, route: [] };
+      const destination = {
+        lat: latLlegada,
+        lng: lngLlegada,
+        address: viaje.destino || 'Destino'
+      };
+
+      // Convertir el trayecto si existe
+      let route: [number, number][] = [];
+      if (trayecto && trayecto.coordinates) {
+        route = trayecto.coordinates.map(([lng, lat]: number[]) => [lat, lng]);
+      }
+
+      return { origin, destination, route };
+    } catch (error) {
+      console.error('Error parseando datos de ruta:', error);
+      return null;
+    }
   };
 
   return (
