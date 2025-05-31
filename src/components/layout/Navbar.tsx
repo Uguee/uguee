@@ -27,7 +27,7 @@ const Navbar = () => {
     setIsViewMenuOpen(!isViewMenuOpen);
   };
 
-  const handleViewChange = async (view: 'driver' | 'passenger') => {
+  const handleViewChange = async (view: 'driver' | 'passenger' | 'admin_institucional') => {
     if (view === 'driver') {
       try {
         if (!user?.id) {
@@ -66,7 +66,7 @@ const Navbar = () => {
         
         const data = await response.json();
         console.log('Validation response:', data);
-        console.log('data.validacion_conductor:', data.validacion_conductor); // debug
+        console.log('data.validacion_conductor:', data.validacion_conductor);
         if (data.validacion_conductor === 'validado') {
           console.log('User is validated, redirecting to driver dashboard');
           navigate('/driver/dashboard');
@@ -79,6 +79,15 @@ const Navbar = () => {
         // Show error message to user
         alert('Error al verificar la validación del conductor. Por favor, intente nuevamente.');
         navigate('/driver-not-allowed');
+      }
+    } else if (view === 'admin_institucional') {
+      // Verificar si el usuario tiene el rol de admin_institucional
+      if (user?.role === 'admin_institucional') {
+        console.log('Switching to institutional admin view');
+        navigate('/institution/dashboard');
+      } else {
+        console.log('User does not have admin_institucional role');
+        navigate('/dashboard');
       }
     } else {
       console.log('Switching to passenger view');
@@ -100,6 +109,7 @@ const Navbar = () => {
   };
 
   const isDriverView = location.pathname.startsWith('/driver');
+  const isInstitutionalView = location.pathname.startsWith('/institution');
   const isInstitutionalAdmin = user?.role === 'admin_institucional';
 
   return (
@@ -160,8 +170,17 @@ const Navbar = () => {
                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Vista pasajero
-                      {!isDriverView && <Check className="ml-2 h-4 w-4" />}
+                      {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
                     </button>
+                    {user?.role === 'admin_institucional' && (
+                      <button
+                        onClick={() => handleViewChange('admin_institucional')}
+                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Vista Admin
+                        {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -261,6 +280,14 @@ const Navbar = () => {
                   >
                     Vista pasajero
                   </button>
+                  {user?.role === 'admin_institucional' && (
+                    <button 
+                      onClick={() => handleViewChange('admin_institucional')}
+                      className="text-left text-gray-600 py-2 hover:text-primary transition-colors"
+                    >
+                      Vista Admin
+                    </button>
+                  )}
                   <Link 
                     to="/profile" 
                     className="text-gray-600 py-2 hover:text-primary transition-colors"
