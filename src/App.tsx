@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AuthFlowService } from "./services/authFlowService";
 import { UserRole } from "./types";
+import { DriverValidationProvider } from "./contexts/DriverValidationContext";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
@@ -133,11 +134,11 @@ const AppRoutes = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       
-      {/* Ruta para validación pendiente - para usuarios en validación Y usuarios que están en estado pendiente/denegado */}
+      {/* Ruta para validación pendiente - accesible para todos los roles */}
       <Route 
         path="/pending-validation" 
         element={
-          <ProtectedRoute allowedRoles={['validacion', 'usuario', 'externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute>
             <PendingValidation />
           </ProtectedRoute>
         } 
@@ -167,7 +168,7 @@ const AppRoutes = () => {
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -175,7 +176,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -183,7 +184,7 @@ const AppRoutes = () => {
       <Route 
         path="/start-trip" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <StartTrip />
           </ProtectedRoute>
         } 
@@ -191,7 +192,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -199,7 +200,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -207,7 +208,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo', 'conductor']}>
+          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -223,10 +224,10 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/historial-viajes" 
+        path="/driver/map-view" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
-            <HistorialViajes />
+            <MapViewDriver />
           </ProtectedRoute>
         } 
       />
@@ -239,30 +240,24 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/map-view" 
+        path="/driver/history" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
-            <MapViewDriver />
+            <HistorialViajes />
           </ProtectedRoute>
         } 
       />
       <Route 
-        path="/driver/mis-vehiculos" 
+        path="/driver/vehicles" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <MisVehiculos />
           </ProtectedRoute>
         } 
       />
-
-      {/* Rutas para administradores de instituciones */}
       <Route 
-        path="/institution/dashboard" 
-        element={
-          <ProtectedRoute allowedRoles={['admin_institucional']}>
-            <InstitutionDashboard />
-          </ProtectedRoute>
-        } 
+        path="/driver-not-allowed" 
+        element={<DriverNotAllowed />} 
       />
 
       {/* Rutas para administradores del sitio */}
@@ -297,8 +292,6 @@ const AppRoutes = () => {
       
       {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
-
-      <Route path="/driver-not-allowed" element={<DriverNotAllowed />} />
     </Routes>
   );
 };
@@ -307,11 +300,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <DriverValidationProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </DriverValidationProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
