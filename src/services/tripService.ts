@@ -24,39 +24,39 @@ export interface Trip {
   };
 }
 
-export const TripService = {
-  async getUpcomingTrips(): Promise<Trip[]> {
+export class TripService {
+  static async getUpcomingTrips(): Promise<Trip[]> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No active session');
+      const { data, error } = await supabase
+        .from('viaje')
+        .select(`
+          *,
+          conductor:id_conductor (
+            nombre,
+            apellido,
+            celular
+          ),
+          vehiculo:id_vehiculo (
+            placa,
+            color,
+            modelo,
+            tipo:tipo (
+              tipo
+            )
+          )
+        `)
+        .gte('fecha', new Date().toISOString().split('T')[0])
+        .order('fecha', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching trips:', error);
+        throw new Error(`Failed to fetch upcoming trips: ${error.message}`);
       }
 
-      console.log('Fetching trips from:', 'https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-upcoming-trips');
-      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-upcoming-trips', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-      });
-      
-      console.log('Response status:', response.status);
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return []; // Return empty array if no trips found
-        }
-        throw new Error(`Failed to fetch upcoming trips: ${response.status} ${responseText}`);
-      }
-
-      const trips = JSON.parse(responseText);
-      return trips;
+      return data || [];
     } catch (error) {
-      console.error('Error details:', error);
+      console.error('Error in getUpcomingTrips:', error);
       throw error;
     }
   }
-}; 
+} 
