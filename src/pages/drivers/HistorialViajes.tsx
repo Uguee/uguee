@@ -183,7 +183,9 @@ const HistorialViajes = () => {
   }, [viajes]);
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
+    // Ajustar la fecha para la zona horaria local
+    const fecha = new Date(dateStr + 'T00:00:00');
+    return fecha.toLocaleDateString('es-CO', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'
@@ -196,7 +198,9 @@ const HistorialViajes = () => {
 
   // Filtrar viajes según la pestaña activa
   const viajesFiltrados = viajes.filter(viaje => {
+    // Ajustar la fecha para la zona horaria local
     const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+    fechaHoraViaje.setMinutes(fechaHoraViaje.getMinutes() + fechaHoraViaje.getTimezoneOffset());
     const now = new Date();
     
     return activeTab === 'proximos' 
