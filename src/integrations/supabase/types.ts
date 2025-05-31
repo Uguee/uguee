@@ -84,6 +84,7 @@ export type Database = {
       }
       institucion: {
         Row: {
+          admin_institucional: string | null
           colores: string
           direccion: string
           id_institucion: number
@@ -91,6 +92,7 @@ export type Database = {
           nombre_oficial: string
         }
         Insert: {
+          admin_institucional?: string | null
           colores: string
           direccion: string
           id_institucion?: number
@@ -98,6 +100,7 @@ export type Database = {
           nombre_oficial: string
         }
         Update: {
+          admin_institucional?: string | null
           colores?: string
           direccion?: string
           id_institucion?: number
@@ -192,21 +195,29 @@ export type Database = {
           calificacion: number | null
           descripcion: string | null
           id_reseña: number
-          no_votos: number | null
+          id_viaje: number | null
         }
         Insert: {
           calificacion?: number | null
           descripcion?: string | null
           id_reseña?: number
-          no_votos?: number | null
+          id_viaje?: number | null
         }
         Update: {
           calificacion?: number | null
           descripcion?: string | null
           id_reseña?: number
-          no_votos?: number | null
+          id_viaje?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reseña_id_viaje_fkey"
+            columns: ["id_viaje"]
+            isOneToOne: false
+            referencedRelation: "viaje"
+            referencedColumns: ["id_viaje"]
+          },
+        ]
       }
       rol: {
         Row: {
@@ -444,7 +455,6 @@ export type Database = {
           id_ruta: number
           id_vehiculo: string
           id_viaje: number
-          reseña: number
         }
         Insert: {
           fecha: string
@@ -454,7 +464,6 @@ export type Database = {
           id_ruta: number
           id_vehiculo: string
           id_viaje?: number
-          reseña: number
         }
         Update: {
           fecha?: string
@@ -464,7 +473,6 @@ export type Database = {
           id_ruta?: number
           id_vehiculo?: string
           id_viaje?: number
-          reseña?: number
         }
         Relationships: [
           {
@@ -487,13 +495,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vehiculo"
             referencedColumns: ["placa"]
-          },
-          {
-            foreignKeyName: "viaje_reseña_fkey"
-            columns: ["reseña"]
-            isOneToOne: false
-            referencedRelation: "reseña"
-            referencedColumns: ["id_reseña"]
           },
         ]
       }
@@ -991,6 +992,19 @@ export type Database = {
         Args: { "": string }
         Returns: unknown
       }
+      get_all_tipo_vehiculo: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id_tipo: number
+          tipo: string
+        }[]
+      }
+      get_all_tipos_de_vehiculo: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          tipo: string
+        }[]
+      }
       get_proj4_from_srid: {
         Args: { "": number }
         Returns: string
@@ -1033,6 +1047,10 @@ export type Database = {
       longtransactionsenabled: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      obtener_resenas_viaje: {
+        Args: { p_id_viaje: number }
+        Returns: Json
       }
       obtener_ruta_con_coordenadas: {
         Args: { p_id_ruta: number }

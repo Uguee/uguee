@@ -22,6 +22,9 @@ import {
   AccordionTrigger
 } from "../../components/ui/accordion";
 import { RouteMap } from '../../components/map/RouteMap';
+import { TripReviews } from '../../components/reviews/TripReviews';
+import { Star } from 'lucide-react';
+import { ReviewService } from '@/services/reviewService';
 
 interface ViajeDetalle {
   id_viaje: number;
@@ -69,6 +72,7 @@ const HistorialViajes = () => {
   const { toast } = useToast();
   const [viajeACancelar, setViajeACancelar] = useState<number | null>(null);
   const [expandedViajes, setExpandedViajes] = useState<Record<number, boolean>>({});
+  const [viajesReviews, setViajesReviews] = useState<Record<number, { promedio: number, total: number }>>({});
 
   useEffect(() => {
     const cargarViajes = async () => {
@@ -154,6 +158,27 @@ const HistorialViajes = () => {
 
     cargarViajes();
   }, [user, toast]);
+
+  useEffect(() => {
+    const cargarReviews = async () => {
+      const reviewsPromises = viajes.filter(viaje => viaje.id_viaje).map(async (viaje) => {
+        const reviews = await ReviewService.getTripReviews(viaje.id_viaje);
+        return { id: viaje.id_viaje, reviews };
+      });
+
+      const reviews = await Promise.all(reviewsPromises);
+      const reviewsMap = reviews.reduce((acc, { id, reviews }) => ({
+        ...acc,
+        [id]: { promedio: reviews.promedio, total: reviews.total_resenas }
+      }), {});
+
+      setViajesReviews(reviewsMap);
+    };
+
+    if (viajes.length > 0) {
+      cargarReviews();
+    }
+  }, [viajes]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-CO', {
@@ -334,6 +359,27 @@ const HistorialViajes = () => {
                             }`}>
                               {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
                             </span>
+                            {viajesReviews[viaje.id_viaje] && (
+                              <div className="flex items-center ml-3">
+                                <div className="flex">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-4 h-4 ${
+                                        star <= viajesReviews[viaje.id_viaje].promedio
+                                          ? 'text-yellow-400 fill-yellow-400'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm text-gray-600 ml-2">
+                                  ({viajesReviews[viaje.id_viaje].total} {
+                                    viajesReviews[viaje.id_viaje].total === 1 ? 'reseña' : 'reseñas'
+                                  })
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <h3 className="text-lg font-medium text-text">
                             De {viaje.origen} a {viaje.destino}
@@ -439,6 +485,12 @@ const HistorialViajes = () => {
                                 }
                               })()}
                             </div>
+                          </div>
+
+                          {/* Agregar el componente TripReviews */}
+                          <div className="mt-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Reseñas del viaje</h5>
+                            <TripReviews id_viaje={viaje.id_viaje} />
                           </div>
                         </div>
                       </AccordionContent>
