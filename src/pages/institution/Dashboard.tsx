@@ -710,6 +710,41 @@ const Dashboard = () => {
                         </div>
                         
                         <div className="flex gap-2">
+                          {vehicle.validacion === 'pendiente' && (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('vehiculo')
+                                    .update({ validacion: 'validado' })
+                                    .eq('placa', vehicle.placa);
+                                  if (!error) {
+                                    loadInstitutionData();
+                                  }
+                                }}
+                              >
+                                Validar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={async () => {
+                                  const { error } = await supabase
+                                    .from('vehiculo')
+                                    .delete()
+                                    .eq('placa', vehicle.placa);
+                                  if (!error) {
+                                    loadInstitutionData();
+                                  }
+                                }}
+                              >
+                                Quitar
+                              </Button>
+                            </>
+                          )}
                           <Button variant="outline" size="sm">
                             <Eye className="w-4 h-4" />
                           </Button>
