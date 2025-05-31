@@ -22,6 +22,9 @@ import {
   AccordionTrigger
 } from "../../components/ui/accordion";
 import { RouteMap } from '../../components/map/RouteMap';
+import { TripReviews } from '../../components/reviews/TripReviews';
+import { Star } from 'lucide-react';
+import { ReviewService } from '@/services/reviewService';
 
 interface ViajeDetalle {
   id_viaje: number;
@@ -39,6 +42,7 @@ interface ViajeDetalle {
     punto_partida: any;
     punto_llegada: any;
     longitud: number;
+    trayecto?: any;
   };
   vehiculo?: {
     placa: string;
@@ -69,6 +73,7 @@ const HistorialViajes = () => {
   const { toast } = useToast();
   const [viajeACancelar, setViajeACancelar] = useState<number | null>(null);
   const [expandedViajes, setExpandedViajes] = useState<Record<number, boolean>>({});
+  const [viajesReviews, setViajesReviews] = useState<Record<number, { promedio: number, total: number }>>({});
 
   useEffect(() => {
     const cargarViajes = async () => {
@@ -96,7 +101,8 @@ const HistorialViajes = () => {
               id_ruta,
               punto_partida,
               punto_llegada,
-              longitud
+              longitud,
+              trayecto
             ),
             vehiculo (
               placa,
@@ -155,8 +161,31 @@ const HistorialViajes = () => {
     cargarViajes();
   }, [user, toast]);
 
+  useEffect(() => {
+    const cargarReviews = async () => {
+      const reviewsPromises = viajes.filter(viaje => viaje.id_viaje).map(async (viaje) => {
+        const reviews = await ReviewService.getTripReviews(viaje.id_viaje);
+        return { id: viaje.id_viaje, reviews };
+      });
+
+      const reviews = await Promise.all(reviewsPromises);
+      const reviewsMap = reviews.reduce((acc, { id, reviews }) => ({
+        ...acc,
+        [id]: { promedio: reviews.promedio, total: reviews.total_resenas }
+      }), {});
+
+      setViajesReviews(reviewsMap);
+    };
+
+    if (viajes.length > 0) {
+      cargarReviews();
+    }
+  }, [viajes]);
+
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
+    // Ajustar la fecha para la zona horaria local
+    const fecha = new Date(dateStr + 'T00:00:00');
+    return fecha.toLocaleDateString('es-CO', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'
@@ -169,7 +198,9 @@ const HistorialViajes = () => {
 
   // Filtrar viajes según la pestaña activa
   const viajesFiltrados = viajes.filter(viaje => {
+    // Ajustar la fecha para la zona horaria local
     const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+    fechaHoraViaje.setMinutes(fechaHoraViaje.getMinutes() + fechaHoraViaje.getTimezoneOffset());
     const now = new Date();
     
     return activeTab === 'proximos' 
@@ -211,30 +242,44 @@ const HistorialViajes = () => {
     if (
       !viaje.ruta ||
       !viaje.ruta.punto_partida ||
-      !viaje.ruta.punto_llegada ||
-      !Array.isArray(viaje.ruta.punto_partida.coordinates) ||
-      !Array.isArray(viaje.ruta.punto_llegada.coordinates)
+      !viaje.ruta.punto_llegada 
     ) {
       return null;
     }
 
-    // Extraer coordenadas: [longitud, latitud]
-    const [lngPartida, latPartida] = viaje.ruta.punto_partida.coordinates;
-    const [lngLlegada, latLlegada] = viaje.ruta.punto_llegada.coordinates;
+    try {
+      // Los datos ya vienen como objetos, no necesitamos parsearlos
+      const puntoPartida = viaje.ruta.punto_partida;
+      const puntoLlegada = viaje.ruta.punto_llegada;
+      const trayecto = viaje.ruta.trayecto;
 
-    const origin = {
-      lat: latPartida,
-      lng: lngPartida,
-      address: viaje.origen || 'Origen'
-    };
+      // Extraer coordenadas: [longitud, latitud] -> [latitud, longitud]
+      const [lngPartida, latPartida] = puntoPartida.coordinates;
+      const [lngLlegada, latLlegada] = puntoLlegada.coordinates;
 
-    const destination = {
-      lat: latLlegada,
-      lng: lngLlegada,
-      address: viaje.destino || 'Destino'
-    };
+      const origin = {
+        lat: latPartida,
+        lng: lngPartida,
+        address: viaje.origen || 'Origen'
+      };
 
-    return { origin, destination, route: [] };
+      const destination = {
+        lat: latLlegada,
+        lng: lngLlegada,
+        address: viaje.destino || 'Destino'
+      };
+
+      // Convertir el trayecto si existe
+      let route: [number, number][] = [];
+      if (trayecto && trayecto.coordinates) {
+        route = trayecto.coordinates.map(([lng, lat]: number[]) => [lat, lng]);
+      }
+
+      return { origin, destination, route };
+    } catch (error) {
+      console.error('Error parseando datos de ruta:', error);
+      return null;
+    }
   };
 
   return (
@@ -334,6 +379,27 @@ const HistorialViajes = () => {
                             }`}>
                               {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
                             </span>
+                            {viajesReviews[viaje.id_viaje] && (
+                              <div className="flex items-center ml-3">
+                                <div className="flex">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-4 h-4 ${
+                                        star <= viajesReviews[viaje.id_viaje].promedio
+                                          ? 'text-yellow-400 fill-yellow-400'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm text-gray-600 ml-2">
+                                  ({viajesReviews[viaje.id_viaje].total} {
+                                    viajesReviews[viaje.id_viaje].total === 1 ? 'reseña' : 'reseñas'
+                                  })
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <h3 className="text-lg font-medium text-text">
                             De {viaje.origen} a {viaje.destino}
@@ -439,6 +505,12 @@ const HistorialViajes = () => {
                                 }
                               })()}
                             </div>
+                          </div>
+
+                          {/* Agregar el componente TripReviews */}
+                          <div className="mt-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Reseñas del viaje</h5>
+                            <TripReviews id_viaje={viaje.id_viaje} />
                           </div>
                         </div>
                       </AccordionContent>
