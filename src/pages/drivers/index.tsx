@@ -8,14 +8,40 @@ import {
   CheckCircleIcon, 
   StarIcon 
 } from '@heroicons/react/24/outline';
+import { ReviewService } from '@/services/reviewService';
+import { UserService } from '@/services/userService';
+import { useAuth } from '@/hooks/useAuth';
+import { Star } from 'lucide-react';
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [proximasRutas, setProximasRutas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    promedio: 0,
+    total_resenas: 0
+  });
 
   useEffect(() => {
     cargarProximasRutas();
+    const cargarEstadisticas = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Obtener el id_usuario del conductor
+        const userData = await UserService.getUserDataFromUsuarios(user.id);
+        if (!userData?.id_usuario) return;
+
+        // Obtener las estadísticas
+        const driverStats = await ReviewService.getDriverStats(userData.id_usuario);
+        setStats(driverStats);
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+      }
+    };
+
+    cargarEstadisticas();
   }, []);
 
   const cargarProximasRutas = async () => {
@@ -97,14 +123,32 @@ const Dashboard = () => {
 
           {/* Card: Calificación */}
           <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">4.8</h2>
-                <p className="text-gray-600">Basado en 120 evaluaciones</p>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl font-bold">{stats.promedio.toFixed(1)}</h2>
+                <div className="p-3 bg-yellow-100 rounded-full">
+                  <StarIcon className="h-6 w-6 text-yellow-500" />
+                </div>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-full">
-                <StarIcon className="h-6 w-6 text-yellow-500" />
+              <div className="flex items-center mb-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-5 h-5 ${
+                      star <= Math.round(stats.promedio * 2) / 2
+                        ? 'text-yellow-400 fill-yellow-400'
+                        : star === Math.ceil(stats.promedio) && stats.promedio % 1 !== 0
+                        ? 'text-yellow-400 fill-yellow-400/50'
+                        : 'text-gray-300'
+                    }`}
+                  />
+                ))}
               </div>
+              <p className="text-gray-600">
+                Basado en {stats.total_resenas} {
+                  stats.total_resenas === 1 ? 'evaluación' : 'evaluaciones'
+                }
+              </p>
             </div>
           </div>
         </div>

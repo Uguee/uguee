@@ -47,4 +47,50 @@ export class ReviewService {
       };
     }
   }
+
+  static async getDriverStats(id_conductor: number): Promise<{
+    promedio: number;
+    total_resenas: number;
+  }> {
+    try {
+      // Primero obtenemos todos los viajes del conductor
+      const { data: viajes, error: viajesError } = await supabase
+        .from('viaje')
+        .select('id_viaje')
+        .eq('id_conductor', id_conductor);
+
+      if (viajesError) throw viajesError;
+
+      if (!viajes?.length) {
+        return {
+          promedio: 0,
+          total_resenas: 0
+        };
+      }
+
+      // Obtenemos todas las reseñas de esos viajes
+      const { data: resenas, error: resenasError } = await supabase
+        .from('reseña')
+        .select('calificacion')
+        .in('id_viaje', viajes.map(v => v.id_viaje));
+
+      if (resenasError) throw resenasError;
+
+      const total_resenas = resenas?.length || 0;
+      const promedio = resenas?.length 
+        ? resenas.reduce((acc, curr) => acc + (curr.calificacion || 0), 0) / total_resenas
+        : 0;
+
+      return {
+        promedio,
+        total_resenas
+      };
+    } catch (error) {
+      console.error('Error obteniendo estadísticas del conductor:', error);
+      return {
+        promedio: 0,
+        total_resenas: 0
+      };
+    }
+  }
 } 
