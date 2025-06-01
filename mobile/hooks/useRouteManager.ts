@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { supabase } from "../src/lib/supabase";
-import { calculateRouteLength } from "../src/lib/postgis";
+import { supabase } from "../lib/supabaseclient";
+import {
+  calculateRouteLength,
+  coordsToPointWKT,
+  coordsToLineStringWKT,
+} from "../lib/postgis";
 
 interface RoutePoint {
   lat: number;
@@ -35,14 +39,12 @@ export const useRouteManager = () => {
         .from("ruta")
         .insert({
           longitud: longitud,
-          punto_partida: POINT(${origin.lng} ${origin.lat}),
-          punto_llegada: POINT(${destination.lng} ${destination.lat}),
-          trayecto: `LINESTRING(${path
-            .map(([lat, lng]) => ${lng} ${lat})
-            .join(", ")})`,
+          punto_partida: coordsToPointWKT(origin.lat, origin.lng),
+          punto_llegada: coordsToPointWKT(destination.lat, destination.lng),
+          trayecto: coordsToLineStringWKT(path),
         })
-        .select("id_ruta") // Solo seleccionar el ID que necesitamos
-        .single(); // Obtener un solo resultado en lugar de array
+        .select("id_ruta")
+        .single();
 
       if (error) throw error;
 
@@ -86,9 +88,33 @@ export const useRouteManager = () => {
     }
   };
 
+  /**
+   * Crea la relación entre usuario y ruta en la tabla usuario_ruta
+   */
+  const createUserRouteRelation = async (
+    id_usuario: number,
+    id_ruta: number
+  ) => {
+    try {
+      const { data, error } = await supabase
+        .from("usuario_ruta")
+        .insert({ id_usuario, id_ruta });
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Error creando relación usuario-ruta";
+      setError(errorMessage);
+      throw err;
+    }
+  };
+
   return {
     saveRoute,
     fetchRoutes,
+    createUserRouteRelation,
     isLoading,
     error,
   };

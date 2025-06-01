@@ -443,7 +443,7 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <DriverRoutesScreen />
+      <AppNavigator />
     </AuthProvider>
   );
 }
