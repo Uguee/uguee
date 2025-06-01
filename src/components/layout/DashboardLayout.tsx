@@ -3,13 +3,11 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from './AppSidebar'
 import Navbar from './Navbar';
 
-
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  console.log('Entro al dashboard layout');
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

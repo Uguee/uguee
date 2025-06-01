@@ -159,7 +159,13 @@ const Navbar = () => {
                   </button>
                   {isViewMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      {renderDriverOptions()}
+                      <button
+                        onClick={() => handleViewChange('driver')}
+                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Vista conductor
+                        {isDriverView && <Check className="ml-2 h-4 w-4" />}
+                      </button>
                       <button
                         onClick={() => handleViewChange('passenger')}
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -172,7 +178,7 @@ const Navbar = () => {
                           onClick={() => handleViewChange('admin_institucional')}
                           className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          Vista admin_inst
+                          Vista Admin
                           {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
                         </button>
                       )}

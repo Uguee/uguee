@@ -215,6 +215,16 @@ const AppRoutes = () => {
         } 
       />
 
+      {/* Rutas para administradores institucionales */}
+      <Route 
+        path="/institution/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['admin_institucional']}>
+            <InstitutionDashboard />
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Rutas para conductores */}
       <Route 
         path="/driver/dashboard" 
