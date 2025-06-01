@@ -102,9 +102,9 @@ const Register = () => {
         phoneNumber: formData.phoneNumber,
         role: formData.role,
         dateOfBirth: formData.dateOfBirth,
-        // cedula no está en el tipo User, se manejará en el backend
       }, formData.password, formData.cedula);
 
+      // Este código no se ejecutará si se requiere verificación de email
       toast({
         title: "Registro exitoso",
         description: isInstitutionRegistration 
@@ -123,7 +123,35 @@ const Register = () => {
       console.log('Registration error details:', error);
       
       // Manejar diferentes tipos de errores
-      if (error.message?.includes('User already registered')) {
+      if (error.message === 'VERIFICATION_REQUIRED') {
+        toast({
+          title: "¡Registro exitoso!",
+          description: (
+            <div className="space-y-2">
+              <p>Hemos enviado un correo de verificación a {formData.email}.</p>
+              <p>Por favor:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Revisa tu bandeja de entrada</li>
+                <li>Haz clic en el enlace de verificación</li>
+                <li>Una vez verificado, podrás iniciar sesión</li>
+              </ol>
+              <p className="text-sm text-gray-500 mt-2">
+                Si no encuentras el correo, revisa tu carpeta de spam.
+              </p>
+            </div>
+          ),
+          duration: 10000, // Mostrar por 10 segundos
+        });
+        
+        // Redirigir al login con el email pre-llenado
+        navigate('/login', { 
+          state: { 
+            email: formData.email,
+            message: 'Por favor verifica tu correo electrónico antes de iniciar sesión'
+          } 
+        });
+        return;
+      } else if (error.message?.includes('User already registered')) {
         setErrors({ email: 'Este email ya está registrado. Intenta iniciar sesión.' });
       } else if (error.message?.includes('Invalid email')) {
         setErrors({ email: 'El formato del email no es válido.' });

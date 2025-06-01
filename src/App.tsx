@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AuthFlowService } from "./services/authFlowService";
 import { UserRole } from "./types";
@@ -49,16 +49,23 @@ const ProtectedRoute = ({
   const [redirectResult, setRedirectResult] = React.useState<any>(null);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(false);
   const [hasChecked, setHasChecked] = React.useState(false);
+  const location = useLocation();
 
   console.log('🛡️ ProtectedRoute check:', {
     isAuthenticated,
     isLoading,
     userRole: user?.role,
     allowedRoles,
-    currentPath: window.location.pathname,
+    currentPath: location.pathname,
     hasChecked,
     isCheckingAccess
   });
+
+  // Reset when route changes
+  React.useEffect(() => {
+    setHasChecked(false);
+    setRedirectResult(null);
+  }, [location.pathname]);
 
   // Verificar acceso a la ruta
   React.useEffect(() => {
@@ -85,7 +92,7 @@ const ProtectedRoute = ({
     if (user && !hasChecked) {
       checkAccess();
     }
-  }, [user, allowedRoles, hasChecked]);
+  }, [user, allowedRoles, hasChecked, location.pathname]);
 
   // Reset when user changes
   React.useEffect(() => {
@@ -121,7 +128,7 @@ const ProtectedRoute = ({
     return <Navigate to={redirectResult.redirectTo} />;
   }
 
-  console.log('✅ Access granted to:', window.location.pathname);
+  console.log('✅ Access granted to:', location.pathname);
   return <>{children}</>;
 };
 
