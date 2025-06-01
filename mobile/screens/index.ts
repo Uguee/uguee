@@ -10,3 +10,8 @@ export { default as RegisterToInstScreen } from "./RegisterToInstScreen";
 export { default as DriverRegisterScreen } from "./DriverRegisterScreen";
 export { default as SelectedInstScreen } from "./SelectedInstScreen";
 export { default as DocumentVerificationScreen } from "./DocumentVerificationScreen";
+export { default as DriverHomeScreen } from "./DriverHomeScreen";
+export { default as MyVehiclesScreen } from "./MyVehiclesScreen";
+export { default as AddVehicleScreen } from "./AddVehicleScreen";
+export { default as InstProfileScreen } from "./InstProfileScreen";
+export { default as ProfileScreen } from "./ProfileScreen";

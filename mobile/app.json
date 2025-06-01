@@ -11,9 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
@@ -27,6 +25,12 @@
       "favicon": "./assets/favicon.png"
     },
     "sdkVersion": "53.0.0",
-    "platforms": ["ios", "android", "web"]
+    "platforms": ["ios", "android", "web"],
+    "extra": {
+      "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyC7HtA_DB7xCClc59UXVXZtMbhAFPgu5P0",
+      "EXPO_PUBLIC_SUPABASE_URL": "https://ezuujivxstyuziclhvhp.supabase.co",
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dXVqaXZ4c3R5dXppY2xodmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzE5MjYsImV4cCI6MjA2Mjg0NzkyNn0.4aD22PEkf8Hid5fMm_leOOj55z-enRitR5IusZq3Uww",
+      "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dXVqaXZ4c3R5dXppY2xodmhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzI3MTkyNiwiZXhwIjoyMDYyODQ3OTI2fQ.IYjJLg_bXE1LPDfUAEQ4J2jgBrpS-4ijTJzktHN7M0o"
+    }
   }
 }

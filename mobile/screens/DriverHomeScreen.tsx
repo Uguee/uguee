@@ -9,15 +9,23 @@ import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 
 // Agrega las props
-interface HomeScreenProps {
+interface DriverHomeScreenProps {
   onGoToInstitutions?: () => void;
-  onGoToDriverRegister?: () => void;
+  onGoToHomeScreen?: () => void;
+  onGoToMyVehicles?: () => void;
+  onGoToProfile?: () => void;
+  onGoToInstitutionProfile?: () => void;
+  onGoToRegisterRouteScreen?: () => void;
 }
 
 export default function DriverHomeScreen({
   onGoToInstitutions,
-  onGoToDriverRegister,
-}: HomeScreenProps) {
+  onGoToHomeScreen,
+  onGoToMyVehicles = () => {},
+  onGoToProfile = () => {},
+  onGoToInstitutionProfile = () => {},
+  onGoToRegisterRouteScreen = () => {},
+}: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
 
   const suggestions = [
@@ -31,22 +39,22 @@ export default function DriverHomeScreen({
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Ya te encuentras en inicio"),
+      onPress: () => {},
     },
     {
       label: "Mis vehiculos",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => alert("Mis vehiculos"),
+      onPress: onGoToMyVehicles,
     },
     {
       label: "Mis viajes",
       icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => alert("Mis viajes"),
+      onPress: onGoToRegisterRouteScreen,
     },
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => alert("Perfil"),
+      onPress: onGoToProfile ?? (() => alert("Perfil")),
     },
   ];
 
@@ -86,13 +94,13 @@ export default function DriverHomeScreen({
               image={require("../assets/building3D.png")}
               title="¿Tu institución?"
               description="Presiona aquí para acceder a los detalles de tu institución"
-              onPress={onGoToInstitutions}
+              onPress={onGoToInstitutionProfile}
             />
             <BigCard
               image={require("../assets/bus.png")}
               title="¿Vas a algún lado?"
               description="Presiona aquí para cambiar a la vista de pasajero"
-              onPress={onGoToDriverRegister}
+              onPress={onGoToHomeScreen}
             />
           </>
         }
