@@ -177,7 +177,7 @@ const Navbar = () => {
                         onClick={() => handleViewChange('admin_institucional')}
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Vista Admin
+                        Vista admin_inst
                         {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
                       </button>
                     )}
