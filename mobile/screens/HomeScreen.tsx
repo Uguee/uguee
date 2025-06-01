@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, FlatList } from "react-native";
-import { TopMenu } from "../components/TopMenu"; // Ajusta la ruta si es necesario
-import { SearchBar } from "../components/SearchBar";
+import { View, ScrollView, Text } from "react-native";
+import { TopMenu } from "../components/TopMenu";
 import { BigCard } from "../components/BigCardHome";
-import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
@@ -31,8 +29,6 @@ export default function HomeScreen({
   onGoToProfile,
   onGoToInstitutionProfile,
 }: HomeScreenProps) {
-  const [search, setSearch] = useState("");
-
   // Contexto de usuario y verificación
   const { user } = useAuth();
   const {
@@ -42,7 +38,6 @@ export default function HomeScreen({
     error,
   } = useVerificationStatus();
 
-  // Log de verificación al cargar la pantalla
   useEffect(() => {
     if (!verificationLoading) {
       console.log("[HomeScreen] Usuario actual:", user);
@@ -102,28 +97,11 @@ export default function HomeScreen({
     },
   ];
 
-  const rutas = [
-    {
-      title: "Universidad del Valle",
-      address: "Campus Meléndez Calle 13 # 100-00",
-    },
-    { title: "Unicentro - Sur", address: "Cra. 100 #5-169 - Centro comercial" },
-  ];
-
-  // 1. Filtra las rutas según el texto de búsqueda
-  const rutasFiltradas = rutas.filter((ruta) =>
-    ruta.title.toLowerCase().includes(search.toLowerCase())
-  );
-
   // Construimos dinámicamente las BigCards según el estado de verificación.
   const renderDynamicCards = () => {
-    if (verificationLoading) return null; // Aún consultando, no mostrar nada.
-
+    if (verificationLoading) return null;
     const cards: React.ReactElement[] = [];
-
-    // Tarjeta de solicitud pendiente de conductor
     if (conductorStatus === "pendiente") {
-      // Si la institución está validada, mostrar también la tarjeta de institución
       if (institutionStatus === "validado") {
         cards.push(
           <BigCard
@@ -147,11 +125,8 @@ export default function HomeScreen({
           }
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta de solicitud pendiente
     if (institutionStatus === "pendiente") {
       cards.push(
         <BigCard
@@ -162,11 +137,8 @@ export default function HomeScreen({
           onPress={() => {}}
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta institución
     if (institutionStatus !== "validado") {
       cards.push(
         <BigCard
@@ -190,8 +162,6 @@ export default function HomeScreen({
         />
       );
     }
-
-    // Tarjetas de conductor basadas en status
     if (institutionStatus === "validado" && conductorStatus !== "validado") {
       cards.push(
         <BigCard
@@ -218,42 +188,34 @@ export default function HomeScreen({
         />
       );
     }
-
     return cards;
   };
 
   return (
     <View style={{ flex: 1 }}>
-      <FlatList
-        data={rutasFiltradas}
-        keyExtractor={(item, index) => item.title + index}
-        renderItem={({ item }) => (
-          <RouteCard
-            title={item.title}
-            address={item.address}
-            onPress={() => alert(item.title)}
-          />
-        )}
-        ListHeaderComponent={
-          <>
-            <TopMenu onMenuPress={() => alert("Menú presionado")} />
-            <SearchBar
-              value={search}
-              onChangeText={setSearch}
-              onLaterPress={() => alert("Más tarde")}
-            />
-            {/* Tarjetas dinámicas según verificación */}
-            {renderDynamicCards()}
-          </>
-        }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 80 }}
-      />
+      <TopMenu onMenuPress={() => alert("Menú presionado")} />
+      <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
+        <Text
+          style={{
+            fontSize: 32,
+            fontWeight: "bold",
+            color: "#8B5CF6",
+            marginBottom: 50,
+          }}
+        >
+          {`Bienvenid@${user?.firstName ? ` ${user.firstName}` : ""}`}
+        </Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "space-between",
+          paddingBottom: 80,
+        }}
+      >
+        {renderDynamicCards()}
+        <SuggestionsSection suggestions={suggestions} />
+      </ScrollView>
       <BottomNavigation buttons={navButtons} />
     </View>
   );
