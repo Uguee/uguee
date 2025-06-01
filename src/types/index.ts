@@ -12,6 +12,8 @@ export interface Institution {
 export type UserRole = 'conductor' | 'externo' | 'estudiante' | 'profesor' | 'administrativo' | 'usuario' | 'admin_institucional' | 'admin' | 'validacion';
 
 export interface User {
+  phone: string;
+  birthdate: string;
   id: string;
   firstName: string;
   lastName: string;

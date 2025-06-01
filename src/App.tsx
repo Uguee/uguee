@@ -33,6 +33,7 @@ import UserValidation from "./pages/admin/UserValidation";
 import RegistrationRequests from "./pages/admin/RegistrationRequests";
 import SelectInstitution from "./pages/Authentication/SelectInstitution";
 import React from "react";
+import Profile from "./pages/profile/Profile";
 
 const queryClient = new QueryClient();
 
@@ -288,6 +289,16 @@ const AppRoutes = () => {
             <RegistrationRequests />
           </ProtectedRoute>
         } 
+      />
+      
+      {/* Ruta para perfil del usuario */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute allowedRoles={['estudiante', 'profesor', 'administrativo', 'externo', 'conductor', 'admin_institucional']}>
+            <Profile />
+          </ProtectedRoute>
+        }
       />
       
       {/* 404 Route */}
