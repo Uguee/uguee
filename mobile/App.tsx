@@ -17,6 +17,8 @@ import {
   InstProfileScreen,
   ProfileScreen,
 } from "./screens";
+import DriverRoutesScreen from "./screens/DriverRoutesScreen";
+import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -441,7 +443,7 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <AppNavigator />
+      <DriverRoutesScreen />
     </AuthProvider>
   );
 }
