@@ -75,7 +75,6 @@ export default function HomeScreen({
 
   const suggestions = [
     { label: "Sugerir ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Intracampus", onPress: () => alert("Intracampus") },
     { label: "Rastrea rutas", onPress: () => alert("Rastrea rutas") },
   ];
 
@@ -120,7 +119,7 @@ export default function HomeScreen({
   const renderDynamicCards = () => {
     if (verificationLoading) return null; // Aún consultando, no mostrar nada.
 
-    const cards: JSX.Element[] = [];
+    const cards: React.ReactElement[] = [];
 
     // Tarjeta de solicitud pendiente de conductor
     if (conductorStatus === "pendiente") {

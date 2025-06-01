@@ -16,6 +16,7 @@ interface DriverHomeScreenProps {
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
+  onGoToSeeRoutes?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -25,13 +26,13 @@ export default function DriverHomeScreen({
   onGoToProfile = () => {},
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
+  onGoToSeeRoutes = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
 
   const suggestions = [
-    { label: "Crear ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Modificar rutas", onPress: () => alert("Intracampus") },
-    { label: "Rastrear rutas", onPress: () => alert("Rastrea rutas") },
+    { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
+    { label: "Ver rutas", onPress: onGoToSeeRoutes },
   ];
 
   const navButtons = [
@@ -104,12 +105,7 @@ export default function DriverHomeScreen({
             />
           </>
         }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
       <BottomNavigation buttons={navButtons} />

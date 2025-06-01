@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,26 +10,133 @@ import {
 import MapView, { Marker, Polyline, MapPressEvent } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import Constants from "expo-constants";
-import { useRegisterRoute } from "../hooks/useRegisterRoute";
+import { useRouteManager } from "../hooks/useRouteManager";
+import { useAuth } from "../hooks/useAuth";
+import { getCedulaByUUID } from "../services/userDataService";
 
 interface RegisterRouteScreenProps {
   onGoBack?: () => void;
+  onRouteCreated?: () => void;
 }
 
 export default function RegisterRouteScreen({
   onGoBack,
+  onRouteCreated,
 }: RegisterRouteScreenProps) {
+  const [points, setPoints] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [success, setSuccess] = useState(false);
   const {
-    points,
-    currentLocation,
-    getLocation,
-    handleMapPress,
-    distance,
     saveRoute,
-    loading,
+    createUserRouteRelation,
+    isLoading: loading,
     error,
-    success,
-  } = useRegisterRoute();
+  } = useRouteManager();
+  const { user } = useAuth();
+
+  // Obtener ubicación actual
+  const getLocation = async () => {
+    try {
+      const { status } = await (
+        await import("expo-location")
+      ).requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const location = await (
+        await import("expo-location")
+      ).getCurrentPositionAsync({});
+      setCurrentLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch (e) {
+      // Manejo simple de error
+    }
+  };
+
+  // Manejar toques en el mapa
+  const handleMapPress = (e: MapPressEvent) => {
+    if (points.length >= 2) {
+      setPoints([
+        {
+          latitude: e.nativeEvent.coordinate.latitude,
+          longitude: e.nativeEvent.coordinate.longitude,
+        },
+      ]);
+    } else {
+      setPoints([
+        ...points,
+        {
+          latitude: e.nativeEvent.coordinate.latitude,
+          longitude: e.nativeEvent.coordinate.longitude,
+        },
+      ]);
+    }
+  };
+
+  // Calcular distancia (haversine)
+  function haversineDistance(coord1: any, coord2: any) {
+    const toRad = (x: number) => (x * Math.PI) / 180;
+    const R = 6371e3;
+    const dLat = toRad(coord2.latitude - coord1.latitude);
+    const dLon = toRad(coord2.longitude - coord1.longitude);
+    const lat1 = toRad(coord1.latitude);
+    const lat2 = toRad(coord2.latitude);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+  const distance =
+    points.length === 2 ? haversineDistance(points[0], points[1]) : 0;
+
+  // Guardar ruta usando useRouteManager
+  const handleSaveRoute = async () => {
+    if (points.length !== 2 || !currentLocation || !user?.id) return;
+    try {
+      const origin = {
+        lat: points[0].latitude,
+        lng: points[0].longitude,
+        label: "Partida",
+      };
+      const destination = {
+        lat: points[1].latitude,
+        lng: points[1].longitude,
+        label: "Llegada",
+      };
+      const path = points.map((p) => [p.latitude, p.longitude]) as [
+        number,
+        number
+      ][];
+      const driverId = await getCedulaByUUID(user.id);
+      if (!driverId) throw new Error("No se pudo obtener el id_usuario");
+      const routeData = await saveRoute({
+        origin,
+        destination,
+        path,
+        driverId,
+      });
+      if (routeData && routeData.id_ruta) {
+        await createUserRouteRelation(driverId, routeData.id_ruta);
+      }
+      setSuccess(true);
+      Alert.alert("Éxito", "Ruta registrada correctamente", [
+        {
+          text: "OK",
+          onPress: () => {
+            if (onRouteCreated) onRouteCreated();
+          },
+        },
+      ]);
+    } catch (e) {
+      Alert.alert("Error", error || "No se pudo registrar la ruta");
+    }
+  };
 
   useEffect(() => {
     getLocation();
@@ -72,7 +179,7 @@ export default function RegisterRouteScreen({
               origin={points[0]}
               destination={points[1]}
               apikey={
-                Constants.expoConfig.extra.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+                Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
               }
               strokeWidth={4}
               strokeColor="#A259FF"
@@ -102,7 +209,7 @@ export default function RegisterRouteScreen({
         {error && <Text style={styles.error}>{error}</Text>}
         <Button
           title={loading ? "Guardando..." : "Guardar ruta"}
-          onPress={saveRoute}
+          onPress={handleSaveRoute}
           disabled={points.length !== 2 || loading}
         />
       </View>
@@ -115,7 +222,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: 32,
     backgroundColor: "#fff",
     padding: 16,
     borderTopLeftRadius: 16,

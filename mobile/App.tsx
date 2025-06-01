@@ -48,13 +48,15 @@ type Screen =
   | "profile"
   | "inst-profile-from-driver"
   | "profile-from-driver"
-  | "register-route";
+  | "register-route"
+  | "driver-routes";
 
 // Componente principal de navegación
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("welcome");
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
+  const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -235,6 +237,20 @@ const AppNavigator = () => {
     setCurrentScreen("profile-from-driver");
   };
 
+  const handleGoToRegisterRouteScreen = () => {
+    setCurrentScreen("register-route");
+  };
+
+  const handleGoToSeeRoutes = () => {
+    setCurrentScreen("driver-routes");
+  };
+
+  // Cuando se crea una ruta, refrescar las rutas
+  const handleRouteCreated = () => {
+    setRoutesRefreshKey((k) => k + 1);
+    setCurrentScreen("driver-routes");
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -374,6 +390,7 @@ const AppNavigator = () => {
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToInstitutionProfile={handleGoToInstProfileFromDriver}
             onGoToRegisterRouteScreen={() => setCurrentScreen("register-route")}
+            onGoToSeeRoutes={handleGoToSeeRoutes}
           />
         );
       case "my-vehicles":
@@ -423,7 +440,22 @@ const AppNavigator = () => {
           />
         );
       case "register-route":
-        return <RegisterRouteScreen onGoBack={handleGoToDriverView} />;
+        return (
+          <RegisterRouteScreen
+            onGoBack={handleGoToDriverView}
+            onRouteCreated={handleRouteCreated}
+          />
+        );
+      case "driver-routes":
+        return (
+          <DriverRoutesScreen
+            onGoToRegisterRouteScreen={handleGoToRegisterRouteScreen}
+            onGoToDriverHome={handleGoToDriverView}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToProfile={handleGoToProfileFromDriver}
+            refreshKey={routesRefreshKey}
+          />
+        );
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />
@@ -443,7 +475,7 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <DriverRoutesScreen />
+      <AppNavigator />
     </AuthProvider>
   );
 }
