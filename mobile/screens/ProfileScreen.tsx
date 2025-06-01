@@ -1,10 +1,17 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { TopMenu } from "../components/TopMenu";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import ProfileImage from "../components/ProfileImage";
 import ProfileTextRow from "../components/ProfileTextRow";
+import { useMyProfile } from "../hooks/useMyProfile";
 
 interface ProfileScreenProps {
   onGoToHomeScreen?: () => void;
@@ -17,17 +24,7 @@ const ProfileScreen = ({
   onGoToProfile = () => {},
   onGoToMyVehicles = () => {},
 }: ProfileScreenProps) => {
-  // Datos de ejemplo para el perfil
-  const [profile, setProfile] = useState({
-    imagen: require("../assets/univalle-logo.png"),
-    identificacion: "123456789",
-    nombre: "Juan",
-    apellido: "Pérez",
-    nacimiento: "01/01/1990",
-    direccion: "Calle 123 #45-67",
-    institucion: "Universidad del Valle",
-    conductor: "No",
-  });
+  const { profile, loading, error } = useMyProfile();
 
   const navButtons = [
     {
@@ -58,34 +55,52 @@ const ProfileScreen = ({
       <TopMenu onMenuPress={() => {}} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Perfil</Text>
-        <ProfileImage source={profile.imagen} />
-        <View style={{ marginTop: 40 }}>
-          <ProfileTextRow
-            label="No. Identificación:"
-            value={profile.identificacion}
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#A259FF"
+            style={{ marginTop: 40 }}
           />
-          <View style={{ flexDirection: "row", gap: 16 }}>
-            <View style={{ flex: 1 }}>
-              <ProfileTextRow label="Nombre:" value={profile.nombre} />
+        ) : error ? (
+          <Text style={{ color: "red", marginTop: 40 }}>{error}</Text>
+        ) : profile ? (
+          <>
+            <ProfileImage source={require("../assets/univalle-logo.png")} />
+            <View style={{ marginTop: 40 }}>
+              <ProfileTextRow
+                label="No. Identificación:"
+                value={profile.id_usuario ? String(profile.id_usuario) : ""}
+              />
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <ProfileTextRow
+                    label="Nombre:"
+                    value={profile.nombre || ""}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ProfileTextRow
+                    label="Apellido:"
+                    value={profile.apellido || ""}
+                  />
+                </View>
+              </View>
+              <ProfileTextRow
+                label="Fecha de nacimiento:"
+                value={profile.fecha_nacimiento || ""}
+              />
+              <ProfileTextRow label="Rol:" value={profile.rol || ""} />
+              <ProfileTextRow
+                label="Celular:"
+                value={profile.celular ? String(profile.celular) : ""}
+              />
+              <ProfileTextRow
+                label="¿Eres conductor?"
+                value={profile.esConductor ? "Sí" : "No"}
+              />
             </View>
-            <View style={{ flex: 1 }}>
-              <ProfileTextRow label="Apellido:" value={profile.apellido} />
-            </View>
-          </View>
-          <ProfileTextRow
-            label="Fecha de nacimiento:"
-            value={profile.nacimiento}
-          />
-          <ProfileTextRow
-            label="Dirección de residencia:"
-            value={profile.direccion}
-          />
-          <ProfileTextRow
-            label="Institución a la que pertenece:"
-            value={profile.institucion}
-          />
-          <ProfileTextRow label="¿Eres conductor?" value={profile.conductor} />
-        </View>
+          </>
+        ) : null}
       </ScrollView>
       <BottomNavigation buttons={navButtons} />
     </View>

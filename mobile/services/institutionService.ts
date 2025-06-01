@@ -118,6 +118,29 @@ export async function getFirstInstitutionAcceptedByUser(
   return data.id_institucion ?? null;
 }
 
+export async function getInstitutionData(id_institucion: number) {
+  try {
+    const response = await fetch(
+      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-institution-data",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({ id_institucion }),
+      }
+    );
+    if (!response.ok)
+      throw new Error("Error consultando datos de la institución");
+    return await response.json();
+  } catch (e) {
+    console.error("Error en getInstitutionData:", e);
+    return null;
+  }
+}
+
 /*
 export async function getInstitutionById(id: number) {
   const response = await fetch(

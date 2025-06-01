@@ -89,7 +89,7 @@ export default function HomeScreen({
     {
       label: "Mis viajes",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => alert("Mis viajes"),
+      onPress: onGoToDriverView ?? (() => alert("Mis viajes")),
     },
     {
       label: "Servicios",

@@ -1,28 +1,43 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 
 export default function VehicleCard({
   image,
   title,
   description,
   plate,
+  disabled = false,
+  estado,
+  onPress,
 }: {
   image: any;
   title: string;
   description: string;
   plate: string;
+  disabled?: boolean;
+  estado?: string;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.card}>
+  const CardContent = (
+    <View style={[styles.card, disabled && styles.cardDisabled]}>
       <Image source={image} style={styles.img} />
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.desc}>{description}</Text>
+        {estado === "pendiente" && (
+          <Text style={styles.pendiente}>Pendiente</Text>
+        )}
       </View>
       <View style={styles.plateBox}>
         <Text style={styles.plate}>{plate}</Text>
       </View>
     </View>
+  );
+  if (disabled || !onPress) return CardContent;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      {CardContent}
+    </TouchableOpacity>
   );
 }
 
@@ -37,6 +52,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: "#fff",
     gap: 10,
+  },
+  cardDisabled: {
+    opacity: 0.5,
+    backgroundColor: "#eee",
   },
   img: {
     width: 40,
@@ -53,6 +72,12 @@ const styles = StyleSheet.create({
   desc: {
     color: "#555",
     fontSize: 13,
+  },
+  pendiente: {
+    color: "#D2691E",
+    fontWeight: "bold",
+    fontSize: 13,
+    marginTop: 2,
   },
   plateBox: {
     backgroundColor: "#fff",

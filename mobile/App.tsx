@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
+import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 
 type Screen =
   | "welcome"
@@ -44,7 +45,8 @@ type Screen =
   | "inst-profile"
   | "profile"
   | "inst-profile-from-driver"
-  | "profile-from-driver";
+  | "profile-from-driver"
+  | "register-route";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -369,6 +371,7 @@ const AppNavigator = () => {
             onGoToInstitutions={handleGoToInstitutions}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToInstitutionProfile={handleGoToInstProfileFromDriver}
+            onGoToRegisterRouteScreen={() => setCurrentScreen("register-route")}
           />
         );
       case "my-vehicles":
@@ -417,6 +420,8 @@ const AppNavigator = () => {
             onGoToProfile={handleGoToProfileFromDriver}
           />
         );
+      case "register-route":
+        return <RegisterRouteScreen onGoBack={handleGoToDriverView} />;
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />

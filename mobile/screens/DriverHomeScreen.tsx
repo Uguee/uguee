@@ -15,6 +15,7 @@ interface DriverHomeScreenProps {
   onGoToMyVehicles?: () => void;
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
+  onGoToRegisterRouteScreen?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -23,6 +24,7 @@ export default function DriverHomeScreen({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   onGoToInstitutionProfile = () => {},
+  onGoToRegisterRouteScreen = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -47,7 +49,7 @@ export default function DriverHomeScreen({
     {
       label: "Mis viajes",
       icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => alert("Mis viajes"),
+      onPress: onGoToRegisterRouteScreen,
     },
     {
       label: "Perfil",

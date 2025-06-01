@@ -2,16 +2,28 @@ import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function AddVehicleButton({ onPress }: { onPress: () => void }) {
+export default function AddVehicleButton({
+  onPress,
+  disabled = false,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <TouchableOpacity style={styles.btn} onPress={onPress}>
+    <TouchableOpacity
+      style={[styles.btn, disabled && styles.btnDisabled]}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+    >
       <Ionicons
         name="add-circle"
         size={28}
-        color="#fff"
+        color={disabled ? "#ccc" : "#fff"}
         style={{ marginRight: 8 }}
       />
-      <Text style={styles.text}>Añadir vehículo</Text>
+      <Text style={[styles.text, disabled && styles.textDisabled]}>
+        Añadir vehículo
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -28,9 +40,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 24,
   },
+  btnDisabled: {
+    backgroundColor: "#eee",
+  },
   text: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 18,
+  },
+  textDisabled: {
+    color: "#aaa",
   },
 });
