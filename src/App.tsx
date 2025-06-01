@@ -32,6 +32,7 @@ import UserValidation from "./pages/admin/UserValidation";
 import RegistrationRequests from "./pages/admin/RegistrationRequests";
 import SelectInstitution from "./pages/Authentication/SelectInstitution";
 import React from "react";
+import Profile from "./pages/profile/Profile";
 
 const queryClient = new QueryClient();
 
@@ -223,7 +224,7 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/historial-viajes" 
+        path="/driver/history" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <HistorialViajes />
@@ -247,7 +248,7 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/mis-vehiculos" 
+        path="/driver/vehicles" 
         element={
           <ProtectedRoute allowedRoles={['conductor']}>
             <MisVehiculos />
@@ -293,6 +294,16 @@ const AppRoutes = () => {
             <RegistrationRequests />
           </ProtectedRoute>
         } 
+      />
+      
+      {/* Ruta para perfil del usuario */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute allowedRoles={['estudiante', 'profesor', 'administrativo', 'externo', 'conductor', 'admin_institucional']}>
+            <Profile />
+          </ProtectedRoute>
+        }
       />
       
       {/* 404 Route */}

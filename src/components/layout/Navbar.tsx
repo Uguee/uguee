@@ -5,16 +5,22 @@ import { Check } from 'lucide-react';
 import { UserService } from '../../services/userService';
 import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
 import { supabase } from '@/integrations/supabase/client';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 interface User {
   id: string;
   firstName?: string;
+  lastName?: string;
   role?: string;
+  phone?: string;
+  email?: string;
+  birthdate?: string;
 }
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -324,6 +330,32 @@ const Navbar = () => {
                 </>
               )}
             </nav>
+          </div>
+        </div>
+      )}
+
+      {showUserInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowUserInfo(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold mb-4 text-purple-700">Información del Usuario</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p><span className="font-semibold">Nombre:</span> {user?.firstName} {user?.lastName}</p>
+                <p><span className="font-semibold">Rol:</span> <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">{user?.role}</span></p>
+                <p><span className="font-semibold">Teléfono:</span> {user?.phone || 'No disponible'}</p>
+              </div>
+              <div>
+                <p><span className="font-semibold">Email:</span> {user?.email}</p>
+                <p><span className="font-semibold">ID:</span> {user?.id}</p>
+                <p><span className="font-semibold">Fecha de nacimiento:</span> {user?.birthdate || 'No disponible'}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

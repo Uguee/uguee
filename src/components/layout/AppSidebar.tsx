@@ -65,12 +65,12 @@ const driverItems = [
   },
   {
     title: "Historial de viajes",
-    url: "/driver/historial-viajes",
+    url: "/driver/history",
     icon: History,
   },
   {
     title: "Mis Vehículos",
-    url: "/driver/mis-vehiculos",
+    url: "/driver/vehicles",
     icon: Car,
   },
 ]
