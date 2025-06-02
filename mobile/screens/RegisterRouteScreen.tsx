@@ -169,9 +169,7 @@ export default function RegisterRouteScreen({
             <MapViewDirections
               origin={points[0]}
               destination={points[1]}
-              apikey={
-                Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-              }
+              apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}
               strokeWidth={4}
               strokeColor="#A259FF"
               onError={(e) => console.log("Directions error:", e)}
