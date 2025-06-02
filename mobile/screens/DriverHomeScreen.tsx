@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, FlatList } from "react-native";
+import { View, FlatList, Text } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu"; // Ajusta la ruta si es necesario
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
@@ -7,6 +7,7 @@ import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { useAuth } from "../hooks/useAuth";
 
 // Agrega las props
 interface DriverHomeScreenProps {
@@ -29,6 +30,7 @@ export default function DriverHomeScreen({
   onGoToSeeRoutes = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
 
   const suggestions = [
     { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
@@ -91,6 +93,20 @@ export default function DriverHomeScreen({
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`¡Hola,${
+                user?.firstName ? ` ${user.firstName}` : ""
+              }! Gracias por conducir con nosotros`}
+            </Text>
             <BigCard
               image={require("../assets/building3D.png")}
               title="¿Tu institución?"

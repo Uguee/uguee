@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, FlatList } from "react-native";
+import { View, FlatList, Text } from "react-native";
 import { TopMenu } from "../components/TopMenu"; // Ajusta la ruta si es necesario
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
@@ -242,16 +242,23 @@ export default function HomeScreen({
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`Te damos la bienvenida, ${user?.firstName || ""}`}
+            </Text>
             {/* Tarjetas dinámicas según verificación */}
             {renderDynamicCards()}
           </>
         }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
       <BottomNavigation buttons={navButtons} />
