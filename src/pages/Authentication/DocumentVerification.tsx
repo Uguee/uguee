@@ -75,20 +75,6 @@ const DocumentVerification = () => {
         });
         return;
       }
-
-      // Update user role to 'verificado'
-      const { error: updateError } = await supabase
-        .from('usuario')
-        .update({ rol: 'verificado' })
-        .eq('uuid', user.id);
-
-      if (updateError) {
-        console.error('Error updating user role:', updateError);
-        toast({
-          title: "⚠️ Advertencia",
-          description: "Documentos verificados pero hubo un error al actualizar el rol",
-        });
-      }
       
       setIsVerified(true);
       
@@ -130,7 +116,7 @@ const DocumentVerification = () => {
                 Tu identidad ha sido verificada correctamente. Ahora puedes continuar con el registro en tu institución.
               </p>
               <Button 
-                onClick={() => navigate('/institution-register')}
+                onClick={() => navigate('/select-institution')}
                 className="mt-4"
               >
                 Continuar con el registro institucional
@@ -330,4 +316,4 @@ const DocumentVerification = () => {
   );
 };
 
-export default DocumentVerification; 
+export default DocumentVerification;  

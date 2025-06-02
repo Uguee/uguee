@@ -81,9 +81,11 @@ export class AuthFlowService {
       };
     }
 
-    // Si el usuario tiene rol null, solo permitir acceso a document-verification
-    if (user.role === null) {
-      console.log('⚠️ Usuario sin rol, verificando acceso a document-verification');
+    // Obtener el estado de registro del usuario
+    const status = await this.getUserStatus(user.id);
+
+    // Si no tiene documentos, redirigir a document-verification
+    if (!status.hasDocuments) {
       if (window.location.pathname === '/document-verification') {
         return { shouldRedirect: false };
       }
@@ -93,14 +95,40 @@ export class AuthFlowService {
       };
     }
 
-    // Si hay roles permitidos, verificar que el usuario tenga uno de esos roles
-    if (allowedRoles && allowedRoles.length > 0) {
-      if (!allowedRoles.includes(user.role)) {
-        return await this.determineUserRedirection(user);
+    // Si tiene documentos pero no tiene institución, redirigir a institution-register
+    if (!status.hasInstitution) {
+      if (window.location.pathname === '/select-institution') {
+        return { shouldRedirect: false };
       }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/select-institution'
+      };
     }
 
-    // Si no hay roles permitidos o el usuario tiene un rol permitido, permitir acceso
+    // Si tiene institución pero está pendiente, redirigir a pending-validation
+    if (status.isPending) {
+      if (window.location.pathname === '/pending-validation') {
+        return { shouldRedirect: false };
+      }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/pending-validation'
+      };
+    }
+
+    // Si tiene institución pero fue denegado, redirigir a institution-register
+    if (status.isDenied) {
+      if (window.location.pathname === '/select-institution') {
+        return { shouldRedirect: false };
+      }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/select-institution'
+      };
+    }
+
+    // Si todo está validado, permitir acceso
     return { shouldRedirect: false };
   }
 

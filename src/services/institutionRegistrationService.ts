@@ -219,19 +219,10 @@ export class InstitutionRegistrationService {
 
       console.log('✅ Registro exitoso:', data);
 
-      // Actualizar el rol del usuario en la tabla usuario a 'pendiente'
-      const roleUpdateResult = await this.updateUserRole(userData.id_usuario, 'pendiente');
-      
-      if (!roleUpdateResult.success) {
-        console.warn('⚠️ No se pudo actualizar el rol del usuario:', roleUpdateResult.error);
-        // No fallamos el registro por esto, solo advertimos
-      }
-
       return {
         success: true,
         data: {
-          ...data,
-          roleUpdated: roleUpdateResult.success
+          ...data
         }
       };
 
