@@ -6,6 +6,7 @@ import { useDriverValidation } from '../../contexts/DriverValidationContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { DocumentVerificationService } from '@/services/documentVerificationService';
 
 interface User {
   id: string;
@@ -103,6 +104,15 @@ const Navbar = () => {
     );
   };
 
+  const handleHomeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (user?.role === null) {
+      navigate('/document-verification');
+      return;
+    }
+    navigate('/dashboard');
+  };
+
   return (
     <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
       <div className="container mx-auto px-4 h-full flex justify-between items-center">
@@ -123,6 +133,7 @@ const Navbar = () => {
               <Link 
                 to="/dashboard" 
                 className="text-gray-600 hover:text-primary transition-colors"
+                onClick={handleHomeClick}
               >
                 Inicio
               </Link>

@@ -19,134 +19,17 @@ export class AuthFlowService {
       };
     }
 
-    console.log('🔍 Determinando redirección para usuario:', user.role, 'ID:', user.id);
-
-    // Lógica especial para usuarios con rol "usuario"
-    if (user.role === 'usuario') {
-      try {
-        const status = await UserService.getUserRegistrationStatus(user.id);
-        console.log('📋 Estado de registro obtenido:', status);
-
-        if (!status.hasDocuments) {
-          console.log('📄 Usuario sin documentos verificados → /verify-documents');
-          return {
-            shouldRedirect: true,
-            redirectTo: '/verify-documents'
-          };
-        } else if (!status.hasInstitution) {
-          console.log('🏛️ Usuario sin institución → /select-institution');
-          return {
-            shouldRedirect: true,
-            redirectTo: '/select-institution'
-          };
-        } else {
-          // Usuario completó ambos pasos, redirigir según estado de validación
-          const { institutionStatus } = status;
-          
-          console.log('📋 Estado de institución:', institutionStatus);
-          
-          if (institutionStatus === 'pendiente') {
-            console.log('⏳ Solicitud pendiente → /pending-validation');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/pending-validation'
-            };
-          } else if (institutionStatus === 'validado') {
-            console.log('✅ Usuario validado → /dashboard');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/dashboard'
-            };
-          } else if (institutionStatus === 'denegado') {
-            console.log('❌ Solicitud denegada → /pending-validation');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/pending-validation'
-            };
-          } else {
-            // Estado desconocido o null, redirigir a pending validation por seguridad
-            console.log('❓ Estado de institución desconocido:', institutionStatus, '→ /pending-validation');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/pending-validation'
-            };
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error obteniendo estado de registro:', error);
-        // En caso de error, redirigir a verificación de documentos como fallback
-        return {
-          shouldRedirect: true,
-          redirectTo: '/verify-documents'
-        };
-      }
-    }
-    
-    // Para usuarios con roles específicos, verificar si aún están en validación
-    if (['externo', 'estudiante', 'profesor', 'administrativo'].includes(user.role)) {
-      try {
-        const status = await UserService.getUserRegistrationStatus(user.id);
-        console.log('📋 Verificando estado de usuario con rol específico:', status);
-        
-        if (status.hasInstitution) {
-          const { institutionStatus } = status;
-          
-          if (institutionStatus === 'pendiente') {
-            console.log('⏳ Usuario con rol específico pero solicitud pendiente → /pending-validation');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/pending-validation'
-            };
-          } else if (institutionStatus === 'denegado') {
-            console.log('❌ Usuario con rol específico pero solicitud denegada → /pending-validation');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/pending-validation'
-            };
-          }
-        }
-        
-        // Si está validado o no tiene registro institucional, permitir acceso al dashboard
-        console.log('✅ Usuario con rol específico validado → /dashboard');
-        return {
-          shouldRedirect: true,
-          redirectTo: '/dashboard'
-        };
-      } catch (error) {
-        console.error('❌ Error verificando estado de usuario con rol específico:', error);
-        // En caso de error, permitir acceso al dashboard
-        return {
-          shouldRedirect: true,
-          redirectTo: '/dashboard'
-        };
-      }
+    // Si el usuario tiene rol null, redirigir a document-verification
+    if (user.role === null) {
+      console.log('⚠️ Usuario sin rol → /document-verification');
+      return {
+        shouldRedirect: true,
+        redirectTo: '/document-verification'
+      };
     }
     
     // Redirecciones para otros roles
     switch (user.role) {
-      case 'conductor':
-        try {
-          const status = await UserService.getUserRegistrationStatus(user.id);
-          if (status?.validacion_conductor === 'validado') {
-            console.log('🚗 Conductor validado → /driver/dashboard');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/driver/dashboard'
-            };
-          } else {
-            console.log('❌ Conductor no validado → /driver-not-allowed');
-            return {
-              shouldRedirect: true,
-              redirectTo: '/driver-not-allowed'
-            };
-          }
-        } catch (error) {
-          console.error('❌ Error verificando estado de conductor:', error);
-          return {
-            shouldRedirect: true,
-            redirectTo: '/driver-not-allowed'
-          };
-        }
       case 'admin_institucional':
         console.log('🏛️ Admin institucional → /institution/dashboard');
         return {
@@ -159,11 +42,23 @@ export class AuthFlowService {
           shouldRedirect: true,
           redirectTo: '/admin/dashboard'
         };
-      case 'validacion':
-        console.log('⏳ En validación → /pending-validation');
+      case 'pendiente':
+        console.log('⏳ Usuario pendiente → /pending-validation');
         return {
           shouldRedirect: true,
           redirectTo: '/pending-validation'
+        };
+      case 'verificado':
+        console.log('✅ Usuario verificado → /select-institution');
+        return {
+          shouldRedirect: true,
+          redirectTo: '/select-institution'
+        };
+      case 'usuario':
+        console.log('👤 Usuario → /dashboard');
+        return {
+          shouldRedirect: true,
+          redirectTo: '/dashboard'
         };
       default:
         console.log('❓ Rol desconocido:', user.role, '→ /dashboard por defecto');
@@ -178,26 +73,34 @@ export class AuthFlowService {
    * Verifica si un usuario tiene acceso a una ruta específica
    */
   static async checkRouteAccess(user: any, allowedRoles?: UserRole[]): Promise<AuthFlowResult> {
-    // Si la ruta es para conductores, verificar validacion_conductor
-    if (allowedRoles?.includes('conductor')) {
-      try {
-        const status = await UserService.getUserRegistrationStatus(user.id);
-        if (status?.validacion_conductor === 'validado') {
-          return { shouldRedirect: false };
-        }
-        // Si no está validado como conductor, redirigir
-        return await this.determineUserRedirection(user);
-      } catch (error) {
-        console.error('Error verificando estado de conductor:', error);
+    // Si no hay usuario, redirigir a login
+    if (!user) {
+      return {
+        shouldRedirect: true,
+        redirectTo: '/login'
+      };
+    }
+
+    // Si el usuario tiene rol null, solo permitir acceso a document-verification
+    if (user.role === null) {
+      console.log('⚠️ Usuario sin rol, verificando acceso a document-verification');
+      if (window.location.pathname === '/document-verification') {
+        return { shouldRedirect: false };
+      }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/document-verification'
+      };
+    }
+
+    // Si hay roles permitidos, verificar que el usuario tenga uno de esos roles
+    if (allowedRoles && allowedRoles.length > 0) {
+      if (!allowedRoles.includes(user.role)) {
         return await this.determineUserRedirection(user);
       }
     }
 
-    // Para otros roles, verificación normal
-    if (!user || !allowedRoles?.includes(user.role)) {
-      return await this.determineUserRedirection(user);
-    }
-
+    // Si no hay roles permitidos o el usuario tiene un rol permitido, permitir acceso
     return { shouldRedirect: false };
   }
 

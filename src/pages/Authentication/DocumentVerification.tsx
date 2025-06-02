@@ -16,6 +16,7 @@ import {
   Camera,
   Shield
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const DocumentVerification = () => {
   const { user } = useAuth();
@@ -74,6 +75,20 @@ const DocumentVerification = () => {
         });
         return;
       }
+
+      // Update user role to 'verificado'
+      const { error: updateError } = await supabase
+        .from('usuario')
+        .update({ rol: 'verificado' })
+        .eq('uuid', user.id);
+
+      if (updateError) {
+        console.error('Error updating user role:', updateError);
+        toast({
+          title: "⚠️ Advertencia",
+          description: "Documentos verificados pero hubo un error al actualizar el rol",
+        });
+      }
       
       setIsVerified(true);
       
@@ -81,11 +96,6 @@ const DocumentVerification = () => {
         title: "✅ Documentos verificados",
         description: "Tu identidad ha sido verificada y documentos guardados exitosamente",
       });
-
-      // Redirigir a selección de institución después de un momento
-      setTimeout(() => {
-        navigate('/select-institution');
-      }, 1500);
       
     } catch (error: any) {
       toast({
@@ -117,8 +127,14 @@ const DocumentVerification = () => {
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto" />
               <h2 className="text-2xl font-bold text-green-600">¡Verificación Exitosa!</h2>
               <p className="text-gray-600">
-                Tu identidad ha sido verificada. Serás redirigido para seleccionar tu institución.
+                Tu identidad ha sido verificada correctamente. Ahora puedes continuar con el registro en tu institución.
               </p>
+              <Button 
+                onClick={() => navigate('/institution-register')}
+                className="mt-4"
+              >
+                Continuar con el registro institucional
+              </Button>
             </div>
           </CardContent>
         </Card>

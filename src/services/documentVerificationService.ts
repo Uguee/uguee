@@ -38,18 +38,24 @@ export class DocumentVerificationService {
     try {
       if (!userUuid) return null;
       
-      const { data: { session } } = await supabase.auth.getSession();
+      // Si el ID es numérico, usarlo directamente
+      if (/^\d+$/.test(userUuid)) {
+        return parseInt(userUuid);
+      }
       
-      const response = await fetch(`https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-user-data?uuid=${userUuid}`, {
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`
-        }
-      });
+      // Si es un UUID, buscar en la tabla usuario
+      const { data: userData, error } = await supabase
+        .from('usuario')
+        .select('id_usuario')
+        .eq('uuid', userUuid)
+        .single();
       
-      if (!response.ok) return null;
+      if (error) {
+        console.error('Error getting user ID:', error);
+        return null;
+      }
       
-      const result = await response.json();
-      return result.success && result.data?.id_usuario ? result.data.id_usuario : null;
+      return userData?.id_usuario || null;
     } catch (error) {
       console.error('Error getting user ID:', error);
       return null;

@@ -15,9 +15,18 @@ import {
   GraduationCap,
   Briefcase,
   UserCheck,
-  Globe
+  Globe,
+  BookOpen,
+  Shield
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+
+interface RoleOption {
+  value: string;
+  label: string;
+  icon: any;
+  description?: string;
+}
 
 const SelectInstitution = () => {
   const { user, logout } = useAuth();
@@ -28,7 +37,8 @@ const SelectInstitution = () => {
   const [formData, setFormData] = useState<RegistrationFormData>({
     institutionId: 0,
     role: '',
-    institutionalCode: ''
+    institutionalCode: '',
+    address: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(true);
@@ -124,14 +134,40 @@ const SelectInstitution = () => {
     }
   };
 
-  const roleOptions = InstitutionRegistrationService.getRoleOptions();
+  const roleOptions: RoleOption[] = [
+    {
+      value: 'estudiante',
+      label: 'Estudiante',
+      icon: GraduationCap,
+      description: 'Estudiante activo de la institución'
+    },
+    {
+      value: 'profesor',
+      label: 'Profesor',
+      icon: BookOpen,
+      description: 'Profesor o docente de la institución'
+    },
+    {
+      value: 'administrador',
+      label: 'Administrador',
+      icon: Shield,
+      description: 'Personal administrativo de la institución'
+    },
+    {
+      value: 'externo',
+      label: 'Externo',
+      icon: User,
+      description: 'Usuario externo a la institución'
+    }
+  ];
   const codePlaceholder = InstitutionRegistrationService.getCodePlaceholder(formData.role);
 
   // Validar si el formulario está completo
   const isFormValid = Boolean(
     formData.institutionId &&
     formData.role &&
-    formData.institutionalCode?.trim()
+    formData.institutionalCode?.trim() &&
+    formData.address?.trim()
   );
 
   if (isRegistered) {
@@ -167,158 +203,106 @@ const SelectInstitution = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-4xl">
+    <div className="container mx-auto px-4 py-8">
+      <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-blue-600" />
-            <div>
-              <CardTitle className="text-2xl">Seleccionar Institución</CardTitle>
-              <p className="text-gray-600 mt-1">
-                Elige la institución a la que deseas unirte y tu rol
-              </p>
-            </div>
-          </div>
+          <CardTitle>Selecciona tu Institución</CardTitle>
         </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {/* Información del usuario */}
-          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
-            <User className="w-5 h-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="font-medium">Usuario: {user?.email?.split('@')[0] || 'Sin email'}</p>
-              <p className="text-sm text-gray-600">{user?.email || 'Email no disponible'}</p>
-              {!user?.email && (
-                <p className="text-xs text-red-500 mt-1">⚠️ Se requiere email para completar el registro</p>
-              )}
-            </div>
-          </div>
-
-          {/* Selección de institución */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-lg font-medium">
-              <Building2 className="w-5 h-5" />
-              Instituciones Disponibles
-            </Label>
-            <div className="grid gap-3 max-h-60 overflow-y-auto">
-              {institutions.length > 0 ? (
-                institutions.map((institution) => (
-                  <div
-                    key={institution.id_institucion}
-                    onClick={() => updateFormData('institutionId', institution.id_institucion)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      formData.institutionId === institution.id_institucion
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {institution.logo ? (
-                        <img 
-                          src={institution.logo} 
-                          alt={institution.nombre_oficial}
-                          className="w-12 h-12 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{institution.nombre_oficial}</h3>
-                        <p className="text-sm text-gray-600">{institution.direccion}</p>
-                      </div>
-                      {formData.institutionId === institution.id_institucion && (
-                        <CheckCircle className="w-5 h-5 text-blue-600" />
-                      )}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Building2 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No hay instituciones disponibles</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Selección de rol */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2 text-lg font-medium">
-              <Users className="w-5 h-5" />
-              Tu Rol en la Institución
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {roleOptions.map((role) => (
+        <CardContent>
+          {/* Institution Selection */}
+          <div className="mb-6">
+            <Label htmlFor="institution">Institución</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+              {institutions.map((institution) => (
                 <div
-                  key={role.value}
-                  onClick={() => updateFormData('role', role.value)}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    formData.role === role.value
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                  key={institution.id_institucion}
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    formData.institutionId === institution.id_institucion
+                      ? 'border-primary bg-primary/5'
+                      : 'hover:border-primary/50'
                   }`}
+                  onClick={() => updateFormData('institutionId', institution.id_institucion)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="text-2xl">{role.label.split(' ')[0]}</div>
-                    <div className="flex-1">
-                      <h4 className="font-medium">{role.label.split(' ').slice(1).join(' ')}</h4>
-                      <p className="text-sm text-gray-600">{role.description}</p>
+                    <Building2 className="h-5 w-5" />
+                    <div>
+                      <h3 className="font-medium">{institution.nombre_oficial}</h3>
+                      <p className="text-sm text-muted-foreground">{institution.direccion}</p>
                     </div>
-                    {formData.role === role.value && (
-                      <CheckCircle className="w-5 h-5 text-blue-600" />
-                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Código institucional */}
-          <div className="space-y-3">
-            <Label htmlFor="institutionalCode" className="text-lg font-medium">
-              Código Institucional
-            </Label>
+          {/* Role Selection */}
+          <div className="mb-6">
+            <Label>Rol</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+              {roleOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <div
+                    key={option.value}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      formData.role === option.value
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:border-primary/50'
+                    }`}
+                    onClick={() => updateFormData('role', option.value)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5" />
+                      <div>
+                        <span className="font-medium">{option.label}</span>
+                        {option.description && (
+                          <p className="text-sm text-muted-foreground">{option.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Institutional Code */}
+          <div className="mb-6">
+            <Label htmlFor="institutionalCode">Código Institucional</Label>
             <Input
               id="institutionalCode"
-              type="text"
               placeholder={codePlaceholder}
               value={formData.institutionalCode}
               onChange={(e) => updateFormData('institutionalCode', e.target.value)}
-              className="w-full"
             />
-            <p className="text-sm text-gray-500">
-              Ingresa tu código como {formData.role || 'miembro'} de la institución seleccionada
-            </p>
           </div>
 
-          {/* Botón de registro */}
-          <Button 
+          {/* Address */}
+          <div className="mb-6">
+            <Label htmlFor="address">Dirección de Residencia</Label>
+            <Input
+              id="address"
+              placeholder="Ingresa tu dirección de residencia"
+              value={formData.address}
+              onChange={(e) => updateFormData('address', e.target.value)}
+            />
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            className="w-full"
             onClick={handleInstitutionRegister}
-            disabled={isLoading || !isFormValid || !user?.email}
-            className="w-full h-12"
+            disabled={!isFormValid || isLoading}
           >
             {isLoading ? (
               <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Enviando solicitud...
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Enviar Solicitud de Registro
-              </div>
+              'Enviar Solicitud'
             )}
           </Button>
-
-          {/* Mensaje de ayuda */}
-          <div className="text-center text-sm text-gray-500">
-            <p>
-              Tu solicitud será revisada por el administrador de la institución.
-              Recibirás una notificación cuando sea aprobada.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

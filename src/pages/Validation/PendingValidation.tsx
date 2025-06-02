@@ -2,6 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { AuthFlowService } from '@/services/authFlowService';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const PendingValidation = () => {
   const { user } = useAuth();
@@ -9,50 +10,82 @@ const PendingValidation = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadUserStatus = async () => {
-      if (user?.id) {
-        try {
-          setIsLoading(true);
-          setError(null);
-          const status = await AuthFlowService.getUserStatus(user.id);
-          setUserStatus(status);
-        } catch (err) {
-          console.error('Error loading user status:', err);
-          setError('Error al cargar el estado de validación');
-          toast({
-            title: "Error",
-            description: "No se pudo cargar el estado de validación. Por favor, intenta de nuevo.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsLoading(false);
-        }
+      if (!user?.id) {
+        setError('No se encontró información del usuario');
+        setIsLoading(false);
+        return;
       }
-    };
-    
-    loadUserStatus();
-  }, [user?.id]);
 
-  const handleRefreshStatus = async () => {
-    if (user?.id) {
       try {
         setIsLoading(true);
         setError(null);
         const status = await AuthFlowService.getUserStatus(user.id);
+        console.log('📋 Estado del usuario:', status);
+        
+        if (!status) {
+          throw new Error('No se pudo obtener el estado del usuario');
+        }
+
         setUserStatus(status);
+
+        // Si el usuario ya está validado, redirigir al dashboard
+        if (status.isValidated) {
+          console.log('✅ Usuario validado, redirigiendo a dashboard');
+          navigate('/dashboard');
+        }
       } catch (err) {
-        console.error('Error refreshing user status:', err);
-        setError('Error al actualizar el estado de validación');
+        console.error('Error loading user status:', err);
+        setError('Error al cargar el estado de validación');
         toast({
           title: "Error",
-          description: "No se pudo actualizar el estado de validación. Por favor, intenta de nuevo.",
+          description: "No se pudo cargar el estado de validación. Por favor, intenta de nuevo.",
           variant: "destructive"
         });
       } finally {
         setIsLoading(false);
       }
+    };
+    
+    loadUserStatus();
+  }, [user?.id, navigate]);
+
+  const handleRefreshStatus = async () => {
+    if (!user?.id) {
+      setError('No se encontró información del usuario');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const status = await AuthFlowService.getUserStatus(user.id);
+      console.log('📋 Estado actualizado del usuario:', status);
+      
+      if (!status) {
+        throw new Error('No se pudo obtener el estado del usuario');
+      }
+
+      setUserStatus(status);
+
+      // Si el usuario ya está validado, redirigir al dashboard
+      if (status.isValidated) {
+        console.log('✅ Usuario validado, redirigiendo a dashboard');
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Error refreshing user status:', err);
+      setError('Error al actualizar el estado de validación');
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de validación. Por favor, intenta de nuevo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -113,13 +146,13 @@ const PendingValidation = () => {
               </p>
               <div className="space-y-3">
                 <button 
-                  onClick={() => window.location.href = '/select-institution'}
+                  onClick={() => navigate('/select-institution')}
                   className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
                 >
                   Intentar con Otra Institución
                 </button>
                 <button 
-                  onClick={() => window.location.href = '/login'}
+                  onClick={() => navigate('/login')}
                   className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
                 >
                   Cerrar Sesión
