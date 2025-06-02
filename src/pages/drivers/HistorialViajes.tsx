@@ -83,15 +83,15 @@ const HistorialViajes = () => {
       setError(null);
 
       try {
-        // Obtener el id_usuario del UserService
-        const userData = await UserService.getUserByUuid(user.id) as ExtendedUser;
+        // Primero obtener el id_usuario usando getUserDataFromUsuarios
+        const userData = await UserService.getUserDataFromUsuarios(user.id);
         console.log('UserData completo:', userData);
         
-        // Acceder directamente a la propiedad raw_data
-        const id_usuario = userData?.id_usuario;
-        if (!id_usuario) {
+        if (!userData || !userData.id_usuario) {
           throw new Error('No se pudo obtener el ID del usuario');
         }
+
+        const id_usuario = userData.id_usuario;
 
         const { data: viajesData, error: viajesError } = await supabase
           .from('viaje')
