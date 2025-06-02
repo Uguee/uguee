@@ -1,10 +1,8 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { UserService } from '@/services/userService';
 import { supabase } from '@/integrations/supabase/client';
-import { createClient } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
-
-
 
 const Profile = () => {
   const { user } = useAuth();
@@ -13,26 +11,34 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (user?.id) {
-        const { data, error } = await supabase
-          .from('usuario')
-          .select(`
-            *,
-            registro (
-              validacion_conductor
-            )
-          `)
-          .eq('uuid', user.id)
-          .single();
+        try {
+          // Obtener datos básicos del usuario
+          const userData = await UserService.getUserDataFromUsuarios(user.id);
+          
+          if (userData) {
+            // Obtener el estado de validación del conductor desde la tabla registro
+            const { data: registroData, error: registroError } = await supabase
+              .from('registro')
+              .select('validacion_conductor')
+              .eq('id_usuario', userData.id_usuario)
+              .single();
 
-        if (data) {
-          setProfileData({
-            ...data,
-            estadoConductor: data.registro?.[0]?.validacion_conductor === 'validado'
-              ? 'Conductor: Validado' 
-              : data.registro?.[0]?.validacion_conductor === 'pendiente'
-              ? 'Conductor: Pendiente'
-              : 'Conductor: No aplica'
-          });
+            if (registroError) {
+              console.error('Error fetching conductor status:', registroError);
+            }
+
+            const validacionConductor = registroData?.validacion_conductor;
+            
+            setProfileData({
+              ...userData,
+              estadoConductor: 
+                validacionConductor === 'validado' ? 'Conductor: Validado' :
+                validacionConductor === 'pendiente' ? 'Conductor: Pendiente' :
+                'Conductor: No aplica'
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
         }
       }
     };
