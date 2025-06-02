@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { DocumentVerificationService } from '@/services/documentVerificationService';
+import { supabase } from '@/integrations/supabase/client';
+import { AuthFlowService } from '@/services/authFlowService';
 
 interface User {
   id: string;
@@ -16,6 +18,7 @@ interface User {
   phone?: string;
   email?: string;
   birthdate?: string;
+  id_usuario: string;
 }
 
 const Navbar = () => {
@@ -106,11 +109,20 @@ const Navbar = () => {
 
   const handleHomeClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (user?.role === null) {
-      navigate('/document-verification');
+    
+    if (!user) {
       return;
     }
-    navigate('/dashboard');
+
+    // Usar AuthFlowService para determinar la redirección
+    const result = await AuthFlowService.checkRouteAccess(user);
+    
+    if (result.shouldRedirect) {
+      navigate(result.redirectTo);
+    } else {
+      // Si no hay redirección necesaria, ir al dashboard
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -133,7 +145,10 @@ const Navbar = () => {
               <Link 
                 to="/dashboard" 
                 className="text-gray-600 hover:text-primary transition-colors"
-                onClick={handleHomeClick}
+                onClick={(e) => {
+                  console.log('🔍 Inicio button clicked');
+                  handleHomeClick(e);
+                }}
               >
                 Inicio
               </Link>

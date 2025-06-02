@@ -61,24 +61,12 @@ export class UserService {
       case 'admin':
         return 'admin';
       case 'admin_institucional':
-      case 'admin-institucion':
         return 'admin_institucional';
-      case 'pendiente':
-        return 'pendiente';
-      case 'verificado':
-        return 'verificado';
-      case 'estudiante':
-      case 'profesor':
-      case 'administrativo':
-      case 'externo':
-      case 'validacion':
-      case 'conductor':
       case 'usuario':
-      case 'pasajero':
         return 'usuario';
       default:
-        console.warn('⚠️ Rol desconocido:', role, 'usando null por defecto');
-        return null;
+        console.warn('⚠️ Rol desconocido:', role, 'usando usuario por defecto');
+        return 'usuario';
     }
   }
 

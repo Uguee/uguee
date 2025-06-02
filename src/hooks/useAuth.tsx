@@ -284,7 +284,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
         phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
         role: userRole || supabaseUser.user_metadata?.role || 'pendiente',
-        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || '',
+        direccion_de_residencia: userData.direccion_de_residencia || supabaseUser.user_metadata?.direccion_de_residencia || ''
       };
 
       console.log('📦 Datos preparados para sync-user:', syncUserData);
@@ -364,7 +365,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
         phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
         role: userRole || supabaseUser.user_metadata?.role || 'pendiente',
-        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || '',
+        direccion_de_residencia: userData.direccion_de_residencia || supabaseUser.user_metadata?.direccion_de_residencia || ''
       };
 
       // Validar que los campos requeridos no estén vacíos

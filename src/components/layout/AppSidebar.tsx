@@ -11,6 +11,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
 import { DocumentVerificationService } from '@/services/documentVerificationService';
+import { supabase } from '@/integrations/supabase/client';
 
 import {
   Sidebar,
@@ -29,10 +30,51 @@ export const AppSidebar = () => {
   const navigate = useNavigate();
 
   const handleHomeClick = async () => {
-    if (user?.role === null) {
-      navigate('/document-verification');
+    if (!user?.id_usuario) return;
+
+    // Si es admin o admin_institucional, ir directamente a su dashboard
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard');
       return;
     }
+    if (user.role === 'admin_institucional') {
+      navigate('/institution/dashboard');
+      return;
+    }
+
+    // Solo verificar documentos y registro para usuarios normales
+    if (user.role === 'usuario') {
+      // Verificar documentos
+      const { data: documents } = await supabase
+        .from('documento')
+        .select('id_usuario')
+        .eq('id_usuario', user.id_usuario)
+        .limit(1);
+
+      if (!documents || documents.length === 0) {
+        navigate('/document-verification');
+        return;
+      }
+
+      // Verificar registro en institución
+      const { data: registration } = await supabase
+        .from('registro')
+        .select('validacion')
+        .eq('id_usuario', user.id_usuario)
+        .limit(1);
+
+      if (!registration || registration.length === 0) {
+        navigate('/select-institution');
+        return;
+      }
+
+      // Verificar estado de validación
+      if (registration[0].validacion === 'pendiente') {
+        navigate('/pending-validation');
+        return;
+      }
+    }
+
     navigate('/dashboard');
   };
 
@@ -42,7 +84,10 @@ export const AppSidebar = () => {
       title: "Inicio",
       url: "/dashboard",
       icon: Home,
-      onClick: handleHomeClick
+      onClick: () => {
+        console.log('🔍 Inicio button clicked in sidebar');
+        handleHomeClick();
+      }
     },
     {
       title: "Iniciar viaje",

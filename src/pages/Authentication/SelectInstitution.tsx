@@ -99,7 +99,8 @@ const SelectInstitution = () => {
       const result = await InstitutionRegistrationService.submitRegistration(
         formData,
         user.id,
-        user.email
+        user.email,
+        formData.address
       );
 
       if (result.success) {

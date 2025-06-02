@@ -189,7 +189,7 @@ export class InstitutionRegistrationService {
         validacion: 'pendiente',
         validacion_conductor: null,
         fecha_registro: new Date().toISOString(),
-        direccion_de_residencia: userAddress || userData.direccion || 'No especificada'
+        direccion_de_residencia: userAddress || formData.address || userData.direccion || 'No especificada'
       };
 
       console.log('📋 Datos de registro preparados:', registrationData);

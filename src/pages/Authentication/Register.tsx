@@ -18,6 +18,7 @@ const Register = () => {
     role: "usuario" as UserRole,
     dateOfBirth: "",
     cedula: "",
+    direccion_de_residencia: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,6 +68,10 @@ const Register = () => {
       newErrors.phoneNumber = "Número de teléfono es requerido";
     }
 
+    if (!formData.direccion_de_residencia.trim()) {
+      newErrors.direccion_de_residencia = "Dirección de residencia es requerida";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -102,6 +107,7 @@ const Register = () => {
         phoneNumber: formData.phoneNumber,
         role: formData.role,
         dateOfBirth: formData.dateOfBirth,
+        direccion_de_residencia: formData.direccion_de_residencia,
       }, formData.password, formData.cedula);
 
       // Este código no se ejecutará si se requiere verificación de email
@@ -331,6 +337,33 @@ const Register = () => {
                 {errors.phoneNumber && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.phoneNumber}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Dirección de residencia */}
+            <div>
+              <label
+                htmlFor="direccion_de_residencia"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Dirección de residencia
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  name="direccion_de_residencia"
+                  id="direccion_de_residencia"
+                  value={formData.direccion_de_residencia}
+                  onChange={handleChange}
+                  className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                    errors.direccion_de_residencia ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.direccion_de_residencia && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.direccion_de_residencia}
                   </p>
                 )}
               </div>
