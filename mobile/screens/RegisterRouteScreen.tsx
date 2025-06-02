@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -16,11 +17,21 @@ import { getCedulaByUUID } from "../services/userDataService";
 
 interface RegisterRouteScreenProps {
   onGoBack?: () => void;
+  onRouteCreated?: () => void;
 }
 
 export default function RegisterRouteScreen({
   onGoBack,
+  onRouteCreated,
 }: RegisterRouteScreenProps) {
+  const [points, setPoints] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [success, setSuccess] = useState(false);
   const [points, setPoints] = useState<
     { latitude: number; longitude: number }[]
   >([]);
@@ -31,6 +42,8 @@ export default function RegisterRouteScreen({
   const [success, setSuccess] = useState(false);
   const {
     saveRoute,
+    createUserRouteRelation,
+    isLoading: loading,
     createUserRouteRelation,
     isLoading: loading,
     error,
@@ -199,6 +212,7 @@ export default function RegisterRouteScreen({
         <Button
           title={loading ? "Guardando..." : "Guardar ruta"}
           onPress={handleSaveRoute}
+          onPress={handleSaveRoute}
           disabled={points.length !== 2 || loading}
         />
       </View>
@@ -211,6 +225,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    bottom: 32,
     bottom: 32,
     backgroundColor: "#fff",
     padding: 16,

@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { View, FlatList } from "react-native";
-import { TopMenu } from "../components/DriverTopMenu"; // Ajusta la ruta si es necesario
-import { SearchBar } from "../components/SearchBar";
+import { View, FlatList, Text, ScrollView } from "react-native";
+import { TopMenu } from "../components/DriverTopMenu";
 import { BigCard } from "../components/BigCardHome";
-import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { useAuth } from "../hooks/useAuth";
 
 // Agrega las props
 interface DriverHomeScreenProps {
@@ -16,6 +15,7 @@ interface DriverHomeScreenProps {
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
+  onGoToSeeRoutes?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -25,13 +25,12 @@ export default function DriverHomeScreen({
   onGoToProfile = () => {},
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
+  onGoToSeeRoutes = () => {},
 }: DriverHomeScreenProps) {
-  const [search, setSearch] = useState("");
-
+  const { user } = useAuth();
   const suggestions = [
-    { label: "Crear ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Modificar rutas", onPress: () => alert("Intracampus") },
-    { label: "Rastrear rutas", onPress: () => alert("Rastrea rutas") },
+    { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
+    { label: "Ver rutas", onPress: onGoToSeeRoutes },
   ];
 
   const navButtons = [
@@ -58,60 +57,45 @@ export default function DriverHomeScreen({
     },
   ];
 
-  const rutas = [
-    {
-      title: "Universidad del Valle",
-      address: "Campus Meléndez Calle 13 # 100-00",
-    },
-    { title: "Unicentro - Sur", address: "Cra. 100 #5-169 - Centro comercial" },
-  ];
-
-  const rutasFiltradas = rutas.filter((ruta) =>
-    ruta.title.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
     <View style={{ flex: 1 }}>
-      <FlatList
-        data={rutasFiltradas}
-        keyExtractor={(item, index) => item.title + index}
-        renderItem={({ item }) => (
-          <RouteCard
-            title={item.title}
-            address={item.address}
-            onPress={() => alert(item.title)}
-          />
-        )}
-        ListHeaderComponent={
-          <>
-            <TopMenu onMenuPress={() => alert("Menú presionado")} />
-            <SearchBar
-              value={search}
-              onChangeText={setSearch}
-              onLaterPress={() => alert("Más tarde")}
-            />
-            <BigCard
-              image={require("../assets/building3D.png")}
-              title="¿Tu institución?"
-              description="Presiona aquí para acceder a los detalles de tu institución"
-              onPress={onGoToInstitutionProfile}
-            />
-            <BigCard
-              image={require("../assets/bus.png")}
-              title="¿Vas a algún lado?"
-              description="Presiona aquí para cambiar a la vista de pasajero"
-              onPress={onGoToHomeScreen}
-            />
-          </>
-        }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 80 }}
-      />
+      <TopMenu onMenuPress={() => alert("Menú presionado")} />
+      <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#8B5CF6",
+            marginBottom: 50,
+            textAlign: "center",
+          }}
+        >
+          {`¡Hola,${
+            user?.firstName ? ` ${user.firstName}` : ""
+          }! Gracias por conducir con nosotros`}
+        </Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: "space-between",
+          paddingBottom: 80,
+        }}
+      >
+        <BigCard
+          image={require("../assets/building3D.png")}
+          title="¿Tu institución?"
+          description="Presiona aquí para acceder a los detalles de tu institución"
+          onPress={onGoToInstitutionProfile}
+        />
+        <BigCard
+          image={require("../assets/bus.png")}
+          title="¿Vas a algún lado?"
+          description="Presiona aquí para cambiar a la vista de pasajero"
+          onPress={onGoToHomeScreen}
+        />
+        <SuggestionsSection suggestions={suggestions} />
+      </ScrollView>
       <BottomNavigation buttons={navButtons} />
     </View>
   );
