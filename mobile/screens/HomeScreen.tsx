@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, Text } from "react-native";
+import { View, FlatList, Text } from "react-native";
 import { TopMenu } from "../components/TopMenu";
+import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
+import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
@@ -29,6 +31,8 @@ export default function HomeScreen({
   onGoToProfile,
   onGoToInstitutionProfile,
 }: HomeScreenProps) {
+  const [search, setSearch] = useState("");
+
   // Contexto de usuario y verificación
   const { user } = useAuth();
   const {
@@ -96,6 +100,19 @@ export default function HomeScreen({
       onPress: onGoToProfile ?? (() => alert("Perfil")),
     },
   ];
+
+  const rutas = [
+    {
+      title: "Universidad del Valle",
+      address: "Campus Meléndez Calle 13 # 100-00",
+    },
+    { title: "Unicentro - Sur", address: "Cra. 100 #5-169 - Centro comercial" },
+  ];
+
+  // Filtra las rutas según el texto de búsqueda
+  const rutasFiltradas = rutas.filter((ruta) =>
+    ruta.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   // Construimos dinámicamente las BigCards según el estado de verificación.
   const renderDynamicCards = () => {
@@ -193,29 +210,43 @@ export default function HomeScreen({
 
   return (
     <View style={{ flex: 1 }}>
-      <TopMenu onMenuPress={() => alert("Menú presionado")} />
-      <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
-        <Text
-          style={{
-            fontSize: 32,
-            fontWeight: "bold",
-            color: "#8B5CF6",
-            marginBottom: 50,
-          }}
-        >
-          {`Bienvenid@${user?.firstName ? ` ${user.firstName}` : ""}`}
-        </Text>
-      </View>
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: "space-between",
-          paddingBottom: 80,
-        }}
-      >
-        {renderDynamicCards()}
-        <SuggestionsSection suggestions={suggestions} />
-      </ScrollView>
+      <FlatList
+        data={rutasFiltradas}
+        keyExtractor={(item, index) => item.title + index}
+        renderItem={({ item }) => (
+          <RouteCard
+            title={item.title}
+            address={item.address}
+            onPress={() => alert(item.title)}
+          />
+        )}
+        ListHeaderComponent={
+          <>
+            <TopMenu onMenuPress={() => alert("Menú presionado")} />
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              onLaterPress={() => alert("Más tarde")}
+            />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`Te damos la bienvenida, ${user?.firstName || ""}`}
+            </Text>
+            {/* Tarjetas dinámicas según verificación */}
+            {renderDynamicCards()}
+          </>
+        }
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
+        contentContainerStyle={{ paddingBottom: 80 }}
+      />
       <BottomNavigation buttons={navButtons} />
     </View>
   );
