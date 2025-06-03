@@ -17,7 +17,7 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// Asegurarnos de que los iconos estén configurados antes de que se use el mapa
 L.Icon.Default.mergeOptions({
   iconRetinaUrl,
   iconUrl,
@@ -40,20 +40,27 @@ interface RouteMapProps {
   allowClickToSetPoints?: boolean;
 }
 
-// Componente para detectar ubicación sin cambiar vista si el usuario ya la modificó
+// Componente para manejar la ubicación actual
 function MapController({ onCurrentLocationChange }: { onCurrentLocationChange?: (location: Location) => void }) {
   const map = useMap();
+  const [isMapReady, setIsMapReady] = useState(false);
   const initialCentered = useRef(false);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    // Esperar a que el mapa esté listo
+    if (map) {
+      setIsMapReady(true);
+    }
+  }, [map]);
+
+  useEffect(() => {
+    if (!isMapReady || !navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
         const currentLocation = [latitude, longitude] as [number, number];
 
-        // Solo centramos y aplicamos zoom si el usuario no ha tocado el mapa aún
         if (!initialCentered.current) {
           map.setView(currentLocation, 18);
           initialCentered.current = true;
@@ -76,7 +83,6 @@ function MapController({ onCurrentLocationChange }: { onCurrentLocationChange?: 
           iconAnchor: [8, 8],
         });
 
-        // Callback para el padre
         onCurrentLocationChange?.({
           lat: latitude,
           lng: longitude,
@@ -92,7 +98,7 @@ function MapController({ onCurrentLocationChange }: { onCurrentLocationChange?: 
         maximumAge: 0,
       }
     );
-  }, [map, onCurrentLocationChange]);
+  }, [isMapReady, map, onCurrentLocationChange]);
 
   return null;
 }
@@ -167,51 +173,7 @@ export function RouteMap({
   onMapClick,
   allowClickToSetPoints = false 
 }: RouteMapProps) {
-  const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
-
-  // Función para generar la ruta usando OSRM
-  const generateRoute = async (start: Location, end: Location) => {
-    setIsGeneratingRoute(true);
-    try {
-      const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`
-      );
-      
-      const data = await response.json();
-      
-      if (data.routes && data.routes.length > 0) {
-        const coordinates = data.routes[0].geometry.coordinates;
-        // Convertir de [lng, lat] a [lat, lng] para Leaflet
-        const routeCoords: [number, number][] = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
-        
-        if (onRouteGenerated) {
-          onRouteGenerated(start, end, routeCoords);
-        }
-      }
-    } catch (error) {
-      console.error('Error generando la ruta:', error);
-    } finally {
-      setIsGeneratingRoute(false);
-    }
-  };
-
-  const originIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
-
-  const destinationIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
+  const [isMapReady, setIsMapReady] = useState(false);
 
   return (
     <div className="relative h-[400px] w-full rounded-lg overflow-hidden shadow-lg">
@@ -224,11 +186,8 @@ export function RouteMap({
           {origin && !destination && (
             <p className="text-xs text-gray-600">2. Haz clic para seleccionar el destino</p>
           )}
-          {origin && destination && !isGeneratingRoute && (
-            <p className="text-xs text-green-600">✅ Ruta generada. Clic para reiniciar</p>
-          )}
-          {isGeneratingRoute && (
-            <p className="text-xs text-blue-600">🔄 Generando ruta...</p>
+          {origin && destination && (
+            <p className="text-xs text-green-600">✅ Ruta generada</p>
           )}
         </div>
       )}
@@ -238,8 +197,7 @@ export function RouteMap({
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
-        minZoom={5}
-        maxZoom={19}
+        whenReady={() => setIsMapReady(true)}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -247,52 +205,40 @@ export function RouteMap({
         />
 
         <ZoomControl position="bottomright" />
-        <MapController onCurrentLocationChange={onCurrentLocationChange} />
         
-        {allowClickToSetPoints && (
-          <MapClickHandler 
-            onMapClick={onMapClick} 
-          />
+        {isMapReady && (
+          <>
+            <MapController onCurrentLocationChange={onCurrentLocationChange} />
+            {allowClickToSetPoints && (
+              <MapClickHandler onMapClick={onMapClick} />
+            )}
+            {origin && (
+              <Marker position={[origin.lat, origin.lng]}>
+                <Popup>
+                  <strong>Origen:</strong> {origin.address}
+                </Popup>
+              </Marker>
+            )}
+            {destination && (
+              <Marker position={[destination.lat, destination.lng]}>
+                <Popup>
+                  <strong>Destino:</strong> {destination.address}
+                </Popup>
+              </Marker>
+            )}
+            {route && (
+              <Polyline
+                positions={route}
+                color="#8B5CF6"
+                weight={4}
+                opacity={0.7}
+              />
+            )}
+            {(origin || destination || route) && (
+              <FitBounds origin={origin} destination={destination} route={route} />
+            )}
+          </>
         )}
-
-        {origin && (
-          <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
-            <Popup>
-              <div>
-                <strong>Origen:</strong> {origin.address}
-                <br />
-                Lat: {origin.lat && typeof origin.lat === 'number' ? origin.lat.toFixed(6) : 'N/A'}
-                <br />
-                Lng: {origin.lng && typeof origin.lng === 'number' ? origin.lng.toFixed(6) : 'N/A'}
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {destination && (
-          <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
-            <Popup>
-              <div>
-                <strong>Destino:</strong> {destination.address}
-                <br />
-                Lat: {destination.lat && typeof destination.lat === 'number' ? destination.lat.toFixed(6) : 'N/A'}
-                <br />
-                Lng: {destination.lng && typeof destination.lng === 'number' ? destination.lng.toFixed(6) : 'N/A'}
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {route && (
-          <Polyline
-            positions={route}
-            color="#8B5CF6"
-            weight={4}
-            opacity={0.7}
-          />
-        )}
-
-        <FitBounds origin={origin} destination={destination} route={route} />
       </MapContainer>
     </div>
   );
