@@ -208,19 +208,35 @@ export class InstitutionService {
   /**
    * Obtiene la institución que administra un usuario admin_institucional
    */
-  static async getInstitutionByAdmin(adminUuid: string): Promise<InstitutionRegistrationResult> {
+  static async getInstitutionByAdmin(adminId: string): Promise<InstitutionRegistrationResult> {
     try {
-      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminUuid);
+      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminId);
       
-      // Usar any explícito para evitar problemas de tipificación infinita
-      const query: any = supabase
+      // Primero obtener el UUID del usuario si es un ID numérico
+      let adminUuid = adminId;
+      if (/^\d+$/.test(adminId)) {
+        const { data: userData, error: userError } = await supabase
+          .from('usuario')
+          .select('uuid')
+          .eq('id_usuario', parseInt(adminId))
+          .single();
+
+        if (userError || !userData?.uuid) {
+          console.error('❌ Error obteniendo UUID del admin:', userError);
+          return {
+            success: false,
+            error: `Error obteniendo UUID del admin: ${userError?.message}`
+          };
+        }
+        adminUuid = userData.uuid;
+      }
+
+      // Ahora usar el UUID para buscar la institución
+      const { data: institutions, error } = await supabase
         .from('institucion')
         .select('id_institucion, nombre_oficial, logo, direccion, colores, admin_institucional')
-        .eq('admin_institucional', adminUuid);
-
-      const result: any = await query;
-      const institutions = result.data;
-      const error = result.error;
+        .eq('admin_institucional', adminUuid)
+        .single();
 
       if (error) {
         console.error('❌ Error obteniendo institución por admin:', error);
@@ -230,7 +246,7 @@ export class InstitutionService {
         };
       }
 
-      if (!institutions || institutions.length === 0) {
+      if (!institutions) {
         return {
           success: false,
           error: 'No se encontró institución para este administrador'
@@ -239,7 +255,7 @@ export class InstitutionService {
 
       return {
         success: true,
-        data: institutions[0]
+        data: institutions
       };
     } catch (error: any) {
       console.error('❌ Error inesperado en getInstitutionByAdmin:', error);

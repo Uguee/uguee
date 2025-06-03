@@ -47,13 +47,14 @@ const MisVehiculos = () => {
     if (!user?.id) return;
     
     try {
-      const userDataResponse = await UserService.getUserByUuid(user.id);
-      const id_usuario = userDataResponse?.id_usuario;
+      // Primero obtener el id_usuario usando getUserDataFromUsuarios
+      const userData = await UserService.getUserDataFromUsuarios(user.id);
       
-      if (!id_usuario) {
+      if (!userData || !userData.id_usuario) {
         throw new Error('No se pudo obtener el ID del usuario');
       }
 
+      const id_usuario = userData.id_usuario;
       setUserData({ id_usuario });
 
       const { data, error } = await supabase
