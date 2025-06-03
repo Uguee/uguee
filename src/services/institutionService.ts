@@ -107,8 +107,7 @@ export class InstitutionService {
         nombre_oficial: institutionData.nombre_oficial,
         logo: logoUrl,
         direccion: institutionData.direccion,
-        colores: institutionData.colores,
-        admin_institucional: userId,
+        colores: institutionData.colores
       };
 
       console.log('📤 Enviando solicitud al endpoint:', requestData);
@@ -130,11 +129,43 @@ export class InstitutionService {
       console.log('📥 Respuesta del endpoint:', result);
 
       if (result.success) {
-        console.log('🎉 Institución registrada exitosamente');
+        // Obtener el ID de la institución creada
+        const institutionId = result.data.id_institucion;
+
+        // Obtener el ID del usuario
+        const { data: userData, error: userError } = await supabase
+          .from('usuario')
+          .select('id_usuario')
+          .eq('uuid', userId)
+          .single();
+
+        if (userError || !userData) {
+          throw new Error('No se pudo obtener el ID del usuario');
+        }
+
+        // Crear el registro con rol de admin_institucional
+        const { error: registroError } = await supabase
+          .from('registro')
+          .insert({
+            id_usuario: userData.id_usuario,
+            id_institucion: institutionId,
+            correo_institucional: result.data.correo_institucional,
+            codigo_institucional: result.data.codigo_institucional,
+            rol_institucional: 'admin_institucional',
+            validacion: 'aprobado', // Aprobado automáticamente para el admin
+            fecha_registro: new Date().toISOString(),
+            direccion_de_residencia: institutionData.direccion
+          });
+
+        if (registroError) {
+          throw new Error(`Error al crear el registro: ${registroError.message}`);
+        }
+
+        console.log('🎉 Institución y registro de admin creados exitosamente');
         return {
           success: true,
           data: result.data,
-          message: result.message || "Institución registrada exitosamente."
+          message: "Institución registrada exitosamente."
         };
       } else {
         return {
@@ -208,54 +239,65 @@ export class InstitutionService {
   /**
    * Obtiene la institución que administra un usuario admin_institucional
    */
-  static async getInstitutionByAdmin(adminId: string): Promise<InstitutionRegistrationResult> {
+  static async getInstitutionByAdmin(adminUuid: string): Promise<InstitutionRegistrationResult> {
     try {
-      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminId);
+      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminUuid);
       
-      // Primero obtener el UUID del usuario si es un ID numérico
-      let adminUuid = adminId;
-      if (/^\d+$/.test(adminId)) {
-        const { data: userData, error: userError } = await supabase
-          .from('usuario')
-          .select('uuid')
-          .eq('id_usuario', parseInt(adminId))
-          .single();
-
-        if (userError || !userData?.uuid) {
-          console.error('❌ Error obteniendo UUID del admin:', userError);
-          return {
-            success: false,
-            error: `Error obteniendo UUID del admin: ${userError?.message}`
-          };
-        }
-        adminUuid = userData.uuid;
-      }
-
-      // Ahora usar el UUID para buscar la institución
-      const { data: institutions, error } = await supabase
-        .from('institucion')
-        .select('id_institucion, nombre_oficial, logo, direccion, colores, admin_institucional')
-        .eq('admin_institucional', adminUuid)
+      // Primero obtener el id_usuario del UUID
+      const { data: userData, error: userError } = await supabase
+        .from('usuario')
+        .select('id_usuario')
+        .eq('uuid', adminUuid)
         .single();
 
-      if (error) {
-        console.error('❌ Error obteniendo institución por admin:', error);
+      if (userError || !userData) {
+        console.error('❌ Error obteniendo usuario:', userError);
         return {
           success: false,
-          error: `Error obteniendo institución: ${error.message}`
+          error: 'No se encontró el usuario'
         };
       }
 
-      if (!institutions) {
+      console.log('👤 ID de usuario encontrado:', userData.id_usuario);
+
+      // Obtener la institución a través del registro
+      const { data: registro, error: registroError } = await supabase
+        .from('registro')
+        .select(`
+          id_institucion,
+          institucion:institucion (
+            id_institucion,
+            nombre_oficial,
+            logo,
+            direccion,
+            colores
+          )
+        `)
+        .eq('id_usuario', userData.id_usuario)
+        .in('rol_institucional', ['admin_institucional', 'administrador'])
+        .eq('validacion', 'aprobado')
+        .single();
+
+      if (registroError) {
+        console.error('❌ Error obteniendo registro:', registroError);
+        return {
+          success: false,
+          error: `Error obteniendo registro: ${registroError.message}`
+        };
+      }
+
+      if (!registro) {
+        console.error('❌ No se encontró registro para el usuario');
         return {
           success: false,
           error: 'No se encontró institución para este administrador'
         };
       }
 
+      console.log('✅ Institución encontrada:', registro.institucion);
       return {
         success: true,
-        data: institutions
+        data: registro.institucion
       };
     } catch (error: any) {
       console.error('❌ Error inesperado en getInstitutionByAdmin:', error);

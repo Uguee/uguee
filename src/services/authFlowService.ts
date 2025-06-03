@@ -36,7 +36,7 @@ export class AuthFlowService {
         };
       case 'usuario':
         // Verificar documentos y registro para usuarios normales
-        const status = await this.getUserStatus(user.id);
+        const status = await this.getUserStatus(user.id.toString());
         
         if (!status.hasDocuments) {
           console.log('📄 Usuario sin documentos → /document-verification');
@@ -102,7 +102,7 @@ export class AuthFlowService {
     }
 
     // Obtener el estado de registro del usuario
-    const status = await this.getUserStatus(user.id);
+    const status = await this.getUserStatus(user.id.toString());
 
     // Si no tiene documentos, redirigir a document-verification
     if (!status.hasDocuments) {
@@ -144,17 +144,20 @@ export class AuthFlowService {
   /**
    * Obtiene el estado actual del usuario
    */
-  private static async getUserStatus(userId: number): Promise<{
+  static async getUserStatus(userId: string | number): Promise<{
     hasDocuments: boolean;
     hasInstitution: boolean;
     isPending: boolean;
   }> {
     try {
+      // Convert userId to string for database query
+      const userIdStr = userId.toString();
+
       // Verificar documentos
       const { data: documents, error: docError } = await supabase
         .from('documento')
         .select('id_usuario')
-        .eq('id_usuario', userId)
+        .eq('id_usuario', parseInt(userIdStr))
         .limit(1);
 
       if (docError) {
@@ -168,7 +171,7 @@ export class AuthFlowService {
       const { data: registration, error: regError } = await supabase
         .from('registro')
         .select('validacion')
-        .eq('id_usuario', userId)
+        .eq('id_usuario', parseInt(userIdStr))
         .limit(1);
 
       if (regError) {
