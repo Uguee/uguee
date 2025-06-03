@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, FlatList, Text } from "react-native";
-import { TopMenu } from "../components/DriverTopMenu"; // Ajusta la ruta si es necesario
+import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";

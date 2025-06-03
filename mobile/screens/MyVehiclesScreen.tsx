@@ -15,12 +15,19 @@ import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { useUserVehicles } from "../hooks/useUserVehicles";
 
+interface MyVehiclesScreenProps {
+  onGoToDriverHomeScreen?: () => void;
+  onGoToProfileScreen?: () => void;
+  onGoToTravelScreen?: () => void;
+  onGoToAddVehicleScreen?: () => void;
+}
+
 export default function MyVehiclesScreen({
   onGoToDriverHomeScreen = () => {},
   onGoToProfileScreen = () => {},
   onGoToTravelScreen = () => {},
   onGoToAddVehicleScreen = () => {},
-}) {
+}: MyVehiclesScreenProps) {
   const {
     vehicles,
     loadingVehicles,
@@ -44,7 +51,7 @@ export default function MyVehiclesScreen({
   function handleVehiclePress(vehiculo: any) {
     Alert.alert(
       "Vehículo",
-      `Placa: ${vehiculo.placa}\nModelo: ${vehiculo.modelo}\nColor: ${vehiculo.color}`
+      `Placa: ${vehiculo.placa}\nModelo: ${vehiculo.modelo}\nColor: ${vehiculo.color}\nEstado: ${vehiculo.validacion}`
     );
   }
 
@@ -159,6 +166,7 @@ function getVehicleImage(tipo: number) {
       return require("../assets/redCar.png");
   }
 }
+
 function getVehicleTitle(tipo: number, modelo: number) {
   switch (tipo) {
     case 1:

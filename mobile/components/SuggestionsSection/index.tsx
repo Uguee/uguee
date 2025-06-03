@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 20,
   },
   suggestionsList: {
     gap: 12,

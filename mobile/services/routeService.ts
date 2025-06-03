@@ -33,7 +33,17 @@ export async function registerRoute({
       }
     );
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Error registrando ruta");
+    if (!response.ok) {
+      console.error("Respuesta del servidor:", data);
+      console.error("Datos enviados:", {
+        punto_partida,
+        punto_llegada,
+        trayecto,
+        longitud,
+        id_usuario,
+      });
+      throw new Error(data.error || "Error registrando ruta");
+    }
     return data;
   } catch (e) {
     console.error("Error en registerRoute:", e);

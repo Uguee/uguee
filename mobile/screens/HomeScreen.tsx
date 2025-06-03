@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, FlatList, Text } from "react-native";
-import { TopMenu } from "../components/TopMenu"; // Ajusta la ruta si es necesario
+import { TopMenu } from "../components/TopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
@@ -42,7 +42,6 @@ export default function HomeScreen({
     error,
   } = useVerificationStatus();
 
-  // Log de verificación al cargar la pantalla
   useEffect(() => {
     if (!verificationLoading) {
       console.log("[HomeScreen] Usuario actual:", user);
@@ -110,20 +109,16 @@ export default function HomeScreen({
     { title: "Unicentro - Sur", address: "Cra. 100 #5-169 - Centro comercial" },
   ];
 
-  // 1. Filtra las rutas según el texto de búsqueda
+  // Filtra las rutas según el texto de búsqueda
   const rutasFiltradas = rutas.filter((ruta) =>
     ruta.title.toLowerCase().includes(search.toLowerCase())
   );
 
   // Construimos dinámicamente las BigCards según el estado de verificación.
   const renderDynamicCards = () => {
-    if (verificationLoading) return null; // Aún consultando, no mostrar nada.
-
+    if (verificationLoading) return null;
     const cards: React.ReactElement[] = [];
-
-    // Tarjeta de solicitud pendiente de conductor
     if (conductorStatus === "pendiente") {
-      // Si la institución está validada, mostrar también la tarjeta de institución
       if (institutionStatus === "validado") {
         cards.push(
           <BigCard
@@ -147,11 +142,8 @@ export default function HomeScreen({
           }
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta de solicitud pendiente
     if (institutionStatus === "pendiente") {
       cards.push(
         <BigCard
@@ -162,11 +154,8 @@ export default function HomeScreen({
           onPress={() => {}}
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta institución
     if (institutionStatus !== "validado") {
       cards.push(
         <BigCard
@@ -190,8 +179,6 @@ export default function HomeScreen({
         />
       );
     }
-
-    // Tarjetas de conductor basadas en status
     if (institutionStatus === "validado" && conductorStatus !== "validado") {
       cards.push(
         <BigCard
@@ -218,7 +205,6 @@ export default function HomeScreen({
         />
       );
     }
-
     return cards;
   };
 

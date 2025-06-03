@@ -7,21 +7,18 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import MapView, { Marker, Polyline, MapPressEvent } from "react-native-maps";
+import MapView, { Marker, MapPressEvent } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
-import Constants from "expo-constants";
 import { useRouteManager } from "../hooks/useRouteManager";
 import { useAuth } from "../hooks/useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
 
 interface RegisterRouteScreenProps {
   onGoBack?: () => void;
-  onRouteCreated?: () => void;
 }
 
 export default function RegisterRouteScreen({
   onGoBack,
-  onRouteCreated,
 }: RegisterRouteScreenProps) {
   const [points, setPoints] = useState<
     { latitude: number; longitude: number }[]
@@ -125,14 +122,7 @@ export default function RegisterRouteScreen({
         await createUserRouteRelation(driverId, routeData.id_ruta);
       }
       setSuccess(true);
-      Alert.alert("Éxito", "Ruta registrada correctamente", [
-        {
-          text: "OK",
-          onPress: () => {
-            if (onRouteCreated) onRouteCreated();
-          },
-        },
-      ]);
+      Alert.alert("Éxito", "Ruta registrada correctamente");
     } catch (e) {
       Alert.alert("Error", error || "No se pudo registrar la ruta");
     }
@@ -178,9 +168,7 @@ export default function RegisterRouteScreen({
             <MapViewDirections
               origin={points[0]}
               destination={points[1]}
-              apikey={
-                Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-              }
+              apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}
               strokeWidth={4}
               strokeColor="#A259FF"
               onError={(e) => console.log("Directions error:", e)}

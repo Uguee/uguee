@@ -31,10 +31,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         placeholder={placeholder}
         placeholderTextColor="#fff"
       />
-      <TouchableOpacity style={styles.laterButton} onPress={onLaterPress}>
-        <Ionicons name="calendar-outline" size={18} color="#A259FF" />
-        <Text style={styles.laterText}>Más tarde</Text>
-      </TouchableOpacity>
+      {/* Elimina el botón 'Más tarde' */}
+      {/* <TouchableOpacity style={styles.laterButton} onPress={onLaterPress}>
+        <Text style={styles.laterButtonText}>Más tarde</Text>
+      </TouchableOpacity> */}
     </View>
   );
 };

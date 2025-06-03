@@ -1,59 +1,69 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "./useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
-import {
-  getPendingVehiclesByIdUsuario,
-  getVehiclesByIdUsuario,
-} from "../services/pendingVehiclesService";
-import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabase";
 
 export function useUserVehicles() {
-  const { user } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
-  const [disabledAdd, setDisabledAdd] = useState(true);
+  const [disabledAdd, setDisabledAdd] = useState(false);
   const [checkingPending, setCheckingPending] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setCheckingPending(true);
-      setLoadingVehicles(true);
-      if (!user?.id) {
-        setDisabledAdd(true);
-        setCheckingPending(false);
-        setVehicles([]);
-        setLoadingVehicles(false);
-        return;
-      }
-      const id_usuario = await getCedulaByUUID(user.id);
-      if (!id_usuario) {
-        setDisabledAdd(true);
-        setCheckingPending(false);
-        setVehicles([]);
-        setLoadingVehicles(false);
-        return;
-      }
-      const cantidad = await getPendingVehiclesByIdUsuario(id_usuario);
-      setDisabledAdd(cantidad >= 3 ? true : false);
-      setCheckingPending(false);
-      // Traer vehículos reales
-      const vehiculos = await getVehiclesByIdUsuario(id_usuario);
-      setVehicles(vehiculos);
-      setLoadingVehicles(false);
-    };
-    fetchData();
-  }, [user]);
+  const { user } = useAuth();
 
-  const filtered = vehicles.filter(
-    (v) =>
-      (v.placa && v.placa.toLowerCase().includes(search.toLowerCase())) ||
-      (v.color && v.color.toLowerCase().includes(search.toLowerCase())) ||
-      (v.modelo &&
-        String(v.modelo).toLowerCase().includes(search.toLowerCase()))
-  );
+  useEffect(() => {
+    if (user?.id) {
+      loadVehicles();
+    }
+  }, [user?.id]);
+
+  const loadVehicles = async () => {
+    try {
+      setLoadingVehicles(true);
+      const id_usuario = await getCedulaByUUID(user!.id);
+      if (!id_usuario) {
+        console.error("No se pudo obtener el id_usuario");
+        return;
+      }
+
+      // Obtener vehículos
+      const { data: vehiculos, error: errorVehiculos } = await supabase
+        .from("vehiculo")
+        .select("*")
+        .eq("id_usuario", id_usuario);
+
+      if (errorVehiculos) {
+        console.error("Error al cargar vehículos:", errorVehiculos);
+        return;
+      }
+
+      // Contar vehículos pendientes
+      const pendientes =
+        vehiculos?.filter((v) => v.validacion === "pendiente").length || 0;
+      setDisabledAdd(pendientes >= 3);
+      setCheckingPending(false);
+
+      // Filtrar vehículos según la búsqueda
+      const vehiculosFiltrados = search
+        ? vehiculos?.filter(
+            (v) =>
+              v.placa?.toLowerCase().includes(search.toLowerCase()) ||
+              v.modelo.toString().includes(search) ||
+              v.color.toLowerCase().includes(search.toLowerCase())
+          )
+        : vehiculos;
+
+      setVehicles(vehiculosFiltrados || []);
+    } catch (error) {
+      console.error("Error en loadVehicles:", error);
+    } finally {
+      setLoadingVehicles(false);
+    }
+  };
 
   return {
-    vehicles: filtered,
+    vehicles,
     loadingVehicles,
     disabledAdd,
     checkingPending,
