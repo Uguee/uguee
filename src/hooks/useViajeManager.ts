@@ -97,8 +97,7 @@ export const useViajeManager = () => {
           id_vehiculo: viajeData.id_vehiculo,
           fecha: viajeData.fecha,
           hora_salida: viajeData.hora_salida,
-          hora_llegada: viajeData.hora_llegada,
-          reseña: 1
+          hora_llegada: viajeData.hora_llegada
         })
         .select();
 

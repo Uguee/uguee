@@ -175,16 +175,35 @@ export function RouteMap({
 }: RouteMapProps) {
   const [isMapReady, setIsMapReady] = useState(false);
 
+  // Definir iconos personalizados para origen y destino
+  const originIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
+  const destinationIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
   return (
-    <div className="relative h-[400px] w-full rounded-lg overflow-hidden shadow-lg">
+    <div className="relative h-full w-full">
       {allowClickToSetPoints && (
         <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
           <h3 className="font-medium text-sm mb-2">📍 Seleccionar Puntos</h3>
           {!origin && (
-            <p className="text-xs text-gray-600">1. Haz clic para seleccionar el origen</p>
+            <p className="text-xs text-gray-600">1. Haz clic derecho para seleccionar el origen</p>
           )}
           {origin && !destination && (
-            <p className="text-xs text-gray-600">2. Haz clic para seleccionar el destino</p>
+            <p className="text-xs text-gray-600">2. Haz clic izquierdo para seleccionar el destino</p>
           )}
           {origin && destination && (
             <p className="text-xs text-green-600">✅ Ruta generada</p>
@@ -195,7 +214,7 @@ export function RouteMap({
       <MapContainer
         center={origin ? [origin.lat, origin.lng] : [3.4516, -76.5320]}
         zoom={13}
-        style={{ height: '100%', width: '100%' }}
+        className="h-full w-full"
         zoomControl={false}
         whenReady={() => setIsMapReady(true)}
       >
@@ -213,14 +232,20 @@ export function RouteMap({
               <MapClickHandler onMapClick={onMapClick} />
             )}
             {origin && (
-              <Marker position={[origin.lat, origin.lng]}>
+              <Marker 
+                position={[origin.lat, origin.lng]}
+                icon={originIcon}
+              >
                 <Popup>
                   <strong>Origen:</strong> {origin.address}
                 </Popup>
               </Marker>
             )}
             {destination && (
-              <Marker position={[destination.lat, destination.lng]}>
+              <Marker 
+                position={[destination.lat, destination.lng]}
+                icon={destinationIcon}
+              >
                 <Popup>
                   <strong>Destino:</strong> {destination.address}
                 </Popup>

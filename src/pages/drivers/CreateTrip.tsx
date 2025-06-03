@@ -17,7 +17,7 @@ interface RoutePoint {
   lat: number;
   lng: number;
   label: string;
-  address?: string;
+  address: string;
 }
 
 interface RutaExistente {
@@ -28,21 +28,30 @@ interface RutaExistente {
   trayecto?: any;
 }
 
+interface CoordenadaPoint {
+  x: number;
+  y: number;
+}
+
 interface RutaDetalle {
   id_ruta: number;
   longitud: number;
-  origen_coords: { x: number; y: number };
-  destino_coords: { x: number; y: number };
-  trayecto_coords: Array<{ x: number; y: number }>;
+  origen_coords: CoordenadaPoint;
+  destino_coords: CoordenadaPoint;
+  trayecto_coords: CoordenadaPoint[];
 }
 
 const CreateTrip = () => {
   // Estados para nueva ruta
   const [currentRoute, setCurrentRoute] = useState<{
-    origin: RoutePoint;
-    destination: RoutePoint;
+    origin: RoutePoint | null;
+    destination: RoutePoint | null;
     path: [number, number][];
-  } | null>(null);
+  }>({
+    origin: null,
+    destination: null,
+    path: []
+  });
 
   // Estados para viaje
   const [modoCreacion, setModoCreacion] = useState<'seleccionar' | 'nueva'>('seleccionar');
@@ -74,7 +83,28 @@ const CreateTrip = () => {
     cargarRutas();
   }, []);
 
-  // Cargar detalles de la ruta seleccionada
+  // Modificar el useEffect para manejar el cambio de modo
+  useEffect(() => {
+    // Limpiar el estado cuando se cambia el modo
+    if (modoCreacion === 'nueva') {
+      setRutaSeleccionada(null);
+      setRutaSeleccionadaDetalle(null);
+      setCurrentRoute({
+        origin: null,
+        destination: null,
+        path: []
+      });
+    } else {
+      // Si cambia a modo 'seleccionar', limpiar la ruta actual
+      setCurrentRoute({
+        origin: null,
+        destination: null,
+        path: []
+      });
+    }
+  }, [modoCreacion]);
+
+  // Modificar el useEffect para cargar la ruta seleccionada
   useEffect(() => {
     const cargarDetalleRuta = async () => {
       if (!rutaSeleccionada || modoCreacion !== 'seleccionar') {
@@ -83,14 +113,31 @@ const CreateTrip = () => {
       }
 
       try {
-        // Llamar a función RPC que convierte la geometría PostGIS a formato usable
         const { data, error } = await supabase.rpc('obtener_ruta_con_coordenadas', {
           p_id_ruta: rutaSeleccionada
-        }) as { data: RutaDetalle[] | null, error: any };
+        });
 
         if (error) throw error;
         if (data && data.length > 0) {
-          setRutaSeleccionadaDetalle(data[0]);
+          const rutaDetalle = data[0] as unknown as RutaDetalle;
+          setRutaSeleccionadaDetalle(rutaDetalle);
+
+          // Actualizar currentRoute con los datos de la ruta seleccionada
+          setCurrentRoute({
+            origin: {
+              lat: rutaDetalle.origen_coords.y,
+              lng: rutaDetalle.origen_coords.x,
+              label: 'Origen',
+              address: 'Punto de origen'
+            },
+            destination: {
+              lat: rutaDetalle.destino_coords.y,
+              lng: rutaDetalle.destino_coords.x,
+              label: 'Destino',
+              address: 'Punto de destino'
+            },
+            path: rutaDetalle.trayecto_coords.map((coord: any) => [coord.y, coord.x])
+          });
         }
       } catch (error) {
         console.error('Error cargando detalle de ruta:', error);
@@ -196,8 +243,7 @@ const CreateTrip = () => {
         id_vehiculo: vehiculo,
         fecha: fecha,
         hora_salida: horaSalida,
-        hora_llegada: horaLlegada,
-        reseña: 1
+        hora_llegada: horaLlegada
       });
 
       console.log('Viaje creado:', viajeCreado);
@@ -208,7 +254,11 @@ const CreateTrip = () => {
       });
 
       // Limpiar formulario
-      setCurrentRoute(null);
+      setCurrentRoute({
+        origin: null,
+        destination: null,
+        path: []
+      });
       setRutaSeleccionada(null);
       setFecha('');
       setHoraSalida('');
@@ -278,18 +328,19 @@ const CreateTrip = () => {
 
       if (isRightClick) {
         // Right click sets origin
-        setCurrentRoute({
+        setCurrentRoute(prev => ({
           origin: {
             lat: location.lat,
             lng: location.lng,
-            label: location.address
+            label: location.address,
+            address: location.address
           },
-          destination: currentRoute?.destination || { lat: 0, lng: 0, label: '' },
+          destination: null,
           path: []
-        });
+        }));
       } else {
         // Left click sets destination
-        if (!currentRoute) {
+        if (!currentRoute.origin) {
           toast({
             title: "Aviso",
             description: "Primero debes establecer el origen (clic derecho)",
@@ -297,15 +348,44 @@ const CreateTrip = () => {
           });
           return;
         }
-        setCurrentRoute({
-          origin: currentRoute.origin,
+        
+        setCurrentRoute(prev => ({
+          ...prev,
           destination: {
             lat: location.lat,
             lng: location.lng,
-            label: location.address
-          },
-          path: []
-        });
+            label: location.address,
+            address: location.address
+          }
+        }));
+
+        // Generar ruta automáticamente si tenemos origen y destino
+        if (currentRoute.origin) {
+          try {
+            const response = await fetch(
+              `https://router.project-osrm.org/route/v1/driving/${currentRoute.origin.lng},${currentRoute.origin.lat};${location.lng},${location.lat}?overview=full&geometries=geojson`
+            );
+            
+            const data = await response.json();
+            
+            if (data.routes && data.routes.length > 0) {
+              const coordinates = data.routes[0].geometry.coordinates;
+              const routeCoords: [number, number][] = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+              
+              setCurrentRoute(prev => ({
+                ...prev,
+                path: routeCoords
+              }));
+            }
+          } catch (error) {
+            console.error('Error generando la ruta:', error);
+            toast({
+              title: "Error",
+              description: "No se pudo generar la ruta",
+              variant: "destructive",
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('Error handling map click:', error);
@@ -320,152 +400,152 @@ const CreateTrip = () => {
   return (
     <DashboardLayout>
       <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b bg-white">
-          <h1 className="text-2xl font-bold text-text flex items-center gap-2">
-            <Car className="w-7 h-7" />
+        {/* Header más compacto */}
+        <div className="px-4 py-2 border-b bg-white">
+          <h1 className="text-xl font-bold text-text flex items-center gap-2">
+            <Car className="w-6 h-6" />
             Crear Viaje
           </h1>
-          <p className="text-gray-600 text-sm mt-1">
+          <p className="text-gray-600 text-xs mt-0.5">
             Programa un nuevo viaje seleccionando una ruta existente o creando una nueva
           </p>
         </div>
 
         {/* Main content */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[400px_1fr] overflow-hidden">
-          {/* Panel de configuración del viaje */}
-          <div className="bg-gray-50 p-6 overflow-y-auto border-r">
-            <div className="space-y-4">
-            {/* Selección de modo */}
-              <div className="bg-white p-4 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-3">Modo de Creación</h2>
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] overflow-hidden">
+          {/* Panel de configuración del viaje - más compacto */}
+          <div className="bg-gray-50 p-3 overflow-y-auto border-r">
+            <div className="space-y-2">
+              {/* Modo de creación más compacto */}
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <h2 className="text-base font-semibold mb-2">Modo de Creación</h2>
                 <div className="space-y-2">
-                <div>
+                  <div>
                     <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="modo"
-                      value="seleccionar"
-                      checked={modoCreacion === 'seleccionar'}
-                      onChange={(e) => setModoCreacion(e.target.value as 'seleccionar' | 'nueva')}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span>Usar ruta existente</span>
-                  </label>
-                </div>
-                <div>
+                      <input
+                        type="radio"
+                        name="modo"
+                        value="seleccionar"
+                        checked={modoCreacion === 'seleccionar'}
+                        onChange={(e) => setModoCreacion(e.target.value as 'seleccionar' | 'nueva')}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span>Usar ruta existente</span>
+                    </label>
+                  </div>
+                  <div>
                     <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="modo"
-                      value="nueva"
-                      checked={modoCreacion === 'nueva'}
-                      onChange={(e) => setModoCreacion(e.target.value as 'seleccionar' | 'nueva')}
-                      className="w-4 h-4 text-primary"
-                    />
-                    <span>Crear nueva ruta</span>
-                  </label>
+                      <input
+                        type="radio"
+                        name="modo"
+                        value="nueva"
+                        checked={modoCreacion === 'nueva'}
+                        onChange={(e) => setModoCreacion(e.target.value as 'seleccionar' | 'nueva')}
+                        className="w-4 h-4 text-primary"
+                      />
+                      <span>Crear nueva ruta</span>
+                    </label>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Selección de ruta existente */}
-            {modoCreacion === 'seleccionar' && (
+              {/* Selección de ruta existente */}
+              {modoCreacion === 'seleccionar' && (
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h2 className="text-lg font-semibold mb-3">Ruta Existente</h2>
-                <Select 
-                  value={rutaSeleccionada?.toString() || ''} 
-                  onValueChange={(value) => setRutaSeleccionada(Number(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una ruta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rutasDisponibles.map((ruta) => (
-                      <SelectItem key={ruta.id_ruta} value={ruta.id_ruta.toString()}>
-                        Ruta #{ruta.id_ruta} ({ruta.longitud.toFixed(2)} km)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                  <Select 
+                    value={rutaSeleccionada?.toString() || ''} 
+                    onValueChange={(value) => setRutaSeleccionada(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una ruta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rutasDisponibles.map((ruta) => (
+                        <SelectItem key={ruta.id_ruta} value={ruta.id_ruta.toString()}>
+                          Ruta #{ruta.id_ruta} ({ruta.longitud.toFixed(2)} km)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            {/* Información de nueva ruta */}
-            {modoCreacion === 'nueva' && (
+              {/* Información de nueva ruta */}
+              {modoCreacion === 'nueva' && (
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h2 className="text-lg font-semibold mb-3">Nueva Ruta</h2>
-                {currentRoute ? (
-                  <div className="space-y-2 text-sm">
-                    <p><strong>Origen:</strong> {currentRoute.origin.label}</p>
-                    <p><strong>Destino:</strong> {currentRoute.destination.label}</p>
-                    <p className="text-green-600">✓ Ruta generada correctamente</p>
+                  {currentRoute.origin && currentRoute.destination ? (
+                    <div className="space-y-2 text-sm">
+                      <p><strong>Origen:</strong> {currentRoute.origin.label}</p>
+                      <p><strong>Destino:</strong> {currentRoute.destination.label}</p>
+                      <p className="text-green-600">✓ Ruta generada correctamente</p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">
+                      Usa el mapa para crear una nueva ruta
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Detalles del viaje más compactos */}
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <h2 className="text-base font-semibold mb-2">Detalles del Viaje</h2>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha
+                    </label>
+                    <Input
+                      type="date"
+                      value={fecha}
+                      onChange={(e) => setFecha(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full"
+                    />
                   </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">
-                    Usa el mapa para crear una nueva ruta
-                  </p>
-                )}
-              </div>
-            )}
 
-            {/* Detalles del viaje */}
-              <div className="bg-white p-4 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-3">Detalles del Viaje</h2>
-                <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha
-                  </label>
-                  <Input
-                    type="date"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora de salida
+                    </label>
+                    <Input
+                      type="time"
+                      value={horaSalida}
+                      onChange={(e) => setHoraSalida(e.target.value)}
                       className="w-full"
-                  />
-                </div>
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hora de salida
-                  </label>
-                  <Input
-                    type="time"
-                    value={horaSalida}
-                    onChange={(e) => setHoraSalida(e.target.value)}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora estimada de llegada
+                    </label>
+                    <Input
+                      type="time"
+                      value={horaLlegada}
+                      onChange={(e) => setHoraLlegada(e.target.value)}
                       className="w-full"
-                  />
-                </div>
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hora estimada de llegada
-                  </label>
-                  <Input
-                    type="time"
-                    value={horaLlegada}
-                    onChange={(e) => setHoraLlegada(e.target.value)}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Vehículo (ID)
+                    </label>
+                    <Input
+                      type="text"
+                      value={vehiculo}
+                      onChange={(e) => setVehiculo(e.target.value)}
+                      placeholder="Ingresa el ID del vehículo"
                       className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehículo (ID)
-                  </label>
-                  <Input
-                    type="text"
-                    value={vehiculo}
-                    onChange={(e) => setVehiculo(e.target.value)}
-                    placeholder="Ingresa el ID del vehículo"
-                      className="w-full"
-                  />
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Botón de crear viaje */}
+              {/* Botón de crear viaje */}
               <Button 
                 onClick={handleCrearViaje}
                 disabled={isLoading}
@@ -486,20 +566,15 @@ const CreateTrip = () => {
             </div>
           </div>
 
-          {/* Mapa - ocupa todo el espacio restante */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
-            {/* Map Component */}
-            <div className="lg:col-span-2 relative z-0 h-[600px]">
-              <div className="relative h-full">
-                <DriverRouteMap 
-                  onRouteGenerated={handleRouteGenerated}
-                  existingRoute={rutaSeleccionadaDetalle}
-                  mode={modoCreacion}
-                  key={`${modoCreacion}-${rutaSeleccionada}`}
-                  onMapClick={handleMapClick}
-                />
-              </div>
-            </div>
+          {/* Contenedor del mapa */}
+          <div className="relative h-[calc(100vh-10rem)]">
+            <RouteMap 
+              origin={currentRoute.origin}
+              destination={currentRoute.destination}
+              route={currentRoute.path}
+              onMapClick={modoCreacion === 'nueva' ? handleMapClick : undefined}
+              allowClickToSetPoints={modoCreacion === 'nueva'}
+            />
           </div>
         </div>
       </div>
