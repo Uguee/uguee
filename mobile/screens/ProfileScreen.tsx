@@ -6,9 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { TopMenu } from "../components/TopMenu";
-import { BottomNavigation } from "../components/BottomNavigationBar";
+import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import ProfileImage from "../components/ProfileImage";
 import ProfileTextRow from "../components/ProfileTextRow";
 import { useMyProfile } from "../hooks/useMyProfile";
@@ -25,30 +24,6 @@ const ProfileScreen = ({
   onGoToMyVehicles = () => {},
 }: ProfileScreenProps) => {
   const { profile, loading, error } = useMyProfile();
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      onPress: onGoToHomeScreen,
-    },
-    {
-      label: "Mis vehiculos",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToMyVehicles,
-    },
-    {
-      label: "Mis viajes",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => {},
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      active: true,
-      onPress: onGoToProfile,
-    },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -102,7 +77,11 @@ const ProfileScreen = ({
           </>
         ) : null}
       </ScrollView>
-      <BottomNavigation buttons={navButtons} />
+      <HomeBottomMenu
+        onGoToProfile={onGoToProfile}
+        onGoToHome={onGoToHomeScreen}
+        activeButton="profile"
+      />
     </View>
   );
 };

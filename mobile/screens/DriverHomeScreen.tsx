@@ -5,8 +5,7 @@ import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
-import { BottomNavigation } from "../components/BottomNavigationBar";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import { useAuth } from "../hooks/useAuth";
 
 // Agrega las props
@@ -35,30 +34,6 @@ export default function DriverHomeScreen({
   const suggestions = [
     { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
     { label: "Ver rutas", onPress: onGoToSeeRoutes },
-  ];
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: true,
-      onPress: () => {},
-    },
-    {
-      label: "Mis vehiculos",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToMyVehicles,
-    },
-    {
-      label: "Mis viajes",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: onGoToRegisterRouteScreen,
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile ?? (() => alert("Perfil")),
-    },
   ];
 
   const rutas = [
@@ -124,7 +99,13 @@ export default function DriverHomeScreen({
         ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
-      <BottomNavigation buttons={navButtons} />
+      <DriverHomeBottomMenu
+        onGoToProfile={onGoToProfile}
+        onGoToHome={onGoToHomeScreen ?? (() => alert("Inicio"))}
+        onGoToMyVehicles={onGoToMyVehicles}
+        onGoToMyTrips={onGoToRegisterRouteScreen}
+        activeButton="home"
+      />
     </View>
   );
 }
