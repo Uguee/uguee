@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import { TopMenu } from "../components/TopMenu";
-import { BottomNavigation } from "../components/BottomNavigationBar";
+import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import ShowInstitution from "../components/ShowInstSelected";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { getRegisterValidationStatus } from "../services/institutionService";
@@ -105,32 +105,10 @@ export default function SelectedInstScreen({
           <Text style={styles.info}>Colores: {institution.colores}</Text>
         )}
       </View>
-      <BottomNavigation
-        buttons={[
-          {
-            label: "Inicio",
-            icon: <Ionicons name="home-outline" size={28} color="#000" />,
-            active: false,
-            onPress: onGoHome,
-          },
-          {
-            label: "Mis viajes",
-            icon: (
-              <MaterialIcons name="airport-shuttle" size={28} color="#000" />
-            ),
-            onPress: () => alert("Mis viajes"),
-          },
-          {
-            label: "Servicios",
-            icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-            onPress: () => alert("Servicios"),
-          },
-          {
-            label: "Perfil",
-            icon: <FontAwesome name="user-o" size={26} color="#000" />,
-            onPress: () => alert("Perfil"),
-          },
-        ]}
+      <HomeBottomMenu
+        onGoToProfile={() => {}}
+        onGoToHome={onGoHome}
+        activeButton="home"
       />
     </View>
   );

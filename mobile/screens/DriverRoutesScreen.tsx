@@ -6,9 +6,8 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { TopMenu } from "../components/DriverTopMenu";
-import { BottomNavigation } from "../components/BottomNavigationBar";
+import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import TripCard from "../components/TripCard";
 import { SearchBar } from "../components/SearchBar";
 import AddRouteButton from "../components/AddRouteButton";
@@ -38,31 +37,6 @@ const DriverRoutesScreen: React.FC<DriverRoutesScreenProps> = ({
 }) => {
   const [search, setSearch] = useState("");
   const { routes, loading, error } = useUserRoutes(refreshKey);
-
-  // Botones de navegación inferior
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: false,
-      onPress: onGoToDriverHome,
-    },
-    {
-      label: "Mis vehiculos",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToMyVehicles,
-    },
-    {
-      label: "Mis viajes",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: onGoToRegisterRouteScreen,
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile,
-    },
-  ];
 
   // Filtrado simple por búsqueda en nombre_partida o nombre_llegada
   const filteredRoutes = routes.filter(
@@ -110,7 +84,13 @@ const DriverRoutesScreen: React.FC<DriverRoutesScreenProps> = ({
             contentContainerStyle={{ paddingBottom: 140 }}
           />
         )}
-        <BottomNavigation buttons={navButtons} />
+        <DriverHomeBottomMenu
+          onGoToProfile={onGoToProfile}
+          onGoToHome={onGoToDriverHome}
+          onGoToMyVehicles={onGoToMyVehicles}
+          onGoToMyTrips={onGoToRegisterRouteScreen}
+          activeButton="trips"
+        />
         <AddRouteButton onPress={onGoToRegisterRouteScreen} />
       </View>
     </View>
