@@ -46,6 +46,16 @@ export class AuthFlowService {
           };
         }
         
+        // Si el usuario viene del flujo de registro institucional, redirigir a institution-register
+        if (window.location.pathname === '/document-verification' && 
+            window.history.state?.usr?.isInstitutionFlow) {
+          console.log('🏛️ Usuario en flujo institucional → /institution-register');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution-register'
+          };
+        }
+        
         if (!status.hasInstitution) {
           console.log('🏫 Usuario sin institución → /select-institution');
           return {

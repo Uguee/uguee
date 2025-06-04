@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { InstitutionService, InstitutionData } from '@/services/institutionService';
+import { supabase } from '@/integrations/supabase/client';
 
 const InstitutionRegister = () => {
   const [formData, setFormData] = useState<InstitutionData>({
@@ -102,8 +103,14 @@ const InstitutionRegister = () => {
     setIsSubmitting(true);
 
     try {
-      // Usar el servicio para registrar la institución
-      const result = await InstitutionService.registerInstitution(formData, user.id);
+      // Obtener el UUID de Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error('No se pudo obtener el UUID del usuario');
+      }
+
+      // Usar el servicio para registrar la institución con el UUID de Supabase
+      const result = await InstitutionService.registerInstitution(formData, session.user.id);
 
       if (result.success) {
         toast({
