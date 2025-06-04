@@ -434,7 +434,25 @@ const AppNavigator = () => {
   return (
     <>
       <StatusBar style="auto" />
-      {renderCurrentScreen()}
+      <Routes>
+        <Route path="/" element={renderCurrentScreen()} />
+        <Route 
+          path="/driver/*" 
+          element={
+            <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
+              <DriverRouteGuard>
+                <Routes>
+                  <Route path="dashboard" element={<DriverDashboard />} />
+                  <Route path="map-view" element={<MapViewDriver />} />
+                  <Route path="create-trip" element={<CreateTrip />} />
+                  <Route path="history" element={<HistorialViajes />} />
+                  <Route path="vehicles" element={<MisVehiculos />} />
+                </Routes>
+              </DriverRouteGuard>
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
     </>
   );
 };
