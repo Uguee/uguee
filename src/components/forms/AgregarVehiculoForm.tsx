@@ -28,17 +28,47 @@ interface AgregarVehiculoFormProps {
 }
 
 const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehiculoFormProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  // Estado inicial del formulario
+  const initialFormState = {
     placa: '',
     color: '',
     modelo: new Date().getFullYear(),
     tipo: '',
     vigencia_soat: '',
     fecha_tecnicomecanica: '',
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormState);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Función para resetear el formulario
+  const resetForm = () => {
+    setFormData(initialFormState);
+  };
+
+  // Resetear el formulario cuando se cierra
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
+  // Manejar cambio de tipo de vehículo
+  const handleTipoChange = (value: string) => {
+    const newTipo = parseInt(value);
+    const esBicicletaOMonopatin = newTipo === 3 || newTipo === 6;
+    
+    // Resetear campos específicos cuando cambia el tipo
+    setFormData(prev => ({
+      ...prev,
+      tipo: value,
+      // Si cambia a bicicleta/monopatín, limpiar placa y fechas
+      placa: esBicicletaOMonopatin ? '' : prev.placa,
+      vigencia_soat: esBicicletaOMonopatin ? '' : prev.vigencia_soat,
+      fecha_tecnicomecanica: esBicicletaOMonopatin ? '' : prev.fecha_tecnicomecanica
+    }));
+  };
 
   // Función para generar la placa automática
   const generarPlaca = async (tipo: number): Promise<string> => {
@@ -86,43 +116,50 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
     try {
       const tipo = parseInt(formData.tipo);
       
-      // Validar datos según el tipo de vehículo
-      if (!tipo) {
-        throw new Error('Debes seleccionar un tipo de vehículo');
-      }
-      
-      if (!formData.color || !formData.modelo) {
-        throw new Error('Color y modelo son obligatorios');
+      // 1. Validaciones obligatorias comunes
+      if (!userId || !tipo || !formData.color || formData.modelo === undefined) {
+        throw new Error('id_usuario, tipo, color y modelo son obligatorios');
       }
 
-      // Para vehículos que no sean bicicletas ni monopatines
-      const esBicicletaOMonopatin = tipo === 3 || tipo === 6;
-      
-      if (!esBicicletaOMonopatin) {
-        // Validar placa para vehículos que no son bicicletas ni monopatines
-        if (!formData.placa) {
-          throw new Error('La placa es obligatoria para este tipo de vehículo');
-        }
-        
-        // Validar formato de placa
+      // 2. Validar formato de placa si viene
+      if (formData.placa) {
         const placaRegex = /^[A-Za-z0-9]{6}$/;
         if (!placaRegex.test(formData.placa)) {
-          throw new Error('La placa debe tener exactamente 6 caracteres alfanuméricos');
-        }
-        
-        // Validar documentos obligatorios
-        if (!formData.vigencia_soat || !formData.fecha_tecnicomecanica) {
-          throw new Error('Fechas de SOAT y tecnomecánica son obligatorias para este tipo de vehículo');
+          throw new Error('La placa debe tener exactamente 6 caracteres alfanuméricos (sin espacios ni símbolos)');
         }
       }
 
-      // Generar placa automática para bicicletas y monopatines
+      // 3. Validar que placa sea obligatoria si no es bicicleta ni monopatín
+      const esBicicletaOMonopatin = tipo === 3 || tipo === 6;
+      if (!esBicicletaOMonopatin && !formData.placa) {
+        throw new Error('Para este tipo de vehículo, la placa es obligatoria');
+      }
+
+      // 4. Generar placa para bicicleta o monopatín
       let placaFinal = formData.placa;
       if (esBicicletaOMonopatin && !formData.placa) {
-        placaFinal = await generarPlaca(tipo);
+        const prefix = tipo === 3 ? 'B' : 'S';
+        const { count, error: countError } = await supabase
+          .from('vehiculo')
+          .select('placa', { count: 'exact', head: true })
+          .eq('tipo', tipo);
+
+        if (countError) {
+          throw new Error(`Error al contar ${tipo === 3 ? 'bicicletas' : 'monopatines'}: ${countError.message}`);
+        }
+
+        const nextIndex = (count ?? 0) + 1;
+        placaFinal = `${prefix}${String(nextIndex).padStart(5, '0')}`; // Ej: B00001 o S00001
       }
 
-      // Crear objeto para insertar
+      // 5. Validar fechas obligatorias para tipos distintos de bici/monopatín
+      if (!esBicicletaOMonopatin) {
+        if (!formData.vigencia_soat || !formData.fecha_tecnicomecanica) {
+          throw new Error('vigencia_soat y fecha_tecnicomecanica son obligatorios para este tipo de vehículo');
+        }
+      }
+
+      // 6. Preparar objeto a insertar
       const vehiculoData = {
         placa: placaFinal.toUpperCase(),
         id_usuario: userId,
@@ -131,17 +168,18 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
         modelo: formData.modelo,
         validacion: 'pendiente',
         vigencia_soat: esBicicletaOMonopatin ? null : formData.vigencia_soat,
-        fecha_tecnicomecanica: esBicicletaOMonopatin ? null : formData.fecha_tecnicomecanica,
+        fecha_tecnicomecanica: esBicicletaOMonopatin ? null : formData.fecha_tecnicomecanica
       };
 
-      // Insertar vehículo
+      // 7. Insertar vehículo
       const { error } = await supabase
         .from('vehiculo')
         .insert(vehiculoData);
 
       if (error) {
+        // Validación de restricción CHECK personalizada
         if (error.message.includes('chk_placa_valida')) {
-          throw new Error('La placa no cumple con el formato requerido');
+          throw new Error('La placa final no cumple el formato alfanumérico (exactamente 6 caracteres A–Z, a–z, 0–9)');
         }
         throw error;
       }
@@ -151,6 +189,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
         description: `El vehículo ha sido registrado exitosamente con placa ${placaFinal}`,
       });
       
+      resetForm(); // Resetear el formulario después de agregar exitosamente
       onSuccess();
       onClose();
     } catch (err) {
@@ -183,7 +222,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
             <label className="block text-sm font-medium mb-1">Tipo de Vehículo</label>
             <Select
               value={formData.tipo}
-              onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+              onValueChange={handleTipoChange}
               required
             >
               <SelectTrigger>
