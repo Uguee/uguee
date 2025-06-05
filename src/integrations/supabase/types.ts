@@ -90,6 +90,7 @@ export type Database = {
           id_institucion: number
           logo: string | null
           nombre_oficial: string
+          validacion: string | null
         }
         Insert: {
           admin_institucional?: string | null
@@ -98,6 +99,7 @@ export type Database = {
           id_institucion?: number
           logo?: string | null
           nombre_oficial: string
+          validacion?: string | null
         }
         Update: {
           admin_institucional?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           id_institucion?: number
           logo?: string | null
           nombre_oficial?: string
+          validacion?: string | null
         }
         Relationships: []
       }

@@ -79,21 +79,46 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-                <CheckCircle className="h-8 w-8 text-primary" />
+                <Building2 className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Validar Solicitudes de Instituciones
+                Solicitudes de Instituciones
               </h3>
               <p className="text-gray-600 mb-6">
-                Revisa y aprueba las solicitudes de registro institucional pendientes
+                Revisa y aprueba las solicitudes de registro de nuevas instituciones educativas
+              </p>
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/admin/institution-requests')}
+                className="w-full sm:w-auto px-8 py-3"
+              >
+                <Building2 className="w-5 h-5 mr-2" />
+                Gestionar Solicitudes de Instituciones
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Botón para validar usuarios */}
+        <Card className="border-2 border-orange-500/20">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-orange-100 mb-4">
+                <CheckCircle className="h-8 w-8 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Validar Usuarios
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Revisa y aprueba los documentos de usuarios registrados en el sistema
               </p>
               <Button 
                 size="lg" 
                 onClick={() => navigate('/admin/user-validation')}
-                className="w-full sm:w-auto px-8 py-3"
+                className="w-full sm:w-auto px-8 py-3 bg-orange-600 hover:bg-orange-700"
               >
                 <Users className="w-5 h-5 mr-2" />
-                Ver Solicitudes Pendientes
+                Ver Validaciones Pendientes
               </Button>
             </div>
           </CardContent>

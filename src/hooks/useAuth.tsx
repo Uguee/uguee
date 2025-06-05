@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>, password: string, cedula?: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -497,6 +498,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Función para refrescar los datos del usuario
+  const refreshUser = async () => {
+    if (!session?.user) {
+      console.log('⚠️ No hay sesión activa para refrescar');
+      return;
+    }
+
+    console.log('🔄 Refrescando datos del usuario...');
+    setIsLoading(true);
+    
+    try {
+      const appUser = await fetchUserData(session.user, session.access_token);
+      if (appUser) {
+        console.log('✅ Datos del usuario refrescados exitosamente:', appUser.role);
+        setUser(appUser);
+      } else {
+        console.error('❌ No se pudieron refrescar los datos del usuario');
+      }
+    } catch (error) {
+      console.error('❌ Error refrescando datos del usuario:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     isLoading,
@@ -504,6 +530,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
   };
 

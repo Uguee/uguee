@@ -15,7 +15,7 @@ const InstitutionRegister = () => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -118,14 +118,24 @@ const InstitutionRegister = () => {
           description: result.message || "Tu solicitud está siendo revisada por nuestro equipo.",
         });
         
-        // Mostrar un mensaje de confirmación y luego recargar la página 
-        // para que el contexto de autenticación obtenga el nuevo rol del usuario
-        console.log('🎉 Institución registrada exitosamente. Refrescando para obtener nuevo rol...');
+        // Limpiar el formulario
+        setFormData({
+          nombre_oficial: '',
+          direccion: '',
+          colores: '#000000',
+          logo: null
+        });
         
-        // Esperar un momento para que el usuario vea el toast, luego recargar
+        console.log('🎉 Institución registrada exitosamente. Refrescando contexto de autenticación...');
+        
+        // Refrescar los datos del usuario para detectar el nuevo rol admin_institucional
+        await refreshUser();
+        
+        // Pequeña pausa para asegurar que el contexto se actualice completamente
         setTimeout(() => {
-          window.location.href = '/pending-validation';
-        }, 2000);
+          console.log('🔄 Navegando al dashboard...');
+          navigate('/dashboard');
+        }, 1000);
       } else {
         toast({
           title: "Error al registrar institución",

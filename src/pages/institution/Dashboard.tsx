@@ -120,8 +120,19 @@ const Dashboard = () => {
       setIsLoading(true);
       console.log('🔍 Cargando datos para admin:', user.id);
 
-      // 1. Obtener la institución que administra este usuario
-      const institutionResult = await InstitutionService.getInstitutionByAdmin(user.id);
+      // Obtener el UUID desde la sesión de Supabase en lugar de usar user.id (que es la cédula)
+      const { data: { session } } = await supabase.auth.getSession();
+      const userUuid = session?.user?.id;
+      
+      if (!userUuid) {
+        console.error('❌ No se pudo obtener el UUID del usuario de la sesión');
+        return;
+      }
+
+      console.log('🔑 UUID obtenido de la sesión:', userUuid);
+
+      // 1. Obtener la institución que administra este usuario usando el UUID correcto
+      const institutionResult = await InstitutionService.getInstitutionByAdmin(userUuid);
       
       if (!institutionResult.success || !institutionResult.data) {
         console.error('❌ No se encontró institución para este admin:', institutionResult.error);

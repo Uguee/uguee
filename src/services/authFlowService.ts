@@ -23,11 +23,72 @@ export class AuthFlowService {
     // Redirecciones para roles específicos
     switch (user.role) {
       case 'admin_institucional':
-        console.log('🏛️ Admin institucional → /institution/dashboard');
-        return {
-          shouldRedirect: true,
-          redirectTo: '/institution/dashboard'
-        };
+        console.log('🏛️ Admin institucional → verificando estado de institución...');
+        
+        // Obtener el UUID desde la sesión de Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        const userUuid = session?.user?.id;
+        
+        if (!userUuid) {
+          console.log('❌ No se pudo obtener el UUID del usuario desde la sesión');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/login'
+          };
+        }
+        
+        console.log('🔍 Usando UUID para consulta:', userUuid);
+        
+        // Verificar el estado de validación de la institución usando el UUID
+        try {
+          const { data: institution, error } = await supabase
+            .from('institucion')
+            .select('validacion')
+            .eq('admin_institucional', userUuid)
+            .single();
+
+          if (error || !institution) {
+            console.log('❌ Error al obtener institución o institución no encontrada:', error);
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution-register'
+            };
+          }
+
+          console.log('✅ Institución encontrada con estado:', institution.validacion);
+
+          // Si la institución está pendiente de validación, redirigir a página de espera
+          if (institution.validacion === 'pendiente') {
+            console.log('⏳ Institución pendiente → /institution/pending-validation');
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution/pending-validation'
+            };
+          }
+
+          // Si la institución fue denegada, también redirigir a página de espera para mostrar el estado
+          if (institution.validacion === 'denegado') {
+            console.log('❌ Institución denegada → /institution/pending-validation');
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution/pending-validation'
+            };
+          }
+
+          // Si la institución está validada, ir al dashboard institucional
+          console.log('✅ Institución validada → /institution/dashboard');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution/dashboard'
+          };
+        } catch (error) {
+          console.error('Error verificando estado de institución:', error);
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution/pending-validation'
+          };
+        }
+
       case 'admin':
         console.log('👑 Admin → /admin/dashboard');
         return {
@@ -35,8 +96,12 @@ export class AuthFlowService {
           redirectTo: '/admin/dashboard'
         };
       case 'usuario':
-        // Verificar documentos y registro para usuarios normales
+        console.log('👤 Evaluando usuario con ID:', user.id, 'Rol:', user.role);
+        
+        // Flujo normal para usuarios regulares (sin institución propia)
         const status = await this.getUserStatus(user.id.toString());
+        
+        console.log('📋 Estado del usuario:', status);
         
         if (!status.hasDocuments) {
           console.log('📄 Usuario sin documentos → /document-verification');

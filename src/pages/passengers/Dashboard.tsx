@@ -1,21 +1,53 @@
-import { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { AuthFlowService } from '@/services/authFlowService';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const Dashboard = () => {
   const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const [isRedirecting, setIsRedirecting] = useState(true);
 
+  // Verificar si el usuario necesita ser redirigido según su rol y estado
   useEffect(() => {
-    document.title = 'Ugüee - Dashboard';
-  }, []);
+    const checkRedirection = async () => {
+      if (!user || isLoading) return;
 
-  if (isLoading) {
+      console.log('🔍 Verificando redirección para usuario:', user.email, 'Rol:', user.role);
+
+      try {
+        const result = await AuthFlowService.determineUserRedirection(user);
+        
+        console.log('📊 Resultado de redirección:', result);
+
+        if (result.shouldRedirect && result.redirectTo && result.redirectTo !== '/dashboard') {
+          console.log('↗️ Redirigiendo a:', result.redirectTo);
+          navigate(result.redirectTo, { replace: true });
+          return;
+        }
+
+        // Si llegamos aquí, el usuario puede permanecer en el dashboard
+        console.log('✅ Usuario puede permanecer en dashboard');
+        setIsRedirecting(false);
+      } catch (error) {
+        console.error('❌ Error verificando redirección:', error);
+        setIsRedirecting(false);
+      }
+    };
+
+    checkRedirection();
+  }, [user, isLoading, navigate]);
+
+  // Mostrar loading mientras se verifica la redirección
+  if (isLoading || isRedirecting) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-64">
-          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 

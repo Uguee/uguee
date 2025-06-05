@@ -4,10 +4,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { Check, UserPlus, Car, Menu, Clock, History, Star } from 'lucide-react';
 import { useDriverValidation } from '../../contexts/DriverValidationContext';
 import { Button } from '@/components/ui/button';
+import { UserService } from '../../services/userService';
+import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
+import { supabase } from '@/integrations/supabase/client';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { DocumentVerificationService } from '@/services/documentVerificationService';
-import { supabase } from '@/integrations/supabase/client';
 import { AuthFlowService } from '@/services/authFlowService';
 
 interface User {

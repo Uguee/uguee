@@ -108,7 +108,8 @@ export class InstitutionService {
         logo: logoUrl,
         direccion: institutionData.direccion,
         colores: institutionData.colores,
-        admin_institucional: userId
+        admin_institucional: userId,
+        validacion: 'pendiente'
       };
 
       console.log('📤 Enviando solicitud al endpoint:', requestData);

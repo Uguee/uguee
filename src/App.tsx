@@ -35,6 +35,8 @@ import SelectInstitution from "./pages/Authentication/SelectInstitution";
 import React from "react";
 import Profile from "./pages/profile/Profile";
 import Unauthorized from './pages/Unauthorized';
+import InstitutionPendingValidation from './pages/institution/InstitutionPendingValidation';
+import InstitutionRequests from './pages/admin/InstitutionRequests';
 
 const queryClient = new QueryClient();
 
@@ -199,7 +201,7 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/driver/map-view" 
+        path="/driver/map-view"
         element={
           <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <MapViewDriver />
@@ -244,6 +246,15 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      
+      <Route 
+        path="/institution/pending-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['admin_institucional']}>
+            <InstitutionPendingValidation />
+          </ProtectedRoute>
+        } 
+      />
 
       {/* Rutas para administradores del sitio */}
       <Route 
@@ -251,6 +262,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/institution-requests" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <InstitutionRequests />
           </ProtectedRoute>
         } 
       />
