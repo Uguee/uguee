@@ -12,6 +12,7 @@ import { TripService, Trip } from "@/services/tripService";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouteManager } from "@/hooks/useRouteManager";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const SearchRoutes = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -24,6 +25,8 @@ const SearchRoutes = () => {
   const { toast } = useToast();
   const { fetchRoutes } = useRouteManager();
   const { vehicleTypes, isLoading: isLoadingTypes, error: typesError, fetchVehicleTypes } = useVehicleTypes();
+  const { currentUserId, isLoading: isLoadingUser } = useCurrentUser();
+  const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
     fetchTrips();
@@ -145,6 +148,79 @@ const SearchRoutes = () => {
     }
   };
 
+  // Función para verificar si el usuario es el conductor del viaje
+  const isUserDriver = (trip: Trip) => {
+    return trip.id_conductor === currentUserId;
+  };
+
+  // Función para realizar la reserva
+  const handleReserve = async (trip: Trip) => {
+    if (!currentUserId) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para reservar un viaje",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isUserDriver(trip)) {
+      toast({
+        title: "Error",
+        description: "No puedes reservar tu propio viaje",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsReserving(true);
+
+      // Verificar si ya existe una reserva para este usuario y ruta
+      const { data: existingReservation, error: checkError } = await supabase
+        .from('usuario_ruta')
+        .select('*')
+        .eq('id_usuario', currentUserId)
+        .eq('id_ruta', trip.id_ruta)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (existingReservation) {
+        toast({
+          title: "Información",
+          description: "Ya tienes una reserva para esta ruta",
+          variant: "default",
+        });
+        return;
+      }
+
+      // Crear la reserva
+      const { error: insertError } = await supabase
+        .from('usuario_ruta')
+        .insert({
+          id_usuario: currentUserId,
+          id_ruta: trip.id_ruta
+        });
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "¡Éxito!",
+        description: "Viaje reservado correctamente",
+      });
+
+    } catch (error) {
+      console.error('Error al reservar:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo realizar la reserva",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReserving(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -259,15 +335,19 @@ const SearchRoutes = () => {
                     </div>
                     <div className="text-right space-y-2">
                       <button
-                        className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-                        onClick={() => {
-                          toast({
-                            title: "Próximamente",
-                            description: "La funcionalidad de reserva estará disponible pronto",
-                          });
-                        }}
+                        className={`w-full px-4 py-2 ${
+                          isUserDriver(trip)
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-primary hover:bg-primary/90'
+                        } text-white rounded-md transition-colors`}
+                        onClick={() => handleReserve(trip)}
+                        disabled={isUserDriver(trip) || isReserving}
                       >
-                        Reservar
+                        {isUserDriver(trip)
+                          ? 'No puedes reservar tu propio viaje'
+                          : isReserving
+                          ? 'Reservando...'
+                          : 'Reservar'}
                       </button>
                       <button
                         className="w-full px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
