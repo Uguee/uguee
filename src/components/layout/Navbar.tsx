@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { Check, UserPlus, Car, Menu, Clock, History, Star } from 'lucide-react';
 import { useDriverValidation } from '../../contexts/DriverValidationContext';
-import { Check, Car, UserPlus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserService } from '../../services/userService';
 import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
 import { supabase } from '@/integrations/supabase/client';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { DocumentVerificationService } from '@/services/documentVerificationService';
+import { AuthFlowService } from '@/services/authFlowService';
 
 interface User {
   id: string;
@@ -16,6 +20,7 @@ interface User {
   phone?: string;
   email?: string;
   birthdate?: string;
+  id_usuario: string;
 }
 
 const Navbar = () => {
@@ -104,6 +109,24 @@ const Navbar = () => {
     );
   };
 
+  const handleHomeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      return;
+    }
+
+    // Usar AuthFlowService para determinar la redirección
+    const result = await AuthFlowService.checkRouteAccess(user);
+    
+    if (result.shouldRedirect) {
+      navigate(result.redirectTo);
+    } else {
+      // Si no hay redirección necesaria, ir al dashboard
+      navigate("/dashboard");
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
       <div className="container mx-auto px-4 h-full flex justify-between items-center">
@@ -124,58 +147,73 @@ const Navbar = () => {
               <Link 
                 to="/dashboard" 
                 className="text-gray-600 hover:text-primary transition-colors"
+                onClick={(e) => {
+                  console.log('🔍 Inicio button clicked');
+                  handleHomeClick(e);
+                }}
               >
                 Inicio
               </Link>
-              <div className="relative group">
-                <button 
-                  className="flex items-center text-gray-600 hover:text-primary transition-colors"
-                  onClick={toggleViewMenu}
+              {isDeniedDriver ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/verify-documents')}
+                  className="text-gray-600 hover:text-primary transition-colors"
                 >
-                  Cambiar vista
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4 ml-1" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  ¿Quieres ser conductor?
+                </Button>
+              ) : (
+                <div className="relative group">
+                  <button 
+                    className="flex items-center text-gray-600 hover:text-primary transition-colors"
+                    onClick={toggleViewMenu}
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M19 9l-7 7-7-7" 
-                    />
-                  </svg>
-                </button>
-                {isViewMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                    <button
-                      onClick={() => handleViewChange('driver')}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    Cambiar vista
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-4 w-4 ml-1" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
                     >
-                      Vista conductor
-                      {isDriverView && <Check className="ml-2 h-4 w-4" />}
-                    </button>
-                    <button
-                      onClick={() => handleViewChange('passenger')}
-                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Vista pasajero
-                      {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
-                    </button>
-                    {user?.role === 'admin_institucional' && (
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M19 9l-7 7-7-7" 
+                      />
+                    </svg>
+                  </button>
+                  {isViewMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                       <button
-                        onClick={() => handleViewChange('admin_institucional')}
+                        onClick={() => handleViewChange('driver')}
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Vista Admin
-                        {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                        Vista conductor
+                        {isDriverView && <Check className="ml-2 h-4 w-4" />}
                       </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                      <button
+                        onClick={() => handleViewChange('passenger')}
+                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Vista pasajero
+                        {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                      </button>
+                      {user?.role === 'admin_institucional' && (
+                        <button
+                          onClick={() => handleViewChange('admin_institucional')}
+                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Vista Admin
+                          {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="relative group">
                 <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
                   {user?.firstName || 'Usuario'}

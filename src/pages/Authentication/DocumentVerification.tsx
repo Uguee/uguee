@@ -16,6 +16,7 @@ import {
   Camera,
   Shield
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const DocumentVerification = () => {
   const { user } = useAuth();
@@ -81,11 +82,6 @@ const DocumentVerification = () => {
         title: "✅ Documentos verificados",
         description: "Tu identidad ha sido verificada y documentos guardados exitosamente",
       });
-
-      // Redirigir a selección de institución después de un momento
-      setTimeout(() => {
-        navigate('/select-institution');
-      }, 1500);
       
     } catch (error: any) {
       toast({
@@ -117,8 +113,16 @@ const DocumentVerification = () => {
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto" />
               <h2 className="text-2xl font-bold text-green-600">¡Verificación Exitosa!</h2>
               <p className="text-gray-600">
-                Tu identidad ha sido verificada. Serás redirigido para seleccionar tu institución.
+                Tu identidad ha sido verificada correctamente. Ahora puedes continuar con el registro de tu institución.
               </p>
+              <Button 
+                onClick={() => navigate('/institution-register', { 
+                  state: { isInstitutionFlow: true }
+                })}
+                className="mt-4"
+              >
+                Continuar con el registro de institución
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -314,4 +318,4 @@ const DocumentVerification = () => {
   );
 };
 
-export default DocumentVerification; 
+export default DocumentVerification;  

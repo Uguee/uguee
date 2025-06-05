@@ -1,128 +1,59 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import VehicleCard from "../components/VehicleCard";
 import AddVehicleButton from "../components/AddVehicleButton";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { useUserVehicles } from "../hooks/useUserVehicles";
 
-const vehicles = [
-  {
-    image: require("../assets/redCar.png"),
-    title: "Carro: Chevrolet Sail",
-    description: "2025, Rojo.",
-    plate: "ABC-123",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redMoto.png"),
-    title: "Moto: Yamaha",
-    description: "2023, Azul.",
-    plate: "EFG-45G",
-  },
-  {
-    image: require("../assets/redCar.png"),
-    title: "Carro: Chevrolet Sail",
-    description: "2025, Rojo.",
-    plate: "ABC-123",
-  },
-  {
-    image: require("../assets/redCar.png"),
-    title: "Carro: Chevrolet Sail",
-    description: "2025, Rojo.",
-    plate: "ABC-123",
-  },
+interface MyVehiclesScreenProps {
+  onGoToDriverHomeScreen?: () => void;
+  onGoToProfileScreen?: () => void;
+  onGoToTravelScreen?: () => void;
+  onGoToAddVehicleScreen?: () => void;
+}
 
-  // ...más vehículos
-];
+export default function MyVehiclesScreen({
+  onGoToDriverHomeScreen = () => {},
+  onGoToProfileScreen = () => {},
+  onGoToTravelScreen = () => {},
+  onGoToAddVehicleScreen = () => {},
+}: MyVehiclesScreenProps) {
+  const {
+    vehicles,
+    loadingVehicles,
+    disabledAdd,
+    checkingPending,
+    search,
+    setSearch,
+  } = useUserVehicles();
 
-const navButtons = [
-  {
-    label: "Inicio",
-    icon: <Ionicons name="home-outline" size={28} color="#000" />,
-    active: false,
-    onPress: () => alert("Ya te encuentras en inicio"),
-  },
-  {
-    label: "Mis vehiculos",
-    active: true,
-    icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-    onPress: () => alert("Mis vehiculos"),
-  },
-  {
-    label: "Mis viajes",
-    icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-    onPress: () => alert("Mis viajes"),
-  },
-  {
-    label: "Perfil",
-    icon: <FontAwesome name="user-o" size={26} color="#000" />,
-    onPress: () => alert("Perfil"),
-  },
-];
+  const handleAddVehicle = () => {
+    if (disabledAdd) {
+      Alert.alert(
+        "Límite alcanzado",
+        "No se pueden añadir más vehículos porque hay 3 en estado pendiente. Debes esperar a que la institución los valide o los deniegue."
+      );
+      return;
+    }
+    onGoToAddVehicleScreen();
+  };
 
-export default function MyVehiclesScreen() {
-  const [search, setSearch] = useState("");
-
-  const filtered = vehicles.filter(
-    (v) =>
-      v.title.toLowerCase().includes(search.toLowerCase()) ||
-      v.plate.toLowerCase().includes(search.toLowerCase())
-  );
+  function handleVehiclePress(vehiculo: any) {
+    Alert.alert(
+      "Vehículo",
+      `Placa: ${vehiculo.placa}\nModelo: ${vehiculo.modelo}\nColor: ${vehiculo.color}\nEstado: ${vehiculo.validacion}`
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -138,19 +69,117 @@ export default function MyVehiclesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 140 }}
         >
-          {filtered.map((v, i) => (
-            <VehicleCard key={i} {...v} />
-          ))}
+          {loadingVehicles ? (
+            <Text style={{ textAlign: "center", marginTop: 30 }}>
+              Cargando vehículos...
+            </Text>
+          ) : vehicles.length === 0 ? (
+            <Text style={{ textAlign: "center", marginTop: 30 }}>
+              No tienes vehículos registrados.
+            </Text>
+          ) : (
+            vehicles.map((v, i) => (
+              <VehicleCard
+                key={i}
+                image={getVehicleImage(v.tipo)}
+                title={getVehicleTitle(v.tipo, v.modelo)}
+                description={`${v.modelo}, ${v.color}.`}
+                plate={v.placa}
+                disabled={v.validacion === "pendiente"}
+                estado={v.validacion}
+                onPress={
+                  v.validacion !== "pendiente"
+                    ? () => handleVehiclePress(v)
+                    : undefined
+                }
+              />
+            ))
+          )}
         </ScrollView>
       </View>
       <View style={styles.addButtonContainer}>
-        <AddVehicleButton onPress={() => alert("Añadir vehículo")} />
+        <AddVehicleButton
+          onPress={handleAddVehicle}
+          disabled={disabledAdd || checkingPending}
+        />
+        {disabledAdd && !checkingPending && (
+          <TouchableOpacity
+            style={styles.infoButton}
+            onPress={() => {
+              Alert.alert(
+                "Límite alcanzado",
+                "No se pueden añadir más vehículos porque hay 3 en estado pendiente. Debes esperar a que la institución los valide o los deniegue."
+              );
+            }}
+          >
+            <Text style={styles.infoButtonText}>
+              ¿Por qué no puedo añadir más vehículos?
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.bottomNavContainer}>
-        <BottomNavigation buttons={navButtons} />
+        <BottomNavigation
+          buttons={[
+            {
+              label: "Inicio",
+              icon: <Ionicons name="home-outline" size={28} color="#000" />,
+              active: false,
+              onPress: onGoToDriverHomeScreen,
+            },
+            {
+              label: "Mis vehiculos",
+              active: true,
+              icon: (
+                <MaterialIcons name="airport-shuttle" size={28} color="#000" />
+              ),
+              onPress: () => {},
+            },
+            {
+              label: "Mis viajes",
+              icon: <Ionicons name="settings-outline" size={28} color="#000" />,
+              onPress: onGoToTravelScreen,
+            },
+            {
+              label: "Perfil",
+              icon: <FontAwesome name="user-o" size={26} color="#000" />,
+              onPress: onGoToProfileScreen,
+            },
+          ]}
+        />
       </View>
     </View>
   );
+}
+
+function getVehicleImage(tipo: number) {
+  switch (tipo) {
+    case 1:
+      return require("../assets/redCar.png");
+    case 2:
+      return require("../assets/redMoto.png");
+    case 3:
+      return require("../assets/bike.png");
+    case 6:
+      return require("../assets/scooter.png");
+    default:
+      return require("../assets/redCar.png");
+  }
+}
+
+function getVehicleTitle(tipo: number, modelo: number) {
+  switch (tipo) {
+    case 1:
+      return `Carro: ${modelo}`;
+    case 2:
+      return `Moto: ${modelo}`;
+    case 3:
+      return `Bicicleta: ${modelo}`;
+    case 6:
+      return `Monopatín: ${modelo}`;
+    default:
+      return `Vehículo: ${modelo}`;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -175,5 +204,19 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "#fff",
+  },
+  infoButton: {
+    backgroundColor: "#FFD700",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginTop: 8,
+    marginHorizontal: 10,
+  },
+  infoButtonText: {
+    color: "#333",
+    fontWeight: "bold",
+    fontSize: 15,
   },
 });

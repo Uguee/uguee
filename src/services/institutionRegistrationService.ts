@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { UserService } from './userService';
+import { GraduationCap, UserCheck, Briefcase, Globe } from 'lucide-react';
 
 export interface Institution {
   id_institucion: number;
@@ -13,6 +14,7 @@ export interface RegistrationFormData {
   institutionId: number;
   role: string;
   institutionalCode: string;
+  address?: string;
 }
 
 export interface RegistrationResult {
@@ -65,6 +67,10 @@ export class InstitutionRegistrationService {
       errors.push('Debes ingresar tu código institucional');
     }
 
+    if (!formData.address?.trim()) {
+      errors.push('Debes ingresar tu dirección de residencia');
+    }
+
     // Validar formato del código según el rol
     if (formData.institutionalCode) {
       const code = formData.institutionalCode.trim();
@@ -79,10 +85,13 @@ export class InstitutionRegistrationService {
             errors.push('El código de profesor debe empezar con "PROF" seguido de números o ser solo números');
           }
           break;
-        case 'administrativo':
+        case 'administrador':
           if (!/^(ADM|adm|Adm|ADMIN|admin|Admin)\d+/i.test(code) && !/^\d+$/.test(code)) {
             errors.push('El código administrativo debe empezar con "ADM" seguido de números o ser solo números');
           }
+          break;
+        case 'externo':
+          // No validation for external users
           break;
       }
     }
@@ -178,7 +187,9 @@ export class InstitutionRegistrationService {
         codigo_institucional: codigoNumerico,
         rol_institucional: formData.role,
         validacion: 'pendiente',
-        direccion_de_residencia: userAddress || userData.direccion || 'No especificada'
+        validacion_conductor: null,
+        fecha_registro: new Date().toISOString(),
+        direccion_de_residencia: userAddress || formData.address || userData.direccion || 'No especificada'
       };
 
       console.log('📋 Datos de registro preparados:', registrationData);
@@ -208,19 +219,10 @@ export class InstitutionRegistrationService {
 
       console.log('✅ Registro exitoso:', data);
 
-      // Actualizar el rol del usuario en la tabla usuario
-      const roleUpdateResult = await this.updateUserRole(userData.id_usuario, formData.role);
-      
-      if (!roleUpdateResult.success) {
-        console.warn('⚠️ No se pudo actualizar el rol del usuario:', roleUpdateResult.error);
-        // No fallamos el registro por esto, solo advertimos
-      }
-
       return {
         success: true,
         data: {
-          ...data,
-          roleUpdated: roleUpdateResult.success
+          ...data
         }
       };
 
@@ -236,27 +238,27 @@ export class InstitutionRegistrationService {
   /**
    * Obtiene las opciones de roles disponibles con sus descripciones
    */
-  static getRoleOptions(): Array<{ value: string; label: string; description: string }> {
+  static getRoleOptions(): { value: string; label: string; icon: any }[] {
     return [
       {
         value: 'estudiante',
-        label: '🎓 Estudiante',
-        description: 'Estudiante activo de la institución'
+        label: 'Estudiante',
+        icon: GraduationCap
       },
       {
         value: 'profesor',
-        label: '👨‍🏫 Profesor',
-        description: 'Docente o instructor de la institución'
+        label: 'Profesor',
+        icon: UserCheck
       },
       {
-        value: 'administrativo',
-        label: '💼 Administrativo',
-        description: 'Personal administrativo de la institución'
+        value: 'administrador',
+        label: 'Administrador',
+        icon: Briefcase
       },
       {
         value: 'externo',
-        label: '🌐 Visitante/Externo',
-        description: 'Visitante o persona externa autorizada'
+        label: 'Externo',
+        icon: Globe
       }
     ];
   }
@@ -267,15 +269,15 @@ export class InstitutionRegistrationService {
   static getCodePlaceholder(role: string): string {
     switch (role) {
       case 'estudiante':
-        return 'ej: EST2024001, 123456';
+        return 'Código de estudiante (ej: EST123456)';
       case 'profesor':
-        return 'ej: PROF001, 789012';
-      case 'administrativo':
-        return 'ej: ADM123, 345678';
+        return 'Código de profesor (ej: PROF123456)';
+      case 'administrador':
+        return 'Código administrativo (ej: ADM123456)';
       case 'externo':
-        return 'ej: EXT001, 901234';
+        return 'Código externo';
       default:
-        return 'Ingresa tu código institucional';
+        return 'Código institucional';
     }
   }
 } 

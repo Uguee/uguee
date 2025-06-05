@@ -99,7 +99,6 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  console.log('Entro al dashboard layout');
   const { user } = useAuth();
   const [institutionId, setInstitutionId] = useState<number | undefined>();
 

@@ -14,89 +14,140 @@ export class AuthFlowService {
    */
   static async determineUserRedirection(user: any): Promise<AuthFlowResult> {
     if (!user) {
-      console.log('❌ No user → /login');
       return {
         shouldRedirect: true,
         redirectTo: '/login'
       };
     }
 
-    try {
-      // Get user data to check validation status
-      const userData = await UserService.getUserDataFromUsuarios(user.id);
-      if (!userData) {
-        console.log('❌ No user data found → /login');
-        return {
-          shouldRedirect: true,
-          redirectTo: '/login'
-        };
-      }
-
-      // Get session for API call
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.log('❌ No active session → /login');
-        return {
-          shouldRedirect: true,
-          redirectTo: '/login'
-        };
-      }
-
-      // Check driver validation status
-      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ id_usuario: userData.id_usuario })
-      });
-
-      if (!response.ok) {
-        console.log('❌ Error checking validation → /login');
-        return {
-          shouldRedirect: true,
-          redirectTo: '/login'
-        };
-      }
-
-      const data = await response.json();
-      const validationStatus = data.validacion_conductor;
-
-      // Handle different validation statuses
-      switch (validationStatus) {
-        case 'validado':
-          console.log('✅ Driver validated → /driver/dashboard');
+    // Redirecciones para roles específicos
+    switch (user.role) {
+      case 'admin_institucional':
+        console.log('🏛️ Admin institucional → verificando estado de institución...');
+        
+        // Obtener el UUID desde la sesión de Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        const userUuid = session?.user?.id;
+        
+        if (!userUuid) {
+          console.log('❌ No se pudo obtener el UUID del usuario desde la sesión');
           return {
             shouldRedirect: true,
-            redirectTo: '/driver/dashboard'
+            redirectTo: '/login'
           };
-        case 'pendiente':
-          console.log('⏳ Driver validation pending → /pending-validation');
+        }
+        
+        console.log('🔍 Usando UUID para consulta:', userUuid);
+        
+        // Verificar el estado de validación de la institución usando el UUID
+        try {
+          const { data: institution, error } = await supabase
+            .from('institucion')
+            .select('validacion')
+            .eq('admin_institucional', userUuid)
+            .single();
+
+          if (error || !institution) {
+            console.log('❌ Error al obtener institución o institución no encontrada:', error);
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution-register'
+            };
+          }
+
+          console.log('✅ Institución encontrada con estado:', institution.validacion);
+
+          // Si la institución está pendiente de validación, redirigir a página de espera
+          if (institution.validacion === 'pendiente') {
+            console.log('⏳ Institución pendiente → /institution/pending-validation');
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution/pending-validation'
+            };
+          }
+
+          // Si la institución fue denegada, también redirigir a página de espera para mostrar el estado
+          if (institution.validacion === 'denegado') {
+            console.log('❌ Institución denegada → /institution/pending-validation');
+            return {
+              shouldRedirect: true,
+              redirectTo: '/institution/pending-validation'
+            };
+          }
+
+          // Si la institución está validada, ir al dashboard institucional
+          console.log('✅ Institución validada → /institution/dashboard');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution/dashboard'
+          };
+        } catch (error) {
+          console.error('Error verificando estado de institución:', error);
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution/pending-validation'
+          };
+        }
+
+      case 'admin':
+        console.log('👑 Admin → /admin/dashboard');
+        return {
+          shouldRedirect: true,
+          redirectTo: '/admin/dashboard'
+        };
+      case 'usuario':
+        console.log('👤 Evaluando usuario con ID:', user.id, 'Rol:', user.role);
+        
+        // Flujo normal para usuarios regulares (sin institución propia)
+        const status = await this.getUserStatus(user.id.toString());
+        
+        console.log('📋 Estado del usuario:', status);
+        
+        if (!status.hasDocuments) {
+          console.log('📄 Usuario sin documentos → /document-verification');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/document-verification'
+          };
+        }
+        
+        // Si el usuario viene del flujo de registro institucional, redirigir a institution-register
+        if (window.location.pathname === '/document-verification' && 
+            window.history.state?.usr?.isInstitutionFlow) {
+          console.log('🏛️ Usuario en flujo institucional → /institution-register');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/institution-register'
+          };
+        }
+        
+        if (!status.hasInstitution) {
+          console.log('🏫 Usuario sin institución → /select-institution');
+          return {
+            shouldRedirect: true,
+            redirectTo: '/select-institution'
+          };
+        }
+        
+        if (status.isPending) {
+          console.log('⏳ Usuario pendiente → /pending-validation');
           return {
             shouldRedirect: true,
             redirectTo: '/pending-validation'
           };
-        case 'denegado':
-        case null:
-          console.log('❌ Driver validation denied/null → /dashboard');
-          return {
-            shouldRedirect: true,
-            redirectTo: '/dashboard'
-          };
-        default:
-          console.log('❓ Unknown validation status → /dashboard');
-          return {
-            shouldRedirect: true,
-            redirectTo: '/dashboard'
-          };
-      }
-    } catch (error) {
-      console.error('Error in determineUserRedirection:', error);
-      return {
-        shouldRedirect: true,
-        redirectTo: '/dashboard'
-      };
+        }
+        
+        console.log('✅ Usuario validado → /dashboard');
+        return {
+          shouldRedirect: true,
+          redirectTo: '/dashboard'
+        };
+      default:
+        console.log('❓ Rol desconocido:', user.role, '→ /dashboard por defecto');
+        return {
+          shouldRedirect: true,
+          redirectTo: '/dashboard'
+        };
     }
   }
 
@@ -104,6 +155,7 @@ export class AuthFlowService {
    * Verifica si un usuario tiene acceso a una ruta específica
    */
   static async checkRouteAccess(user: any, allowedRoles?: UserRole[]): Promise<AuthFlowResult> {
+    // Si no hay usuario, redirigir a login
     if (!user) {
       return {
         shouldRedirect: true,
@@ -111,80 +163,108 @@ export class AuthFlowService {
       };
     }
 
-    // If the route is for drivers, check validation status
-    if (allowedRoles?.includes('conductor')) {
-      try {
-        const userData = await UserService.getUserDataFromUsuarios(user.id);
-        if (!userData) {
-          return await this.determineUserRedirection(user);
-        }
+    // Si hay roles específicos requeridos y el usuario no tiene uno de esos roles
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      return {
+        shouldRedirect: true,
+        redirectTo: '/unauthorized'
+      };
+    }
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          return await this.determineUserRedirection(user);
-        }
+    // Skip document and institution checks for admin roles
+    if (user.role === 'admin' || user.role === 'admin_institucional') {
+      return { shouldRedirect: false };
+    }
 
-        const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ id_usuario: userData.id_usuario })
-        });
+    // Obtener el estado de registro del usuario
+    const status = await this.getUserStatus(user.id.toString());
 
-        if (!response.ok) {
-          return await this.determineUserRedirection(user);
-        }
-
-        const data = await response.json();
-        if (data.validacion_conductor !== 'validado') {
-          return await this.determineUserRedirection(user);
-        }
-      } catch (error) {
-        console.error('Error checking driver validation:', error);
-        return await this.determineUserRedirection(user);
+    // Si no tiene documentos, redirigir a document-verification
+    if (!status.hasDocuments) {
+      if (window.location.pathname === '/document-verification') {
+        return { shouldRedirect: false };
       }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/document-verification'
+      };
     }
 
-    // For other roles, check if user has the required role
-    if (!allowedRoles?.includes(user.role)) {
-      return await this.determineUserRedirection(user);
+    // Si tiene documentos pero no tiene institución, redirigir a institution-register
+    if (!status.hasInstitution) {
+      if (window.location.pathname === '/select-institution') {
+        return { shouldRedirect: false };
+      }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/select-institution'
+      };
     }
 
+    // Si tiene institución pero está pendiente, redirigir a pending-validation
+    if (status.isPending) {
+      if (window.location.pathname === '/pending-validation') {
+        return { shouldRedirect: false };
+      }
+      return {
+        shouldRedirect: true,
+        redirectTo: '/pending-validation'
+      };
+    }
+
+    // Si todo está validado, permitir acceso
     return { shouldRedirect: false };
   }
 
   /**
-   * Obtiene el estado de registro para mostrar en componentes
+   * Obtiene el estado actual del usuario
    */
-  static async getUserStatus(userId: string): Promise<{
+  static async getUserStatus(userId: string | number): Promise<{
     hasDocuments: boolean;
     hasInstitution: boolean;
-    institutionStatus?: string;
-    institutionalRole?: string;
-    isDenied: boolean;
     isPending: boolean;
-    isValidated: boolean;
   }> {
     try {
-      const status = await UserService.getUserRegistrationStatus(userId);
-      
+      // Convert userId to string for database query
+      const userIdStr = userId.toString();
+
+      // Verificar documentos
+      const { data: documents, error: docError } = await supabase
+        .from('documento')
+        .select('id_usuario')
+        .eq('id_usuario', parseInt(userIdStr))
+        .limit(1);
+
+      if (docError) {
+        console.error('Error checking documents:', docError);
+        return { hasDocuments: false, hasInstitution: false, isPending: false };
+      }
+
+      const hasDocuments = documents && documents.length > 0;
+
+      // Verificar registro en institución
+      const { data: registration, error: regError } = await supabase
+        .from('registro')
+        .select('validacion')
+        .eq('id_usuario', parseInt(userIdStr))
+        .limit(1);
+
+      if (regError) {
+        console.error('Error checking registration:', regError);
+        return { hasDocuments, hasInstitution: false, isPending: false };
+      }
+
+      const hasInstitution = registration && registration.length > 0;
+      const isPending = hasInstitution && registration[0].validacion === 'pendiente';
+
       return {
-        ...status,
-        isDenied: status.institutionStatus === 'denegado',
-        isPending: status.institutionStatus === 'pendiente',
-        isValidated: status.institutionStatus === 'validado'
+        hasDocuments,
+        hasInstitution,
+        isPending
       };
     } catch (error) {
-      console.error('❌ Error obteniendo estado de usuario:', error);
-      return {
-        hasDocuments: false,
-        hasInstitution: false,
-        isDenied: false,
-        isPending: false,
-        isValidated: false
-      };
+      console.error('Error in getUserStatus:', error);
+      return { hasDocuments: false, hasInstitution: false, isPending: false };
     }
   }
 } 

@@ -18,6 +18,7 @@ const Register = () => {
     role: "usuario" as UserRole,
     dateOfBirth: "",
     cedula: "",
+    direccion_de_residencia: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,6 +68,10 @@ const Register = () => {
       newErrors.phoneNumber = "Número de teléfono es requerido";
     }
 
+    if (!formData.direccion_de_residencia.trim()) {
+      newErrors.direccion_de_residencia = "Dirección de residencia es requerida";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -102,9 +107,10 @@ const Register = () => {
         phoneNumber: formData.phoneNumber,
         role: formData.role,
         dateOfBirth: formData.dateOfBirth,
-        // cedula no está en el tipo User, se manejará en el backend
+        direccion_de_residencia: formData.direccion_de_residencia,
       }, formData.password, formData.cedula);
 
+      // Este código no se ejecutará si se requiere verificación de email
       toast({
         title: "Registro exitoso",
         description: isInstitutionRegistration 
@@ -123,7 +129,35 @@ const Register = () => {
       console.log('Registration error details:', error);
       
       // Manejar diferentes tipos de errores
-      if (error.message?.includes('User already registered')) {
+      if (error.message === 'VERIFICATION_REQUIRED') {
+        toast({
+          title: "¡Registro exitoso!",
+          description: (
+            <div className="space-y-2">
+              <p>Hemos enviado un correo de verificación a {formData.email}.</p>
+              <p>Por favor:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Revisa tu bandeja de entrada</li>
+                <li>Haz clic en el enlace de verificación</li>
+                <li>Una vez verificado, podrás iniciar sesión</li>
+              </ol>
+              <p className="text-sm text-gray-500 mt-2">
+                Si no encuentras el correo, revisa tu carpeta de spam.
+              </p>
+            </div>
+          ),
+          duration: 10000, // Mostrar por 10 segundos
+        });
+        
+        // Redirigir al login con el email pre-llenado
+        navigate('/login', { 
+          state: { 
+            email: formData.email,
+            message: 'Por favor verifica tu correo electrónico antes de iniciar sesión'
+          } 
+        });
+        return;
+      } else if (error.message?.includes('User already registered')) {
         setErrors({ email: 'Este email ya está registrado. Intenta iniciar sesión.' });
       } else if (error.message?.includes('Invalid email')) {
         setErrors({ email: 'El formato del email no es válido.' });
@@ -303,6 +337,33 @@ const Register = () => {
                 {errors.phoneNumber && (
                   <p className="mt-1 text-sm text-red-600">
                     {errors.phoneNumber}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Dirección de residencia */}
+            <div>
+              <label
+                htmlFor="direccion_de_residencia"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Dirección de residencia
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  name="direccion_de_residencia"
+                  id="direccion_de_residencia"
+                  value={formData.direccion_de_residencia}
+                  onChange={handleChange}
+                  className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                    errors.direccion_de_residencia ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.direccion_de_residencia && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.direccion_de_residencia}
                   </p>
                 )}
               </div>

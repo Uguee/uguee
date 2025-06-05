@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { AuthFlowService } from "@/services/authFlowService";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -62,41 +64,35 @@ const Login = () => {
       // Si viene desde document verification, regresar ahí
       if (navigationState?.returnTo === 'document-verification') {
         console.log("➡️ Redirecting back to document verification");
-        navigate("/verify-documents");
+        navigate("/document-verification", { 
+          state: { isInstitutionFlow: navigationState?.isInstitutionFlow }
+        });
         return;
       }
 
       // Si viene del flujo de registro institucional, ir al formulario de institución
       if (navigationState?.returnTo === 'institution-register' || navigationState?.isInstitutionFlow) {
         console.log("➡️ Redirecting to institution registration form");
-        navigate("/institution-register");
+        navigate("/institution-register", { 
+          state: { isInstitutionFlow: true }
+        });
         return;
       }
 
-      // Redirigir según el rol del usuario devuelto por login
+      // Redirigir según el rol del usuario
       if (loggedInUser) {
         console.log("🚀 Redirecting based on role:", loggedInUser.role);
 
-        switch (loggedInUser.role) {
-          case "usuario":
-            console.log("➡️ Redirecting to /dashboard");
-            navigate("/dashboard");
-            break;
-          case "conductor":
-            console.log("➡️ Redirecting to /driver/dashboard");
-            navigate("/driver/dashboard");
-            break;
-          case "admin_institucional":
-            console.log("➡️ Redirecting to /institution/dashboard");
-            navigate("/institution/dashboard");
-            break;
-          case "admin":
-            console.log("➡️ Redirecting to /admin/dashboard");
-            navigate("/admin/dashboard");
-            break;
-          default:
-            console.log("❓ Unknown role, redirecting to /dashboard");
-            navigate("/dashboard");
+        // Usar AuthFlowService para determinar la redirección
+        const result = await AuthFlowService.checkRouteAccess(loggedInUser);
+        
+        if (result.shouldRedirect) {
+          console.log("➡️ Redirecting to:", result.redirectTo);
+          navigate(result.redirectTo);
+        } else {
+          // Si no hay redirección necesaria, ir al dashboard
+          console.log("➡️ No redirection needed, going to dashboard");
+          navigate("/dashboard");
         }
       } else {
         console.log("❌ No user data, redirecting to /dashboard");

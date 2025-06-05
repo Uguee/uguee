@@ -1,51 +1,33 @@
 import React, { useState } from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { TopMenu } from "../components/TopMenu";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { InstitutionCard } from "../components/InstitutionCard";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import SearchBarInst from "../components/SearchBarInst";
+import { useInstitutions } from "../hooks/useInstitutions";
 
 interface InstitutionListScreenProps {
   onGoHome: () => void;
   onSelectInstitution: (institution: any) => void;
 }
 
-const institutions = [
-  {
-    name: "Universidad de Tolima",
-    logo: require("../assets/univalle-logo.png"),
-  },
-  {
-    name: "Universidad del Valle",
-    logo: require("../assets/univalle-logo.png"),
-  },
-  {
-    name: "Universidad del Valle",
-    logo: require("../assets/univalle-logo.png"),
-  },
-  {
-    name: "Unversidad del Valle",
-    logo: require("../assets/univalle-logo.png"),
-  },
-  {
-    name: "Universidad del Valle",
-    logo: require("../assets/univalle-logo.png"),
-  },
-  {
-    name: "Universidad del Valle",
-    logo: require("../assets/univalle-logo.png"),
-  },
-];
-
 export default function InstitutionListScreen({
   onGoHome,
   onSelectInstitution,
 }: InstitutionListScreenProps) {
   const [search, setSearch] = useState("");
+  const { institutions, loading, error } = useInstitutions();
 
+  // Filtrar por nombre oficial
   const filteredInstitutions = institutions.filter((inst) =>
-    inst.name.toLowerCase().includes(search.toLowerCase())
+    inst.nombre_oficial.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -54,18 +36,39 @@ export default function InstitutionListScreen({
       <View style={styles.content}>
         <SearchBarInst value={search} onChangeText={setSearch} />
         <Text style={styles.title}>Instituciones disponibles</Text>
-        <FlatList
-          data={filteredInstitutions}
-          keyExtractor={(item, index) => item.name + index}
-          renderItem={({ item }) => (
-            <InstitutionCard
-              name={item.name}
-              logo={item.logo}
-              onPress={() => onSelectInstitution(item)}
-            />
-          )}
-          contentContainerStyle={{ paddingBottom: 80 }}
-        />
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#900"
+            style={{ marginTop: 30 }}
+          />
+        ) : error ? (
+          <Text style={{ color: "red", marginTop: 30 }}>Error: {error}</Text>
+        ) : (
+          <FlatList
+            data={filteredInstitutions}
+            keyExtractor={(item, index) =>
+              item.id_institucion?.toString() || index.toString()
+            }
+            renderItem={({ item }) => {
+              // Si hay logo, usa la URL; si no, usa la imagen local por defecto
+              const logoSource = item.logo
+                ? {
+                    uri: `https://ezuujivxstyuziclhvhp.supabase.co/storage/v1/object/public/logos/${item.logo}`,
+                  }
+                : require("../assets/univalle-logo.png");
+
+              return (
+                <InstitutionCard
+                  name={item.nombre_oficial}
+                  logo={logoSource}
+                  onPress={() => onSelectInstitution(item)}
+                />
+              );
+            }}
+            contentContainerStyle={{ paddingBottom: 80 }}
+          />
+        )}
       </View>
       <BottomNavigation
         buttons={[
@@ -102,12 +105,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 16,
+    marginTop: 8,
   },
   title: {
-    fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 12,
+    fontSize: 18,
+    marginVertical: 12,
     color: "#222",
   },
 });

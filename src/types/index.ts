@@ -9,7 +9,7 @@ export interface Institution {
 }
 
 // User types and roles
-export type UserRole = 'conductor' | 'externo' | 'estudiante' | 'profesor' | 'administrativo' | 'usuario' | 'admin_institucional' | 'admin' | 'validacion';
+export type UserRole = 'admin' | 'admin_institucional' | 'usuario' | 'pendiente' | 'verificado' | null;
 
 export interface User {
   phone: string;
@@ -28,6 +28,7 @@ export interface User {
   avatarUrl?: string;
   dateOfBirth?: string;
   id_usuario?: number;
+  direccion_de_residencia?: string;
 }
 
 // Driver extends User with additional properties

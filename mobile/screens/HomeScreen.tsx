@@ -16,20 +16,20 @@ import {
 
 interface HomeScreenProps {
   onGoToInstitutions?: () => void;
+  onGoToMyInstitution?: () => void;
   onGoToBecomeDriver?: () => void;
   onGoToDriverView?: () => void;
-}
-
-// Agrega las props
-interface HomeScreenProps {
-  onGoToInstitutions?: () => void;
-  onGoToDriverRegister?: () => void;
+  onGoToProfile?: () => void;
+  onGoToInstitutionProfile?: () => void;
 }
 
 export default function HomeScreen({
   onGoToInstitutions,
-  onGoToDriverRegister,
+  onGoToMyInstitution,
+  onGoToBecomeDriver,
   onGoToDriverView,
+  onGoToProfile,
+  onGoToInstitutionProfile,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -59,7 +59,7 @@ export default function HomeScreen({
           const userRow = await getUserDataByUUID(user.id);
           console.log(
             "[HomeScreen] id_usuario (tabla usuarios):",
-            userRow?.id_usuario ?? userRow?.id
+            userRow?.id_usuario
           );
 
           const cedula = await getCedulaByUUID(user.id);
@@ -84,12 +84,12 @@ export default function HomeScreen({
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
       active: true,
-      onPress: () => alert("Ya te encuentras en inicio"),
+      onPress: () => HomeScreen,
     },
     {
       label: "Mis viajes",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => alert("Mis viajes"),
+      onPress: onGoToDriverView ?? (() => alert("Mis viajes")),
     },
     {
       label: "Servicios",
@@ -99,7 +99,7 @@ export default function HomeScreen({
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => alert("Perfil"),
+      onPress: onGoToProfile ?? (() => alert("Perfil")),
     },
   ];
 
@@ -122,6 +122,51 @@ export default function HomeScreen({
 
     const cards: JSX.Element[] = [];
 
+    // Tarjeta de solicitud pendiente de conductor
+    if (conductorStatus === "pendiente") {
+      // Si la institución está validada, mostrar también la tarjeta de institución
+      if (institutionStatus === "validado") {
+        cards.push(
+          <BigCard
+            key="inst-yes"
+            image={require("../assets/building3D.png")}
+            title="¿Tu institución?"
+            description="Presiona aquí para acceder a los detalles de tu institución"
+            onPress={
+              onGoToInstitutionProfile ?? (() => alert("pertenece Institución"))
+            }
+          />
+        );
+      }
+      cards.push(
+        <BigCard
+          key="cond-pending"
+          image={require("../assets/car3D.png")}
+          title="Tu solicitud está pendiente"
+          description={
+            "Tienes que esperar un poco, hasta que la institución te acepte como conductor."
+          }
+        />
+      );
+      // No mostrar las otras tarjetas si está pendiente
+      return cards;
+    }
+
+    // Tarjeta de solicitud pendiente
+    if (institutionStatus === "pendiente") {
+      cards.push(
+        <BigCard
+          key="inst-pending"
+          image={require("../assets/building3D.png")}
+          title="Tu solicitud está pendiente"
+          description="No tardará mucho en ser aceptada por la institución"
+          onPress={() => {}}
+        />
+      );
+      // No mostrar las otras tarjetas si está pendiente
+      return cards;
+    }
+
     // Tarjeta institución
     if (institutionStatus !== "validado") {
       cards.push(
@@ -130,7 +175,7 @@ export default function HomeScreen({
           image={require("../assets/building3D.png")}
           title="Ingresa a una institución"
           description="Para poder tomar ver rutas específicas y tomar viajes"
-          onPress={onGoToInstitutions ?? (() => alert("Institución"))}
+          onPress={onGoToInstitutions ?? (() => alert("Ir a instituciones"))}
         />
       );
     } else {
@@ -140,7 +185,9 @@ export default function HomeScreen({
           image={require("../assets/building3D.png")}
           title="¿Tu institución?"
           description="Presiona aquí para acceder a los detalles de tu institución"
-          onPress={onGoToInstitutions ?? (() => alert("pertenece Institución"))}
+          onPress={
+            onGoToInstitutionProfile ?? (() => alert("pertenece Institución"))
+          }
         />
       );
     }
@@ -164,7 +211,7 @@ export default function HomeScreen({
         <BigCard
           key="cond-yes"
           image={require("../assets/car3D.png")}
-          title="¿Vas a algún lado?"
+          title="¿Vas a manejar?"
           description="Presiona aquí para cambiar a la vista de conductor"
           onPress={
             onGoToDriverView ?? (() => alert("cambiar a vista conductor"))

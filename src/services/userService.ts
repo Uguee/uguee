@@ -57,34 +57,15 @@ export class UserService {
   private static mapRole(role: string): UserRole {
     console.log('🎯 Mapeando rol:', role);
     
-    switch (role.toLowerCase()) {
+    switch (role?.toLowerCase()) {
       case 'admin':
         return 'admin';
-      case 'estudiante':
-      case 'student':
-        return 'estudiante';
-      case 'profesor':
-      case 'teacher':
-        return 'profesor';
-      case 'administrativo':
-      case 'admin_personal':
-        return 'administrativo';
-      case 'externo':
-      case 'external':
-        return 'externo';
-      case 'pasajero':
+      case 'admin_institucional':
+        return 'admin_institucional';
       case 'usuario':
         return 'usuario';
-      case 'conductor':
-      case 'driver':
-        return 'conductor';
-      case 'admin_institucional':
-      case 'admin-institucion':
-        return 'admin_institucional';
-      case 'validacion':
-        return 'validacion';
       default:
-        console.warn('⚠️ Rol desconocido:', role, 'usando "usuario" por defecto');
+        console.warn('⚠️ Rol desconocido:', role, 'usando usuario por defecto');
         return 'usuario';
     }
   }
@@ -92,42 +73,42 @@ export class UserService {
   /**
    * Mapea los datos del endpoint a nuestro tipo User
    */
-  private static mapUserData(userData: any, uuid: string): User {
-    console.log('🔍 UserService mapUserData - Raw data:', userData);
+  static async mapUserData(data: any): Promise<User> {
+    console.log('🔍 validacion_conductor value:', data.validacion_conductor);
     
-    // Determinar el rol basándose en validacion_conductor
-    let role: UserRole;
+    // Determinar el rol base
+    let baseRole: UserRole = null;
     
-    console.log('🔍 validacion_conductor value:', userData.validacion_conductor);
-    
-    // Si tiene validacion_conductor: 'validado', entonces es conductor
-    if (userData.validacion_conductor === 'validado') {
-      console.log('✅ Usuario es conductor (validado)');
-      role = 'conductor';
+    // Si es conductor, asignar rol de conductor
+    if (data.validacion_conductor) {
+      console.log('✅ Usuario es conductor');
+      baseRole = 'usuario';
     } else {
-      console.log('⚠️ Usuario NO es conductor, usando rol base:', userData.rol || userData.role);
-      // Si no está validado como conductor, usar el rol existente o por defecto 'usuario'
-      role = this.mapRole(userData.rol || userData.role || 'usuario');
+      console.log('⚠️ Usuario NO es conductor, usando rol base:', data.rol);
+      // Si no es conductor, usar el rol de la base de datos o null
+      baseRole = data.rol || null;
     }
     
-    console.log('📝 Final role assigned:', role);
-
-    return {
-      id: userData.uuid || userData.id || uuid,
-      firstName: userData.nombre || userData.firstName || '',
-      lastName: userData.apellido || userData.lastName || '',
-      email: userData.email || userData.correo || '',
-      phoneNumber: userData.celular || userData.phoneNumber || '',
-      role: role,
-      createdAt: userData.createdAt || userData.created_at || new Date().toISOString(),
-      dateOfBirth: userData.fecha_nacimiento || userData.dateOfBirth || '',
-      address: userData.address || userData.direccion || '',
-      institutionId: userData.institutionId || userData.institution_id || '',
-      institutionalEmail: userData.institutionalEmail || userData.correo_institucional || '',
-      institutionalCode: userData.institutionalCode || userData.codigo_institucional || '',
-      avatarUrl: userData.avatarUrl || userData.foto || '',
-      id_usuario: userData.id_usuario,
+    // Mapear el rol final
+    const finalRole = this.mapRole(baseRole);
+    console.log('🎯 Mapeando rol:', finalRole);
+    
+    // Crear objeto de usuario con el rol mapeado
+    const user: User = {
+      id: data.id_usuario?.toString() || '',
+      firstName: data.nombre || '',
+      lastName: data.apellido || '',
+      email: data.email || '',
+      phoneNumber: data.celular?.toString() || '',
+      role: finalRole,
+      dateOfBirth: data.fecha_nacimiento || '',
+      createdAt: data.created_at || new Date().toISOString(),
+      phone: data.celular?.toString() || '',
+      birthdate: data.fecha_nacimiento || '',
     };
+    
+    console.log('📝 Final role assigned:', user.role);
+    return user;
   }
 
   /**
@@ -167,7 +148,7 @@ export class UserService {
         uuid: result.data.uuid
       });
 
-      const mappedUser = this.mapUserData(result.data, uuid);
+      const mappedUser = await this.mapUserData(result.data);
       console.log('🎯 Usuario final mapeado:', {
         id: mappedUser.id,
         firstName: mappedUser.firstName,
@@ -204,7 +185,7 @@ export class UserService {
       }
 
       return result.data.map((userData: any) => 
-        this.mapUserData(userData, userData.uuid)
+        this.mapUserData(userData)
       );
     } catch (error) {
       return [];
@@ -214,29 +195,47 @@ export class UserService {
   /**
    * Obtiene los datos del usuario desde la tabla usuarios
    */
-  static async getUserDataFromUsuarios(uuid: string): Promise<any | null> {
+  static async getUserDataFromUsuarios(userId: string): Promise<any | null> {
     try {
+      // First get the UUID from the user ID
+      const { data: userData, error: userError } = await supabase
+        .from('usuario')
+        .select('uuid')
+        .eq('id_usuario', parseInt(userId))
+        .single();
+
+      if (userError || !userData?.uuid) {
+        console.error('❌ getUserDataFromUsuarios: Error getting UUID:', userError);
+        return null;
+      }
+
+      console.log('✅ UUID encontrado:', userData.uuid);
+
+      // Now use the UUID to get the full user data
       const headers = await this.getAuthHeaders();
-      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA_POST}`;
+      const url = `${SUPABASE_FUNCTIONS.GET_USER_DATA}?uuid=${userData.uuid}`;
+      console.log('📡 getUserDataFromUsuarios: Llamando endpoint:', url);
 
       const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ uuid })
+        method: 'GET',
+        headers
       });
 
       if (!response.ok) {
+        console.error('❌ getUserDataFromUsuarios: Error fetching user data:', response.status);
         return null;
       }
 
       const result = await response.json();
       if (!result.success || !result.data) {
+        console.error('❌ getUserDataFromUsuarios: Invalid response format:', result);
         return null;
       }
 
+      console.log('✅ getUserDataFromUsuarios: Datos recibidos:', result.data);
       return result.data;
     } catch (error) {
-      console.error('Error fetching user data from usuarios:', error);
+      console.error('❌ getUserDataFromUsuarios: Error:', error);
       return null;
     }
   }

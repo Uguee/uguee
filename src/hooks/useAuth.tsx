@@ -3,6 +3,7 @@ import { User, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { UserService } from '../services/userService';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { DocumentVerificationService } from '../services/documentVerificationService';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User | null>;
   register: (userData: Partial<User>, password: string, cedula?: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -208,9 +210,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Login function
   const login = async (email: string, password: string): Promise<User | null> => {
-    setIsLoading(true);
-    setError(null);
-    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -223,6 +222,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const appUser = await fetchUserData(data.user, data.session?.access_token);
           if (appUser) {
+            // Check if user has null role
+            if (appUser.role === null) {
+              // Redirect to document verification
+              window.location.href = '/document-verification';
+              return null;
+            }
             setUser(appUser);
             setSession(data.session);
             return appUser;
@@ -230,53 +235,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.error('❌ No se pudieron obtener los datos del usuario desde el endpoint');
             throw new Error('No se pudieron obtener los datos del usuario');
           }
-        } catch (fetchError) {
-          console.log('🔄 Usuario no encontrado en la base de datos. Intentando sincronizar...');
-          
-          // Si no se puede obtener el usuario, intentar sincronizarlo
-          // Esto es común para usuarios recién registrados que confirmaron su email
-          const userData = {
-            firstName: data.user.user_metadata?.firstName,
-            lastName: data.user.user_metadata?.lastName,
-            email: data.user.email,
-            phoneNumber: data.user.user_metadata?.phoneNumber,
-            role: data.user.user_metadata?.role as UserRole,
-            dateOfBirth: data.user.user_metadata?.dateOfBirth,
-            id: data.user.user_metadata?.cedula,
-          };
-          
-          const syncSuccess = await syncUserToDatabase(data.user, userData);
-          
-          if (syncSuccess) {
-            console.log('✅ Usuario sincronizado exitosamente');
-            // Intentar obtener los datos nuevamente
-            try {
-              const appUser = await fetchUserData(data.user, data.session?.access_token);
-              if (appUser) {
-                setUser(appUser);
-                setSession(data.session);
-                return appUser;
-              } else {
-                console.warn('⚠️ Sincronización exitosa pero no se pudieron obtener los datos del usuario');
-                throw new Error('Usuario sincronizado pero datos no disponibles');
-              }
-            } catch (secondFetchError) {
-              console.warn('⚠️ Sincronización exitosa pero no se pudieron obtener los datos del usuario');
-              throw new Error('Usuario sincronizado pero datos no disponibles');
-            }
-          } else {
-            console.warn('❌ Fallo la sincronización del usuario');
-            throw new Error('No se pudo sincronizar el usuario');
-          }
+        } catch (error) {
+          console.error('❌ Error en login:', error);
+          throw error;
         }
       }
-      
-      return null;
-      
-    } catch (err: any) {
-      console.error('Login failed:', err);
-      setError(err.message || 'Error iniciando sesión');
-      throw err;
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      throw error;
     }
   };
 
@@ -318,14 +284,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: userData.firstName || supabaseUser.user_metadata?.firstName || '',
         lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
         phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
-        role: userRole || supabaseUser.user_metadata?.role || 'usuario',
-        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+        role: userRole || supabaseUser.user_metadata?.role || 'pendiente',
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || '',
+        direccion_de_residencia: userData.direccion_de_residencia || supabaseUser.user_metadata?.direccion_de_residencia || ''
       };
 
       console.log('📦 Datos preparados para sync-user:', syncUserData);
 
       // Validar que los campos requeridos no estén vacíos
-      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
+      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'dateOfBirth'];
       const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
       
       // Validar phoneNumber por separado ya que puede ser null
@@ -398,12 +365,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: userData.firstName || supabaseUser.user_metadata?.firstName || '',
         lastName: userData.lastName || supabaseUser.user_metadata?.lastName || '',
         phoneNumber: phoneNumber ? parseInt(phoneNumber.replace(/\D/g, '')) : null,
-        role: userRole || supabaseUser.user_metadata?.role || 'usuario',
-        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || ''
+        role: userRole || supabaseUser.user_metadata?.role || 'pendiente',
+        dateOfBirth: userData.dateOfBirth || supabaseUser.user_metadata?.dateOfBirth || '',
+        direccion_de_residencia: userData.direccion_de_residencia || supabaseUser.user_metadata?.direccion_de_residencia || ''
       };
 
       // Validar que los campos requeridos no estén vacíos
-      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'role', 'dateOfBirth'];
+      const requiredFields = ['id_usuario', 'uuid', 'firstName', 'lastName', 'dateOfBirth'];
       const missingFields = requiredFields.filter(field => !syncUserData[field as keyof typeof syncUserData]);
       
       // Validar phoneNumber por separado ya que puede ser null
@@ -530,6 +498,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Función para refrescar los datos del usuario
+  const refreshUser = async () => {
+    if (!session?.user) {
+      console.log('⚠️ No hay sesión activa para refrescar');
+      return;
+    }
+
+    console.log('🔄 Refrescando datos del usuario...');
+    setIsLoading(true);
+    
+    try {
+      const appUser = await fetchUserData(session.user, session.access_token);
+      if (appUser) {
+        console.log('✅ Datos del usuario refrescados exitosamente:', appUser.role);
+        setUser(appUser);
+      } else {
+        console.error('❌ No se pudieron refrescar los datos del usuario');
+      }
+    } catch (error) {
+      console.error('❌ Error refrescando datos del usuario:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     isLoading,
@@ -537,6 +530,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
   };
 

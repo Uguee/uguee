@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AuthFlowService } from "./services/authFlowService";
 import { UserRole } from "./types";
@@ -34,6 +34,9 @@ import RegistrationRequests from "./pages/admin/RegistrationRequests";
 import SelectInstitution from "./pages/Authentication/SelectInstitution";
 import React from "react";
 import Profile from "./pages/profile/Profile";
+import Unauthorized from './pages/Unauthorized';
+import InstitutionPendingValidation from './pages/institution/InstitutionPendingValidation';
+import InstitutionRequests from './pages/admin/InstitutionRequests';
 
 const queryClient = new QueryClient();
 
@@ -48,31 +51,22 @@ const ProtectedRoute = ({
   const { isAuthenticated, isLoading, user } = useAuth();
   const [redirectResult, setRedirectResult] = React.useState<any>(null);
   const [isCheckingAccess, setIsCheckingAccess] = React.useState(false);
-  const [hasChecked, setHasChecked] = React.useState(false);
+  const location = useLocation();
 
-  console.log('🛡️ ProtectedRoute check:', {
-    isAuthenticated,
-    isLoading,
-    userRole: user?.role,
-    allowedRoles,
-    currentPath: window.location.pathname,
-    hasChecked,
-    isCheckingAccess
-  });
+  // Reset when route changes
+  React.useEffect(() => {
+    setRedirectResult(null);
+  }, [location.pathname]);
 
   // Verificar acceso a la ruta
   React.useEffect(() => {
     const checkAccess = async () => {
-      if (user && !isCheckingAccess && !hasChecked) {
+      if (user && !isCheckingAccess) {
         setIsCheckingAccess(true);
-        console.log('🔍 Verificando acceso para usuario:', user.role);
         
         try {
           const result = await AuthFlowService.checkRouteAccess(user, allowedRoles);
-          console.log('📋 Resultado de verificación de acceso:', result);
-          
           setRedirectResult(result);
-          setHasChecked(true);
         } catch (error) {
           console.error('❌ Error verificando acceso:', error);
           setRedirectResult({ shouldRedirect: false });
@@ -82,19 +76,12 @@ const ProtectedRoute = ({
       }
     };
 
-    if (user && !hasChecked) {
+    if (user) {
       checkAccess();
     }
-  }, [user, allowedRoles, hasChecked]);
+  }, [user, allowedRoles, location.pathname]);
 
-  // Reset when user changes
-  React.useEffect(() => {
-    setHasChecked(false);
-    setRedirectResult(null);
-  }, [user?.id]);
-
-  if (isLoading) {
-    console.log('⏳ App loading...');
+  if (isLoading || isCheckingAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -103,25 +90,13 @@ const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
-    console.log('🚫 Not authenticated, redirecting to login');
     return <Navigate to="/login" />;
   }
 
-  if (isCheckingAccess && !hasChecked) {
-    console.log('⏳ Checking access...');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   if (redirectResult?.shouldRedirect && redirectResult?.redirectTo) {
-    console.log('🔄 Redirecting to:', redirectResult.redirectTo);
     return <Navigate to={redirectResult.redirectTo} />;
   }
 
-  console.log('✅ Access granted to:', window.location.pathname);
   return <>{children}</>;
 };
 
@@ -134,6 +109,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       
       {/* Ruta para validación pendiente - accesible para todos los roles */}
       <Route 
@@ -145,9 +121,9 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Ruta para verificación de documentos - solo para usuarios con rol "usuario" */}
+      {/* Ruta para verificación de documentos - accesible para usuarios */}
       <Route 
-        path="/verify-documents" 
+        path="/document-verification" 
         element={
           <ProtectedRoute allowedRoles={['usuario']}>
             <DocumentVerification />
@@ -155,7 +131,7 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Ruta para selección de institución - solo para usuarios con rol "usuario" */}
+      {/* Ruta para selección de institución - accesible para usuarios */}
       <Route 
         path="/select-institution" 
         element={
@@ -165,11 +141,11 @@ const AppRoutes = () => {
         } 
       />
       
-      {/* Rutas para estudiantes, profesores, administrativos, externos */}
+      {/* Rutas para usuarios validados */}
       <Route 
         path="/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <Dashboard />
           </ProtectedRoute>
         } 
@@ -177,7 +153,7 @@ const AppRoutes = () => {
       <Route 
         path="/search-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <SearchRoutes />
           </ProtectedRoute>
         } 
@@ -185,7 +161,7 @@ const AppRoutes = () => {
       <Route 
         path="/start-trip" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <StartTrip />
           </ProtectedRoute>
         } 
@@ -193,7 +169,7 @@ const AppRoutes = () => {
       <Route 
         path="/routes/:routeId" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <RouteDetail />
           </ProtectedRoute>
         } 
@@ -201,7 +177,7 @@ const AppRoutes = () => {
       <Route 
         path="/my-trips" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <MyTrips />
           </ProtectedRoute>
         } 
@@ -209,7 +185,7 @@ const AppRoutes = () => {
       <Route 
         path="/favorite-routes" 
         element={
-          <ProtectedRoute allowedRoles={['externo', 'estudiante', 'profesor', 'administrativo']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <FavoriteRoutes />
           </ProtectedRoute>
         } 
@@ -219,15 +195,15 @@ const AppRoutes = () => {
       <Route 
         path="/driver/dashboard" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <DriverDashboard />
           </ProtectedRoute>
         } 
       />
       <Route 
-        path="/driver/history" 
+        path="/driver/map-view"
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <MapViewDriver />
           </ProtectedRoute>
         } 
@@ -235,7 +211,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/create-trip" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <CreateTrip />
           </ProtectedRoute>
         } 
@@ -243,7 +219,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/history" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <HistorialViajes />
           </ProtectedRoute>
         } 
@@ -251,7 +227,7 @@ const AppRoutes = () => {
       <Route 
         path="/driver/vehicles" 
         element={
-          <ProtectedRoute allowedRoles={['conductor']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
             <MisVehiculos />
           </ProtectedRoute>
         } 
@@ -261,12 +237,40 @@ const AppRoutes = () => {
         element={<DriverNotAllowed />} 
       />
 
+      {/* Rutas para administradores institucionales */}
+      <Route 
+        path="/institution/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['admin_institucional']}>
+            <InstitutionDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/institution/pending-validation" 
+        element={
+          <ProtectedRoute allowedRoles={['admin_institucional']}>
+            <InstitutionPendingValidation />
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Rutas para administradores del sitio */}
       <Route 
         path="/admin/dashboard" 
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/institution-requests" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <InstitutionRequests />
           </ProtectedRoute>
         } 
       />
@@ -295,7 +299,7 @@ const AppRoutes = () => {
       <Route 
         path="/profile" 
         element={
-          <ProtectedRoute allowedRoles={['estudiante', 'profesor', 'administrativo', 'externo', 'conductor', 'admin_institucional']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin_institucional']}>
             <Profile />
           </ProtectedRoute>
         }
