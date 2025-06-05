@@ -35,6 +35,29 @@ const Navbar = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'passenger' | 'driver'>('passenger');
 
+  // Add debug logs for driver validation status
+  useEffect(() => {
+    console.log('🔍 Driver Validation Status:', {
+      isValidatedDriver,
+      isPendingDriver,
+      isDeniedDriver,
+      isLoading,
+      userRole: user?.role,
+      currentPath: location.pathname
+    });
+  }, [isValidatedDriver, isPendingDriver, isDeniedDriver, isLoading, user?.role, location.pathname]);
+
+  // Log desktop navigation state
+  useEffect(() => {
+    console.log('🎯 Desktop Navigation State:', {
+      isPendingDriver,
+      isDeniedDriver,
+      isValidatedDriver,
+      isDriverView: location.pathname.startsWith('/driver'),
+      isInstitutionalView: location.pathname.startsWith('/institution')
+    });
+  }, [isPendingDriver, isDeniedDriver, isValidatedDriver, location.pathname]);
+
   // Close menus when location changes
   useEffect(() => {
     setIsMenuOpen(false);
@@ -50,15 +73,26 @@ const Navbar = () => {
   };
 
   const handleViewChange = (view: 'driver' | 'passenger' | 'admin_institucional') => {
+    console.log('🔄 View Change Attempt:', {
+      requestedView: view,
+      currentUserRole: user?.role,
+      isDriverView: isDriverView,
+      isInstitutionalView: isInstitutionalView
+    });
+
     if (view === 'driver') {
+      console.log('🚗 Attempting to navigate to driver dashboard');
       navigate('/driver/dashboard');
     } else if (view === 'admin_institucional') {
       if (user?.role === 'admin_institucional') {
+        console.log('🏢 Attempting to navigate to institution dashboard');
         navigate('/institution/dashboard');
       } else {
+        console.log('⚠️ User not authorized for institution view, redirecting to dashboard');
         navigate('/dashboard');
       }
     } else {
+      console.log('👥 Attempting to navigate to passenger dashboard');
       navigate('/dashboard');
     }
     setIsViewMenuOpen(false);
@@ -69,30 +103,35 @@ const Navbar = () => {
   const isInstitutionalAdmin = user?.role === 'admin_institucional';
 
   const renderDriverOptions = () => {
-    if (isLoading) return null;
+    if (isLoading) {
+      console.log('⏳ Driver options loading...');
+      return null;
+    }
+
+    console.log('🎯 Rendering driver options:', {
+      isPendingDriver,
+      isDeniedDriver,
+      isValidatedDriver
+    });
+
+    if (isPendingDriver) {
+      return (
+        <div className="text-gray-600 flex items-center">
+          <Clock className="mr-2 h-4 w-4" />
+          Solicitud enviada
+        </div>
+      );
+    }
 
     if (isDeniedDriver) {
       return (
         <Button
           variant="ghost"
           className="w-full justify-start"
-          onClick={() => navigate('/verify-documents')}
+          onClick={() => navigate('/driver/register')}
         >
           <UserPlus className="mr-2 h-4 w-4" />
           ¿Quieres ser conductor?
-        </Button>
-      );
-    }
-
-    if (isPendingDriver) {
-      return (
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => navigate('/pending-validation')}
-        >
-          <Clock className="mr-2 h-4 w-4" />
-          Solicitudes
         </Button>
       );
     }
@@ -154,10 +193,15 @@ const Navbar = () => {
               >
                 Inicio
               </Link>
-              {isDeniedDriver ? (
+              {isPendingDriver ? (
+                <div className="text-gray-600 flex items-center">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Solicitud enviada
+                </div>
+              ) : isDeniedDriver ? (
                 <Button
                   variant="ghost"
-                  onClick={() => navigate('/verify-documents')}
+                  onClick={() => navigate('/driver/register')}
                   className="text-gray-600 hover:text-primary transition-colors"
                 >
                   <UserPlus className="mr-2 h-4 w-4" />
@@ -187,13 +231,15 @@ const Navbar = () => {
                   </button>
                   {isViewMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      <button
-                        onClick={() => handleViewChange('driver')}
-                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Vista conductor
-                        {isDriverView && <Check className="ml-2 h-4 w-4" />}
-                      </button>
+                      {isValidatedDriver && (
+                        <button
+                          onClick={() => handleViewChange('driver')}
+                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Vista conductor
+                          {isDriverView && <Check className="ml-2 h-4 w-4" />}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleViewChange('passenger')}
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -298,9 +344,14 @@ const Navbar = () => {
                   >
                     Inicio
                   </Link>
-                  {isDeniedDriver ? (
+                  {isPendingDriver ? (
+                    <div className="text-gray-600 py-2 flex items-center">
+                      <Clock className="mr-2 h-4 w-4" />
+                      Solicitud enviada
+                    </div>
+                  ) : isDeniedDriver ? (
                     <Link 
-                      to="/verify-documents"
+                      to="/driver/register"
                       className="text-gray-600 py-2 hover:text-primary transition-colors"
                       onClick={() => setIsMenuOpen(false)}
                     >
@@ -318,15 +369,6 @@ const Navbar = () => {
                         >
                           Vista conductor
                         </button>
-                      )}
-                      {isPendingDriver && (
-                        <Link 
-                          to="/pending-validation"
-                          className="text-gray-600 py-2 hover:text-primary transition-colors"
-                          onClick={() => setIsMenuOpen(false)}
-                        >
-                          Solicitudes
-                        </Link>
                       )}
                       <button 
                         onClick={() => {

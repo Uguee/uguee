@@ -37,6 +37,7 @@ import Profile from "./pages/profile/Profile";
 import Unauthorized from './pages/Unauthorized';
 import InstitutionPendingValidation from './pages/institution/InstitutionPendingValidation';
 import InstitutionRequests from './pages/admin/InstitutionRequests';
+import DriverRegister from "./pages/drivers/DriverRegister";
 
 const queryClient = new QueryClient();
 
@@ -303,6 +304,16 @@ const AppRoutes = () => {
             <Profile />
           </ProtectedRoute>
         }
+      />
+      
+      {/* Driver registration route */}
+      <Route 
+        path="/driver/register" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario']}>
+            <DriverRegister />
+          </ProtectedRoute>
+        } 
       />
       
       {/* 404 Route */}
