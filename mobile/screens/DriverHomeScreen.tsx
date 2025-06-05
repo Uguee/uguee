@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, FlatList, Text } from "react-native";
+import { View, FlatList, Text, StyleSheet } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
@@ -7,6 +7,8 @@ import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import { useAuth } from "../hooks/useAuth";
+import DriverTripButton from "../components/DriverTripButton";
+import DriverCreateTripScreen from "./DriverCreateTripScreen";
 
 // Agrega las props
 interface DriverHomeScreenProps {
@@ -17,6 +19,7 @@ interface DriverHomeScreenProps {
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
   onGoToSeeRoutes?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -27,9 +30,11 @@ export default function DriverHomeScreen({
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
   onGoToSeeRoutes = () => {},
+  onGoToMyTripsScreen = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
   const { user } = useAuth();
+  const [showCreateTrip, setShowCreateTrip] = useState(false);
 
   const suggestions = [
     { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
@@ -47,6 +52,16 @@ export default function DriverHomeScreen({
   const rutasFiltradas = rutas.filter((ruta) =>
     ruta.title.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (showCreateTrip) {
+    return (
+      <DriverCreateTripScreen
+        onGoToRegisterRouteScreen={onGoToRegisterRouteScreen}
+        onTripCreated={() => setShowCreateTrip(false)}
+        onGoBack={() => setShowCreateTrip(false)}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -97,15 +112,28 @@ export default function DriverHomeScreen({
           </>
         }
         ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
+      {/* Botón flotante */}
+      <View style={styles.fabContainer} pointerEvents="box-none">
+        <DriverTripButton onPress={() => setShowCreateTrip(true)} />
+      </View>
       <DriverHomeBottomMenu
         onGoToProfile={onGoToProfile}
         onGoToHome={onGoToHomeScreen ?? (() => alert("Inicio"))}
         onGoToMyVehicles={onGoToMyVehicles}
-        onGoToMyTrips={onGoToRegisterRouteScreen}
+        onGoToMyTrips={onGoToMyTripsScreen}
         activeButton="home"
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  fabContainer: {
+    position: "absolute",
+    right: 1,
+    bottom: 90,
+    zIndex: 10,
+  },
+});

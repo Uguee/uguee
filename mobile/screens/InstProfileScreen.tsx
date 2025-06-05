@@ -32,8 +32,8 @@ const InstProfileScreen = ({
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <TopMenu onMenuPress={() => {}} />
+      <ReturnButton onPress={onGoToHomeScreen} />
       <ScrollView contentContainerStyle={styles.content}>
-        <ReturnButton onPress={onGoToHomeScreen} />
         <View style={styles.mainContent}>
           <Text style={styles.title}>Perfil</Text>
           {!inst && loading ? (
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   mainContent: {
-    marginTop: 80,
+    marginTop: 60,
   },
   title: {
     fontSize: 30,

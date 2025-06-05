@@ -19,6 +19,7 @@ interface MyVehiclesScreenProps {
   onGoToProfileScreen?: () => void;
   onGoToTravelScreen?: () => void;
   onGoToAddVehicleScreen?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function MyVehiclesScreen({
@@ -26,6 +27,7 @@ export default function MyVehiclesScreen({
   onGoToProfileScreen = () => {},
   onGoToTravelScreen = () => {},
   onGoToAddVehicleScreen = () => {},
+  onGoToMyTripsScreen = () => {},
 }: MyVehiclesScreenProps) {
   const {
     vehicles,
@@ -121,7 +123,7 @@ export default function MyVehiclesScreen({
         onGoToProfile={onGoToProfileScreen}
         onGoToHome={onGoToDriverHomeScreen}
         onGoToMyVehicles={() => {}}
-        onGoToMyTrips={onGoToTravelScreen}
+        onGoToMyTrips={onGoToMyTripsScreen}
         activeButton="vehicles"
       />
     </View>
