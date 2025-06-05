@@ -11,90 +11,75 @@ interface DriverValidationContextType {
   isDeniedDriver: boolean;
   validationStatus: ValidationStatus;
   isLoading: boolean;
+  error: string | null;
   checkValidation: () => Promise<void>;
 }
 
-const DriverValidationContext = createContext<DriverValidationContextType | undefined>(undefined);
+export const DriverValidationContext = createContext<DriverValidationContextType | undefined>(undefined);
 
 export const DriverValidationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [isValidatedDriver, setIsValidatedDriver] = useState(false);
-  const [isPendingDriver, setIsPendingDriver] = useState(false);
-  const [isDeniedDriver, setIsDeniedDriver] = useState(false);
-  const [validationStatus, setValidationStatus] = useState<ValidationStatus>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationState, setValidationState] = useState<{
+    status: 'validado' | 'pendiente' | 'denegado' | null;
+    isLoading: boolean;
+    error: string | null;
+  }>({
+    status: null,
+    isLoading: false,
+    error: null
+  });
 
   const checkValidation = async () => {
-    console.log('🔍 Checking driver validation:', { userId: user?.id });
     if (!user?.id) return;
-
-    setIsLoading(true);
+    
+    console.log('🔍 Checking driver validation for user:', user.id);
+    setValidationState(prev => ({ ...prev, isLoading: true }));
     try {
-      const userData = await UserService.getUserDataFromUsuarios(user.id);
-      console.log('👤 User data:', userData);
-      if (!userData) return;
+      // Primero verificar si el usuario está registrado en una institución
+      const { data: registroData, error: registroError } = await supabase
+        .from('registro')
+        .select('validacion_conductor')
+        .eq('id_usuario', parseInt(user.id))
+        .single();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const response = await fetch('https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/is-conductor-validated', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ id_usuario: userData.id_usuario })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        console.error('❌ Validation request failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-        throw new Error(`Validation request failed: ${response.statusText}`);
+      if (registroError) {
+        throw new Error('Error al verificar registro de conductor');
       }
+
+      const status = (registroData?.validacion_conductor as ValidationStatus) || null;
       
-      const data = await response.json();
-      console.log('✅ Validation result:', data);
-      const status = data.validacion_conductor as ValidationStatus;
-      setValidationStatus(status);
-      setIsValidatedDriver(status === 'validado');
-      setIsPendingDriver(status === 'pendiente');
-      setIsDeniedDriver(status === 'denegado' || status === null);
+      setValidationState({
+        status,
+        isLoading: false,
+        error: null
+      });
     } catch (error) {
-      console.error('❌ Error checking driver validation:', error);
-      setValidationStatus(null);
-      setIsValidatedDriver(false);
-      setIsPendingDriver(false);
-      setIsDeniedDriver(true);
-    } finally {
-      setIsLoading(false);
+      console.error('❌ Validation error:', error);
+      setValidationState({
+        status: null,
+        isLoading: false,
+        error: error.message
+      });
     }
   };
 
   useEffect(() => {
-    console.log('🔄 DriverValidation effect:', { userId: user?.id });
     if (user?.id) {
       checkValidation();
     }
   }, [user?.id]);
 
+  const value = {
+    ...validationState,
+    validationStatus: validationState.status,
+    isValidatedDriver: validationState.status === 'validado',
+    isPendingDriver: validationState.status === 'pendiente',
+    isDeniedDriver: validationState.status === 'denegado' || validationState.status === null,
+    checkValidation
+  };
+
   return (
-    <DriverValidationContext.Provider value={{ 
-      isValidatedDriver, 
-      isPendingDriver, 
-      isDeniedDriver,
-      validationStatus,
-      isLoading, 
-      checkValidation 
-    }}>
+    <DriverValidationContext.Provider value={value}>
       {children}
     </DriverValidationContext.Provider>
   );
