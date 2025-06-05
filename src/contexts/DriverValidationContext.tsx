@@ -41,12 +41,25 @@ export const DriverValidationProvider: React.FC<{ children: React.ReactNode }> =
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey'
         },
+        credentials: 'include',
         body: JSON.stringify({ id_usuario: userData.id_usuario })
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('❌ Validation request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(`Validation request failed: ${response.statusText}`);
+      }
       
       const data = await response.json();
       console.log('✅ Validation result:', data);
