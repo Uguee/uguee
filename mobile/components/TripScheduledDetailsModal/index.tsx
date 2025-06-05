@@ -117,18 +117,22 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 6,
   },
   pickup: {
     fontSize: 14,
     color: "#222",
     marginLeft: 6,
+    flex: 1,
+    flexWrap: "wrap",
   },
   destination: {
     fontSize: 14,
     color: "#222",
     marginLeft: 6,
+    flex: 1,
+    flexWrap: "wrap",
   },
   label: {
     fontWeight: "bold",

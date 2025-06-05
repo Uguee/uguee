@@ -41,6 +41,11 @@ export default function DriverCreateTripScreen({
   const [date, setDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Filtrar solo vehículos validados
+  const validVehicles = vehicles.filter(
+    (v: any) => v.validacion === "validado"
+  );
+
   // Handlers
   const handleSelectRoute = (route: any) => {
     setSelectedRoute(route);
@@ -183,7 +188,7 @@ export default function DriverCreateTripScreen({
         >
           <View style={styles.modalContent}>
             <FlatList
-              data={vehicles}
+              data={validVehicles}
               keyExtractor={(item, idx) => item.placa + idx}
               renderItem={({ item }) => (
                 <TouchableOpacity
