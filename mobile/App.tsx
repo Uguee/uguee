@@ -21,11 +21,13 @@ import DriverRoutesScreen from "./screens/DriverRoutesScreen";
 import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
+import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
+import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 
 type Screen =
   | "welcome"
@@ -49,7 +51,9 @@ type Screen =
   | "inst-profile-from-driver"
   | "profile-from-driver"
   | "register-route"
-  | "driver-routes";
+  | "driver-routes"
+  | "driver-my-trips"
+  | "driver-create-trip";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -245,6 +249,11 @@ const AppNavigator = () => {
     setCurrentScreen("driver-routes");
   };
 
+  const handleGoToMyTripsScreen = () => setCurrentScreen("driver-my-trips");
+
+  const handleGoToCreateTripScreen = () =>
+    setCurrentScreen("driver-create-trip");
+
   // Cuando se crea una ruta, refrescar las rutas
   const handleRouteCreated = () => {
     setRoutesRefreshKey((k) => k + 1);
@@ -391,6 +400,7 @@ const AppNavigator = () => {
             onGoToInstitutionProfile={handleGoToInstProfileFromDriver}
             onGoToRegisterRouteScreen={() => setCurrentScreen("register-route")}
             onGoToSeeRoutes={handleGoToSeeRoutes}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "my-vehicles":
@@ -399,6 +409,7 @@ const AppNavigator = () => {
             onGoToDriverHomeScreen={handleGoToDriverView}
             onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToProfileScreen={handleGoToProfileFromDriver}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "vehicle-registration":
@@ -454,6 +465,23 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             refreshKey={routesRefreshKey}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
+          />
+        );
+      case "driver-my-trips":
+        return (
+          <DriverMyTripsScreen
+            onGoToHomeScreen={handleGoToDriverView}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToProfile={handleGoToProfileFromDriver}
+            onGoToCreateTripScreen={handleGoToCreateTripScreen}
+          />
+        );
+      case "driver-create-trip":
+        return (
+          <DriverCreateTripScreen
+            onGoToRegisterRouteScreen={handleGoToRegisterRouteScreen}
+            onGoBack={() => setCurrentScreen("driver-my-trips")}
           />
         );
       default:

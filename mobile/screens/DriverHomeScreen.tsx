@@ -19,6 +19,7 @@ interface DriverHomeScreenProps {
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
   onGoToSeeRoutes?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -29,6 +30,7 @@ export default function DriverHomeScreen({
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
   onGoToSeeRoutes = () => {},
+  onGoToMyTripsScreen = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
   const { user } = useAuth();
@@ -120,7 +122,7 @@ export default function DriverHomeScreen({
         onGoToProfile={onGoToProfile}
         onGoToHome={onGoToHomeScreen ?? (() => alert("Inicio"))}
         onGoToMyVehicles={onGoToMyVehicles}
-        onGoToMyTrips={onGoToRegisterRouteScreen}
+        onGoToMyTrips={onGoToMyTripsScreen}
         activeButton="home"
       />
     </View>

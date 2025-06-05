@@ -19,6 +19,7 @@ interface DriverRoutesScreenProps {
   onGoToMyVehicles?: () => void;
   onGoToProfile?: () => void;
   refreshKey?: any;
+  onGoToMyTripsScreen?: () => void;
 }
 
 function formatPlaceName(nombre: string | null): string {
@@ -34,6 +35,7 @@ const DriverRoutesScreen: React.FC<DriverRoutesScreenProps> = ({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   refreshKey,
+  onGoToMyTripsScreen = () => {},
 }) => {
   const [search, setSearch] = useState("");
   const { routes, loading, error } = useUserRoutes(refreshKey);
@@ -88,7 +90,7 @@ const DriverRoutesScreen: React.FC<DriverRoutesScreenProps> = ({
           onGoToProfile={onGoToProfile}
           onGoToHome={onGoToDriverHome}
           onGoToMyVehicles={onGoToMyVehicles}
-          onGoToMyTrips={onGoToRegisterRouteScreen}
+          onGoToMyTrips={onGoToMyTripsScreen}
           activeButton="trips"
         />
         <AddRouteButton onPress={onGoToRegisterRouteScreen} />

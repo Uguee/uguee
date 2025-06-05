@@ -12,7 +12,7 @@ export default function DriverTripButton({ onPress }: { onPress: () => void }) {
       <View style={styles.iconCircle}>
         <Ionicons name="star" size={24} color="#A259FF" />
       </View>
-      <Text style={styles.text}>Iniciar viaje</Text>
+      <Text style={styles.text}>Crear viaje</Text>
     </TouchableOpacity>
   );
 }
