@@ -64,14 +64,18 @@ const Login = () => {
       // Si viene desde document verification, regresar ahí
       if (navigationState?.returnTo === 'document-verification') {
         console.log("➡️ Redirecting back to document verification");
-        navigate("/verify-documents");
+        navigate("/document-verification", { 
+          state: { isInstitutionFlow: navigationState?.isInstitutionFlow }
+        });
         return;
       }
 
       // Si viene del flujo de registro institucional, ir al formulario de institución
       if (navigationState?.returnTo === 'institution-register' || navigationState?.isInstitutionFlow) {
         console.log("➡️ Redirecting to institution registration form");
-        navigate("/institution-register");
+        navigate("/institution-register", { 
+          state: { isInstitutionFlow: true }
+        });
         return;
       }
 

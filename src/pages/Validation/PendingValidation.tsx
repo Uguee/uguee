@@ -33,7 +33,7 @@ const PendingValidation = () => {
         setUserStatus(status);
 
         // Si el usuario ya está validado, redirigir al dashboard
-        if (status.isValidated) {
+        if (!status.isPending && status.hasDocuments && status.hasInstitution) {
           console.log('✅ Usuario validado, redirigiendo a dashboard');
           navigate('/dashboard');
         }
@@ -72,7 +72,7 @@ const PendingValidation = () => {
       setUserStatus(status);
 
       // Si el usuario ya está validado, redirigir al dashboard
-      if (status.isValidated) {
+      if (!status.isPending && status.hasDocuments && status.hasInstitution) {
         console.log('✅ Usuario validado, redirigiendo a dashboard');
         navigate('/dashboard');
       }
@@ -195,18 +195,18 @@ const PendingValidation = () => {
                 </div>
               </div>
 
-              <button 
-                onClick={handleRefreshStatus}
+              <button
+                onClick={() => navigate('/')}
                 disabled={isLoading}
                 className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Verificando...
+                    Cargando...
                   </div>
                 ) : (
-                  'Verificar Estado'
+                  'Volver'
                 )}
               </button>
             </>

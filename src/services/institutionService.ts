@@ -108,7 +108,7 @@ export class InstitutionService {
         logo: logoUrl,
         direccion: institutionData.direccion,
         colores: institutionData.colores,
-        admin_institucional: userId,
+        admin_institucional: userId
       };
 
       console.log('📤 Enviando solicitud al endpoint:', requestData);
@@ -130,11 +130,11 @@ export class InstitutionService {
       console.log('📥 Respuesta del endpoint:', result);
 
       if (result.success) {
-        console.log('🎉 Institución registrada exitosamente');
+        console.log('🎉 Institución creada exitosamente');
         return {
           success: true,
           data: result.data,
-          message: result.message || "Institución registrada exitosamente."
+          message: "Institución registrada exitosamente."
         };
       } else {
         return {
@@ -208,54 +208,43 @@ export class InstitutionService {
   /**
    * Obtiene la institución que administra un usuario admin_institucional
    */
-  static async getInstitutionByAdmin(adminId: string): Promise<InstitutionRegistrationResult> {
+  static async getInstitutionByAdmin(adminUuid: string): Promise<InstitutionRegistrationResult> {
     try {
-      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminId);
+      console.log('🏛️ InstitutionService: Obteniendo institución por admin:', adminUuid);
       
-      // Primero obtener el UUID del usuario si es un ID numérico
-      let adminUuid = adminId;
-      if (/^\d+$/.test(adminId)) {
-        const { data: userData, error: userError } = await supabase
-          .from('usuario')
-          .select('uuid')
-          .eq('id_usuario', parseInt(adminId))
-          .single();
-
-        if (userError || !userData?.uuid) {
-          console.error('❌ Error obteniendo UUID del admin:', userError);
-          return {
-            success: false,
-            error: `Error obteniendo UUID del admin: ${userError?.message}`
-          };
-        }
-        adminUuid = userData.uuid;
-      }
-
-      // Ahora usar el UUID para buscar la institución
-      const { data: institutions, error } = await supabase
+      // Obtener la institución directamente usando el UUID del admin
+      const { data: institution, error: institutionError } = await supabase
         .from('institucion')
-        .select('id_institucion, nombre_oficial, logo, direccion, colores, admin_institucional')
+        .select(`
+          id_institucion,
+          nombre_oficial,
+          logo,
+          direccion,
+          colores
+        `)
         .eq('admin_institucional', adminUuid)
         .single();
 
-      if (error) {
-        console.error('❌ Error obteniendo institución por admin:', error);
+      if (institutionError) {
+        console.error('❌ Error obteniendo institución:', institutionError);
         return {
           success: false,
-          error: `Error obteniendo institución: ${error.message}`
+          error: `Error obteniendo institución: ${institutionError.message}`
         };
       }
 
-      if (!institutions) {
+      if (!institution) {
+        console.error('❌ No se encontró institución para el admin');
         return {
           success: false,
           error: 'No se encontró institución para este administrador'
         };
       }
 
+      console.log('✅ Institución encontrada:', institution);
       return {
         success: true,
-        data: institutions
+        data: institution
       };
     } catch (error: any) {
       console.error('❌ Error inesperado en getInstitutionByAdmin:', error);

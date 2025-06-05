@@ -119,7 +119,7 @@ const DocumentVerification = () => {
                 onClick={() => navigate('/select-institution')}
                 className="mt-4"
               >
-                Continuar con el registro institucional
+                Continuar con el registro en institución
               </Button>
             </div>
           </CardContent>
