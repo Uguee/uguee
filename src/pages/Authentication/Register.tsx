@@ -17,7 +17,9 @@ const Register = () => {
     phoneNumber: "",
     role: "usuario" as UserRole,
     dateOfBirth: "",
+    cedula: "",
     direccion_de_residencia: "",
+    acceptedTerms: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -30,57 +32,63 @@ const Register = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = "El nombre es requerido";
+      newErrors.firstName = "Nombre es requerido";
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = "Los apellidos son requeridos";
+      newErrors.lastName = "Apellidos son requeridos";
     }
 
     if (!formData.dateOfBirth) {
-      newErrors.dateOfBirth = "La fecha de nacimiento es requerida";
+      newErrors.dateOfBirth = "Fecha de nacimiento es requerida";
     } else {
+      // Validación de edad mínima
       const birthDate = new Date(formData.dateOfBirth);
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
       }
+
       if (age < 15) {
-        newErrors.dateOfBirth = "Debes ser mayor de 15 años";
+        newErrors.dateOfBirth = "Debes tener al menos 15 años para registrarte";
       }
-      if (birthDate > today) {
-        newErrors.dateOfBirth = "La fecha no puede ser futura";
-      }
+    }
+
+    if (!formData.cedula.trim()) {
+      newErrors.cedula = "Cédula es requerida";
+    } else if (!/^\d{8,10}$/.test(formData.cedula)) {
+      newErrors.cedula = "Cédula debe tener entre 8 y 10 dígitos";
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "El email es requerido";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = "El formato del email no es válido";
+      newErrors.email = "Email es requerido";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email no válido";
     }
 
     if (!formData.password) {
-      newErrors.password = "La contraseña es requerida";
+      newErrors.password = "Contraseña es requerida";
     } else if (formData.password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres";
+      newErrors.password = "Contraseña debe tener al menos 6 caracteres";
     }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Debes confirmar la contraseña";
-    } else if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Las contraseñas no coinciden";
     }
 
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "El número de teléfono es requerido";
-    } else if (!/^\d{10}$/.test(formData.phoneNumber.trim())) {
-      newErrors.phoneNumber = "El número debe tener 10 dígitos";
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = "Número de teléfono es requerido";
     }
 
     if (!formData.direccion_de_residencia.trim()) {
-      newErrors.direccion_de_residencia = "La dirección de residencia es requerida";
+      newErrors.direccion_de_residencia = "Dirección de residencia es requerida";
+    }
+
+    if (!formData.acceptedTerms) {
+      newErrors.terms = "Debes aceptar los términos y condiciones";
     }
 
     setErrors(newErrors);
@@ -100,12 +108,8 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar todos los campos antes de continuar
     if (!validateForm()) {
-      toast({
-        title: "Error de validación",
-        description: "Por favor, completa todos los campos correctamente",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -123,7 +127,7 @@ const Register = () => {
         role: formData.role,
         dateOfBirth: formData.dateOfBirth,
         direccion_de_residencia: formData.direccion_de_residencia,
-      }, formData.password);
+      }, formData.password, formData.cedula);
 
       // Este código no se ejecutará si se requiere verificación de email
       toast({
@@ -279,32 +283,55 @@ const Register = () => {
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Campo de fecha fuera del grid anterior para que ocupe todo el ancho */}
-            <div>
-              <label
-                htmlFor="dateOfBirth"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Fecha de nacimiento
-              </label>
-              <div className="mt-1">
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  id="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
-                    errors.dateOfBirth ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.dateOfBirth && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.dateOfBirth}
-                  </p>
-                )}
+              <div>
+                <label
+                  htmlFor="cedula"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Cédula
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    name="cedula"
+                    id="cedula"
+                    value={formData.cedula}
+                    onChange={handleChange}
+                    className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                      errors.cedula ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.cedula && (
+                    <p className="mt-1 text-sm text-red-600">{errors.cedula}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="dateOfBirth"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Fecha de nacimiento
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    id="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    className={`shadow-sm focus:ring-primary focus:border-primary block w-full sm:text-sm border-gray-300 rounded-md ${
+                      errors.dateOfBirth ? "border-red-500" : ""
+                    }`}
+                  />
+                  {errors.dateOfBirth && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.dateOfBirth}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -442,8 +469,10 @@ const Register = () => {
             <div className="flex items-center">
               <input
                 id="terms"
-                name="terms"
+                name="acceptedTerms"
                 type="checkbox"
+                checked={formData.acceptedTerms}
+                onChange={(e) => setFormData(prev => ({...prev, acceptedTerms: e.target.checked}))}
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
               <label
@@ -452,6 +481,9 @@ const Register = () => {
               >
                 Acepto los términos y condiciones
               </label>
+              {errors.terms && (
+                <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
+              )}
             </div>
 
             <div>
