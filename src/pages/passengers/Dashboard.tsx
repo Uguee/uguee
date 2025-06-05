@@ -22,40 +22,6 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="bg-white p-4">
-        {/* Información del usuario */}
-        {user && (
-          <div className="mb-8 p-4 bg-purple-50 rounded-lg border border-purple-200">
-            <h2 className="text-lg font-semibold text-purple-900 mb-2">Información del Usuario</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-700">Nombre:</span> {user.firstName} {user.lastName}
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Email:</span> {user.email}
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Rol:</span> 
-                <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                  {user.role}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">ID:</span> {user.id}
-              </div>
-              {user.phoneNumber && (
-                <div>
-                  <span className="font-medium text-gray-700">Teléfono:</span> {user.phoneNumber}
-                </div>
-              )}
-              {user.dateOfBirth && (
-                <div>
-                  <span className="font-medium text-gray-700">Fecha de nacimiento:</span> {user.dateOfBirth}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Contenido básico para verificar que funciona */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">

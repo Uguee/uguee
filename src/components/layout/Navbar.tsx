@@ -1,20 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Check, UserPlus, Car, Menu, Clock, History, Star } from 'lucide-react';
 import { useDriverValidation } from '../../contexts/DriverValidationContext';
+import { Check, Car, UserPlus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { UserService } from '../../services/userService';
+import { SUPABASE_FUNCTIONS } from '../../config/endpoints';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
   firstName?: string;
+  lastName?: string;
   role?: string;
+  phone?: string;
+  email?: string;
+  birthdate?: string;
 }
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const { isValidatedDriver, isPendingDriver, isDeniedDriver, isLoading } = useDriverValidation();
   const location = useLocation();
@@ -120,60 +127,55 @@ const Navbar = () => {
               >
                 Inicio
               </Link>
-              {isDeniedDriver ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate('/verify-documents')}
-                  className="text-gray-600 hover:text-primary transition-colors"
+              <div className="relative group">
+                <button 
+                  className="flex items-center text-gray-600 hover:text-primary transition-colors"
+                  onClick={toggleViewMenu}
                 >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  ¿Quieres ser conductor?
-                </Button>
-              ) : (
-                <div className="relative group">
-                  <button 
-                    className="flex items-center text-gray-600 hover:text-primary transition-colors"
-                    onClick={toggleViewMenu}
+                  Cambiar vista
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 ml-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
                   >
-                    Cambiar vista
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="h-4 w-4 ml-1" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M19 9l-7 7-7-7" 
+                    />
+                  </svg>
+                </button>
+                {isViewMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <button
+                      onClick={() => handleViewChange('driver')}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M19 9l-7 7-7-7" 
-                      />
-                    </svg>
-                  </button>
-                  {isViewMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      {renderDriverOptions()}
+                      Vista conductor
+                      {isDriverView && <Check className="ml-2 h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleViewChange('passenger')}
+                      className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Vista pasajero
+                      {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                    </button>
+                    {user?.role === 'admin_institucional' && (
                       <button
-                        onClick={() => handleViewChange('passenger')}
+                        onClick={() => handleViewChange('admin_institucional')}
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
-                        Vista pasajero
-                        {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                        Vista Admin
+                        {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
                       </button>
-                      {user?.role === 'admin_institucional' && (
-                        <button
-                          onClick={() => handleViewChange('admin_institucional')}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Vista Admin
-                          {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="relative group">
                 <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
                   {user?.firstName || 'Usuario'}
@@ -343,6 +345,32 @@ const Navbar = () => {
                 </>
               )}
             </nav>
+          </div>
+        </div>
+      )}
+
+      {showUserInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowUserInfo(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold mb-4 text-purple-700">Información del Usuario</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p><span className="font-semibold">Nombre:</span> {user?.firstName} {user?.lastName}</p>
+                <p><span className="font-semibold">Rol:</span> <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">{user?.role}</span></p>
+                <p><span className="font-semibold">Teléfono:</span> {user?.phone || 'No disponible'}</p>
+              </div>
+              <div>
+                <p><span className="font-semibold">Email:</span> {user?.email}</p>
+                <p><span className="font-semibold">ID:</span> {user?.id}</p>
+                <p><span className="font-semibold">Fecha de nacimiento:</span> {user?.birthdate || 'No disponible'}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
