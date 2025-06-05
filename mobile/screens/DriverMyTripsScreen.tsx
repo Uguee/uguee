@@ -13,6 +13,8 @@ import TripCompletedCard from "../components/TripCompletedCard";
 import TripScheduledCard from "../components/TripScheduledCard";
 import DriverTripButton from "../components/DriverTripButton";
 import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
+import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
+import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
 
 const TRIPS = [
   {
@@ -45,6 +47,9 @@ const DriverMyTripsScreen = ({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [filterModal, setFilterModal] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showScheduledModal, setShowScheduledModal] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
 
   // Filtrado por estado
   let filteredTrips =
@@ -67,7 +72,10 @@ const DriverMyTripsScreen = ({
         <TripCompletedCard
           route={item.route}
           passengers={item.passengers}
-          onPress={() => {}}
+          onPress={() => {
+            setSelectedTrip(item);
+            setShowCompletedModal(true);
+          }}
         />
       );
     } else {
@@ -75,7 +83,10 @@ const DriverMyTripsScreen = ({
         <TripScheduledCard
           route={item.route}
           arrivalDateTime={item.arrivalDateTime}
-          onPress={() => {}}
+          onPress={() => {
+            setSelectedTrip(item);
+            setShowScheduledModal(true);
+          }}
         />
       );
     }
@@ -148,6 +159,19 @@ const DriverMyTripsScreen = ({
       <View style={styles.createButtonContainer} pointerEvents="box-none">
         <DriverTripButton onPress={onGoToCreateTripScreen} />
       </View>
+      {/* Modales de detalles */}
+      <TripCompletedDetailsModal
+        visible={showCompletedModal}
+        onClose={() => setShowCompletedModal(false)}
+        route={selectedTrip?.route}
+        passengers={selectedTrip?.passengers}
+        // Puedes pasar más props aquí si lo deseas
+      />
+      <TripScheduledDetailsModal
+        visible={showScheduledModal}
+        onClose={() => setShowScheduledModal(false)}
+        // Puedes pasar más props aquí si lo deseas
+      />
       {/* Menú inferior */}
       <DriverHomeBottomMenu
         onGoToProfile={onGoToProfile}
