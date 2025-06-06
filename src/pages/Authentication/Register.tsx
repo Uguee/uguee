@@ -513,7 +513,7 @@ const Register = () => {
                 <p className="text-sm text-gray-600">
                   ¿Representas una institución educativa?{" "}
                   <Link
-                    to="/register?type=institution"
+                    to="/institution-admin-register"
                     className="font-medium text-primary hover:text-primary-hover"
                   >
                     Registra tu institución

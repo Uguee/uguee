@@ -72,7 +72,7 @@ const Navbar = () => {
     setIsViewMenuOpen(!isViewMenuOpen);
   };
 
-  const handleViewChange = (view: 'driver' | 'passenger' | 'admin_institucional') => {
+  const handleViewChange = (view: 'driver' | 'passenger' | 'admin_institucional' | 'admin') => {
     console.log('🔄 View Change Attempt:', {
       requestedView: view,
       currentUserRole: user?.role,
@@ -91,7 +91,15 @@ const Navbar = () => {
         console.log('⚠️ User not authorized for institution view, redirecting to dashboard');
         navigate('/dashboard');
       }
-    } else {
+    } else if (view === 'admin') {
+      if (user?.role === 'admin') {
+        console.log('👑 Attempting to navigate to admin dashboard');
+        navigate('/admin/dashboard');
+      } else {
+        console.log('⚠️ User not authorized for admin view, redirecting to dashboard');
+        navigate('/dashboard');
+      }
+    } else if (view === 'passenger') {
       console.log('👥 Attempting to navigate to passenger dashboard');
       navigate('/dashboard');
     }
@@ -245,15 +253,24 @@ const Navbar = () => {
                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Vista pasajero
-                        {!isDriverView && !isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                        {!isDriverView && !isInstitutionalView && !location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
                       </button>
                       {user?.role === 'admin_institucional' && (
                         <button
                           onClick={() => handleViewChange('admin_institucional')}
                           className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          Vista Admin
+                          Vista Admin Institucional
                           {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                        </button>
+                      )}
+                      {user?.role === 'admin' && (
+                        <button
+                          onClick={() => handleViewChange('admin')}
+                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Vista Admin General
+                          {location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
                         </button>
                       )}
                     </div>

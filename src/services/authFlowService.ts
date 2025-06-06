@@ -90,11 +90,20 @@ export class AuthFlowService {
         }
 
       case 'admin':
+        // Si el usuario está intentando acceder al dashboard de pasajero, permitirlo
+        if (window.location.pathname === '/dashboard') {
+          console.log('👑 Admin accediendo a vista de pasajero → permitido');
+          return {
+            shouldRedirect: false
+          };
+        }
+        // Para otras rutas, redirigir al dashboard de admin
         console.log('👑 Admin → /admin/dashboard');
         return {
           shouldRedirect: true,
           redirectTo: '/admin/dashboard'
         };
+
       case 'usuario':
         console.log('👤 Evaluando usuario con ID:', user.id, 'Rol:', user.role);
         
