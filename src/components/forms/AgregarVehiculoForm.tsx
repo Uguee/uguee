@@ -36,11 +36,18 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
     tipo: '',
     vigencia_soat: '',
     fecha_tecnicomecanica: '',
+    soat_documento: null as File | null,
+    tecnicomecanica_documento: null as File | null,
   };
 
   const [formData, setFormData] = useState(initialFormState);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    soat: 0,
+    tecnicomecanica: 0
+  });
   const { toast } = useToast();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Función para resetear el formulario
   const resetForm = () => {
@@ -109,57 +116,164 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'soat' | 'tecnicomecanica') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validar tamaño (52428800 bytes = 50MB)
+      if (file.size > 52428800) {
+        toast({
+          title: "Error",
+          description: "El archivo no debe superar los 50MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validar tipo de archivo
+      if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+        toast({
+          title: "Error",
+          description: "Solo se permiten archivos JPG, PNG o PDF",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        [`${type}_documento`]: file
+      }));
+    }
+  };
+
+  const uploadDocumento = async (
+    file: File, 
+    tipo: 'soat' | 'tecnicomecanica', 
+    placa: string, 
+    fechaVencimiento: string,
+    numeroDocumento: number
+  ) => {
+    try {
+      // 1. Crear nombre del archivo con timestamp
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${tipo}_${placa}_${Date.now()}.${fileExt}`;
+      
+      // 2. Crear path incluyendo el ID del usuario en la estructura
+      const filePath = `${userId}/${placa}/${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documentos-vehiculares')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 3. Insertar en la tabla documento_vehicular con el número proporcionado
+      const { error: insertError } = await supabase
+        .from('documento_vehicular')
+        .insert({
+          numero: numeroDocumento,
+          placa_vehiculo: placa,
+          imagen: uploadData.path,
+          tipo: tipo === 'soat' ? 'SOAT' : 'tecnomecanica',
+          fecha_vencimiento: fechaVencimiento
+        });
+
+      if (insertError) throw insertError;
+
+    } catch (error) {
+      console.error('Error subiendo documento:', error);
+      throw error;
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    const tipo = parseInt(formData.tipo);
+    const esBicicletaOMonopatin = tipo === 3 || tipo === 6;
+
+    // Validar tipo de vehículo
+    if (!formData.tipo) {
+      newErrors.tipo = "Debes seleccionar un tipo de vehículo";
+    }
+
+    // Validar placa para vehículos que no son bicicleta ni monopatín
+    if (!esBicicletaOMonopatin) {
+      if (!formData.placa.trim()) {
+        newErrors.placa = "La placa es requerida";
+      } else if (!/^[A-Za-z0-9]{6}$/.test(formData.placa)) {
+        newErrors.placa = "La placa debe tener exactamente 6 caracteres alfanuméricos";
+      }
+    }
+
+    // Validar color
+    if (!formData.color.trim()) {
+      newErrors.color = "El color es requerido";
+    }
+
+    // Validar modelo
+    if (!formData.modelo) {
+      newErrors.modelo = "El modelo es requerido";
+    } else {
+      const currentYear = new Date().getFullYear();
+      if (formData.modelo < 1990 || formData.modelo > currentYear + 1) {
+        newErrors.modelo = `El modelo debe estar entre 1990 y ${currentYear + 1}`;
+      }
+    }
+
+    // Validaciones específicas para vehículos que no son bicicleta ni monopatín
+    if (!esBicicletaOMonopatin) {
+      // Validar SOAT
+      if (!formData.vigencia_soat) {
+        newErrors.vigencia_soat = "La fecha de vencimiento del SOAT es requerida";
+      }
+
+      // Validar Tecnomecánica
+      if (!formData.fecha_tecnicomecanica) {
+        newErrors.fecha_tecnicomecanica = "La fecha de vencimiento de la Tecnomecánica es requerida";
+      }
+
+      // Validar documentos
+      if (!formData.soat_documento) {
+        newErrors.soat_documento = "Debes subir la foto del SOAT";
+      }
+
+      if (!formData.tecnicomecanica_documento) {
+        newErrors.tecnicomecanica_documento = "Debes subir la foto de la Tecnomecánica";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (!validateForm()) {
+      return;
+    }
 
+    setIsLoading(true);
+    setErrors({});
+    
     try {
       const tipo = parseInt(formData.tipo);
-      
-      // 1. Validaciones obligatorias comunes
-      if (!userId || !tipo || !formData.color || formData.modelo === undefined) {
-        throw new Error('id_usuario, tipo, color y modelo son obligatorios');
-      }
-
-      // 2. Validar formato de placa si viene
-      if (formData.placa) {
-        const placaRegex = /^[A-Za-z0-9]{6}$/;
-        if (!placaRegex.test(formData.placa)) {
-          throw new Error('La placa debe tener exactamente 6 caracteres alfanuméricos (sin espacios ni símbolos)');
-        }
-      }
-
-      // 3. Validar que placa sea obligatoria si no es bicicleta ni monopatín
       const esBicicletaOMonopatin = tipo === 3 || tipo === 6;
-      if (!esBicicletaOMonopatin && !formData.placa) {
-        throw new Error('Para este tipo de vehículo, la placa es obligatoria');
-      }
-
-      // 4. Generar placa para bicicleta o monopatín
-      let placaFinal = formData.placa;
-      if (esBicicletaOMonopatin && !formData.placa) {
-        const prefix = tipo === 3 ? 'B' : 'S';
-        const { count, error: countError } = await supabase
-          .from('vehiculo')
-          .select('placa', { count: 'exact', head: true })
-          .eq('tipo', tipo);
-
-        if (countError) {
-          throw new Error(`Error al contar ${tipo === 3 ? 'bicicletas' : 'monopatines'}: ${countError.message}`);
-        }
-
-        const nextIndex = (count ?? 0) + 1;
-        placaFinal = `${prefix}${String(nextIndex).padStart(5, '0')}`; // Ej: B00001 o S00001
-      }
-
-      // 5. Validar fechas obligatorias para tipos distintos de bici/monopatín
+      
+      // Validar documentos para vehículos que los requieren
       if (!esBicicletaOMonopatin) {
-        if (!formData.vigencia_soat || !formData.fecha_tecnicomecanica) {
-          throw new Error('vigencia_soat y fecha_tecnicomecanica son obligatorios para este tipo de vehículo');
+        if (!formData.soat_documento || !formData.tecnicomecanica_documento) {
+          throw new Error('Debes subir el SOAT y la Tecnomecánica para este tipo de vehículo');
         }
       }
 
-      // 6. Preparar objeto a insertar
+      // Generar placa si es necesario
+      let placaFinal = await generarPlaca(tipo);
+
+      // 1. Primero insertar el vehículo
       const vehiculoData = {
         placa: placaFinal.toUpperCase(),
         id_usuario: userId,
@@ -168,20 +282,44 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
         modelo: formData.modelo,
         validacion: 'pendiente',
         vigencia_soat: esBicicletaOMonopatin ? null : formData.vigencia_soat,
-        fecha_tecnicomecanica: esBicicletaOMonopatin ? null : formData.fecha_tecnicomecanica
+        fecha_tecnicomecanica: esBicicletaOMonopatin ? null : formData.fecha_tecnicomecanica,
       };
 
-      // 7. Insertar vehículo
-      const { error } = await supabase
+      const { error: vehiculoError } = await supabase
         .from('vehiculo')
         .insert(vehiculoData);
 
-      if (error) {
-        // Validación de restricción CHECK personalizada
-        if (error.message.includes('chk_placa_valida')) {
-          throw new Error('La placa final no cumple el formato alfanumérico (exactamente 6 caracteres A–Z, a–z, 0–9)');
+      if (vehiculoError) throw vehiculoError;
+
+      // 2. Si no es bicicleta o monopatín, subir documentos
+      if (!esBicicletaOMonopatin) {
+        if (formData.soat_documento && formData.tecnicomecanica_documento) {
+          // Obtener los siguientes números para los documentos
+          const { data: maxNumero } = await supabase
+            .from('documento_vehicular')
+            .select('numero')
+            .order('numero', { ascending: false })
+            .limit(1);
+
+          const siguienteNumero = maxNumero && maxNumero.length > 0 ? maxNumero[0].numero + 1 : 1;
+
+          // Subir documentos secuencialmente con números diferentes
+          await uploadDocumento(
+            formData.soat_documento,
+            'soat',
+            placaFinal,
+            formData.vigencia_soat,
+            siguienteNumero
+          );
+          
+          await uploadDocumento(
+            formData.tecnicomecanica_documento,
+            'tecnicomecanica',
+            placaFinal,
+            formData.fecha_tecnicomecanica,
+            siguienteNumero + 1
+          );
         }
-        throw error;
       }
 
       toast({
@@ -189,7 +327,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
         description: `El vehículo ha sido registrado exitosamente con placa ${placaFinal}`,
       });
       
-      resetForm(); // Resetear el formulario después de agregar exitosamente
+      resetForm();
       onSuccess();
       onClose();
     } catch (err) {
@@ -209,7 +347,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Agregar Nuevo Vehículo</DialogTitle>
           <DialogDescription>
@@ -238,6 +376,9 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
                 <SelectItem value="7">Bus</SelectItem>
               </SelectContent>
             </Select>
+            {errors.tipo && (
+              <p className="mt-1 text-sm text-red-600">{errors.tipo}</p>
+            )}
           </div>
 
           {!esBicicletaOMonopatin && (
@@ -249,7 +390,11 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
                 placeholder="ABC123"
                 maxLength={6}
                 required={!esBicicletaOMonopatin}
+                className={errors.placa ? "border-red-500" : ""}
               />
+              {errors.placa && (
+                <p className="mt-1 text-sm text-red-600">{errors.placa}</p>
+              )}
               <p className="text-sm text-gray-500 mt-1">
                 6 caracteres alfanuméricos sin espacios
               </p>
@@ -263,7 +408,11 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
               onChange={(e) => setFormData({ ...formData, color: e.target.value })}
               placeholder="Ej: Rojo"
               required
+              className={errors.color ? "border-red-500" : ""}
             />
+            {errors.color && (
+              <p className="mt-1 text-sm text-red-600">{errors.color}</p>
+            )}
           </div>
 
           <div>
@@ -275,7 +424,11 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
               min={1990}
               max={new Date().getFullYear() + 1}
               required
+              className={errors.modelo ? "border-red-500" : ""}
             />
+            {errors.modelo && (
+              <p className="mt-1 text-sm text-red-600">{errors.modelo}</p>
+            )}
           </div>
 
           {!esBicicletaOMonopatin && (
@@ -288,7 +441,11 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
                   onChange={(e) => setFormData({ ...formData, vigencia_soat: e.target.value })}
                   min={format(new Date(), 'yyyy-MM-dd')}
                   required={!esBicicletaOMonopatin}
+                  className={errors.vigencia_soat ? "border-red-500" : ""}
                 />
+                {errors.vigencia_soat && (
+                  <p className="mt-1 text-sm text-red-600">{errors.vigencia_soat}</p>
+                )}
               </div>
 
               <div>
@@ -299,7 +456,93 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
                   onChange={(e) => setFormData({ ...formData, fecha_tecnicomecanica: e.target.value })}
                   min={format(new Date(), 'yyyy-MM-dd')}
                   required={!esBicicletaOMonopatin}
+                  className={errors.fecha_tecnicomecanica ? "border-red-500" : ""}
                 />
+                {errors.fecha_tecnicomecanica && (
+                  <p className="mt-1 text-sm text-red-600">{errors.fecha_tecnicomecanica}</p>
+                )}
+              </div>
+
+              {/* Nuevo campo para subir SOAT */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Foto del SOAT (Frente)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => handleFileChange(e, 'soat')}
+                      className="hidden"
+                      id="soat-upload"
+                    />
+                    <label
+                      htmlFor="soat-upload"
+                      className="cursor-pointer text-center"
+                    >
+                      {formData.soat_documento ? (
+                        <div className="text-sm text-gray-600">
+                          ✅ {formData.soat_documento.name}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-gray-400 mb-2">
+                            <svg className="mx-auto h-12 w-12" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600">
+                              PNG, JPG o PDF hasta 50MB
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nuevo campo para subir Tecnomecánica */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Foto de la Tecnomecánica (Frente)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => handleFileChange(e, 'tecnicomecanica')}
+                      className="hidden"
+                      id="tecno-upload"
+                    />
+                    <label
+                      htmlFor="tecno-upload"
+                      className="cursor-pointer text-center"
+                    >
+                      {formData.tecnicomecanica_documento ? (
+                        <div className="text-sm text-gray-600">
+                          ✅ {formData.tecnicomecanica_documento.name}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-gray-400 mb-2">
+                            <svg className="mx-auto h-12 w-12" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600">
+                              PNG, JPG o PDF hasta 50MB
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
               </div>
             </>
           )}
@@ -310,6 +553,14 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
                 {tipoSeleccionado === 3 ? 'Bicicleta' : 'Monopatín'}: Se generará una placa automáticamente al guardar
               </p>
             </div>
+          )}
+
+          {errors.soat_documento && (
+            <p className="mt-1 text-sm text-red-600">{errors.soat_documento}</p>
+          )}
+
+          {errors.tecnicomecanica_documento && (
+            <p className="mt-1 text-sm text-red-600">{errors.tecnicomecanica_documento}</p>
           )}
 
           <DialogFooter>
