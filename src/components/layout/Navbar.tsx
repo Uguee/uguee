@@ -131,12 +131,12 @@ const Navbar = () => {
       );
     }
 
-    if (isDeniedDriver) {
+    if (isDeniedDriver && user?.role !== 'admin_institucional') {
       return (
         <Button
           variant="ghost"
-          className="w-full justify-start"
           onClick={() => navigate('/driver/register')}
+          className="text-gray-600 hover:text-primary transition-colors"
         >
           <UserPlus className="mr-2 h-4 w-4" />
           ¿Quieres ser conductor?
@@ -206,7 +206,7 @@ const Navbar = () => {
                   <Clock className="mr-2 h-4 w-4" />
                   Solicitud enviada
                 </div>
-              ) : isDeniedDriver ? (
+              ) : isDeniedDriver && user?.role !== 'admin_institucional' ? (
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/driver/register')}
@@ -366,7 +366,7 @@ const Navbar = () => {
                       <Clock className="mr-2 h-4 w-4" />
                       Solicitud enviada
                     </div>
-                  ) : isDeniedDriver ? (
+                  ) : isDeniedDriver && user?.role !== 'admin_institucional' ? (
                     <Link 
                       to="/driver/register"
                       className="text-gray-600 py-2 hover:text-primary transition-colors"
