@@ -567,7 +567,7 @@ const CreateTrip = () => {
           </div>
 
           {/* Contenedor del mapa */}
-          <div className="relative h-[calc(100vh-10rem)]">
+          <div className="relative h-[calc(100vh-10rem)]" style={{ zIndex: 0 }}>
             <RouteMap 
               origin={currentRoute.origin}
               destination={currentRoute.destination}

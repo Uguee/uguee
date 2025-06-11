@@ -195,7 +195,7 @@ export function RouteMap({
   });
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full" style={{ zIndex: 0 }}>
       {allowClickToSetPoints && (
         <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
           <h3 className="font-medium text-sm mb-2">📍 Seleccionar Puntos</h3>
@@ -217,6 +217,7 @@ export function RouteMap({
         className="h-full w-full"
         zoomControl={false}
         whenReady={() => setIsMapReady(true)}
+        style={{ zIndex: 0 }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
