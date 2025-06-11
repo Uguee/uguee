@@ -113,15 +113,13 @@ const DocumentVerification = () => {
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto" />
               <h2 className="text-2xl font-bold text-green-600">¡Verificación Exitosa!</h2>
               <p className="text-gray-600">
-                Tu identidad ha sido verificada correctamente. Ahora puedes continuar con el registro de tu institución.
+                Tu identidad ha sido verificada correctamente. Ahora puedes continuar con el registro en tu institución.
               </p>
               <Button 
-                onClick={() => navigate('/institution-register', { 
-                  state: { isInstitutionFlow: true }
-                })}
+                onClick={() => navigate('/select-institution')}
                 className="mt-4"
               >
-                Continuar con el registro de institución
+                Continuar con el registro en institución
               </Button>
             </div>
           </CardContent>

@@ -19,6 +19,7 @@ const Register = () => {
     dateOfBirth: "",
     cedula: "",
     direccion_de_residencia: "",
+    acceptedTerms: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -40,6 +41,20 @@ const Register = () => {
 
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Fecha de nacimiento es requerida";
+    } else {
+      // Validación de edad mínima
+      const birthDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      if (age < 15) {
+        newErrors.dateOfBirth = "Debes tener al menos 15 años para registrarte";
+      }
     }
 
     if (!formData.cedula.trim()) {
@@ -72,6 +87,10 @@ const Register = () => {
       newErrors.direccion_de_residencia = "Dirección de residencia es requerida";
     }
 
+    if (!formData.acceptedTerms) {
+      newErrors.terms = "Debes aceptar los términos y condiciones";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -89,8 +108,8 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) {
-      setErrors({ confirmPassword: "Las contraseñas no coinciden" });
+    // Validar todos los campos antes de continuar
+    if (!validateForm()) {
       return;
     }
 
@@ -450,8 +469,10 @@ const Register = () => {
             <div className="flex items-center">
               <input
                 id="terms"
-                name="terms"
+                name="acceptedTerms"
                 type="checkbox"
+                checked={formData.acceptedTerms}
+                onChange={(e) => setFormData(prev => ({...prev, acceptedTerms: e.target.checked}))}
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
               <label
@@ -460,6 +481,9 @@ const Register = () => {
               >
                 Acepto los términos y condiciones
               </label>
+              {errors.terms && (
+                <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
+              )}
             </div>
 
             <div>

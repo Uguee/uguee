@@ -1,4 +1,3 @@
-
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { UserRole } from '../types';
@@ -11,11 +10,11 @@ interface MenuOption {
 
 
 const menuOptions: MenuOption[] = [
-  { label: 'Buscar rutas',        path: '/search-routes',      roles: ['pasajero', 'conductor', 'admin_institucional'] },
-  { label: 'Historial de viajes', path: '/my-trips',           roles: ['pasajero', 'conductor'] },
-  { label: 'Crear viaje',         path: '/crear-viaje',        roles: ['conductor'] },
+  { label: 'Buscar rutas',        path: '/search-routes',      roles: ['usuario', 'conductor', 'admin_institucional'] },
+  { label: 'Historial de viajes', path: '/my-trips',           roles: ['usuario', 'conductor'] },
+  { label: 'Crear viaje',         path: '/driver/create-trip', roles: ['conductor'] },
   { label: 'Mis rutas activas',   path: '/my-routes',          roles: ['conductor'] },
-  { label: 'Reportar incidente',  path: '/report-incident',    roles: ['pasajero', 'conductor'] },
+  { label: 'Reportar incidente',  path: '/report-incident',    roles: ['usuario', 'conductor'] },
   { label: 'Validar conductores', path: '/validate-drivers',   roles: ['admin_institucional'] },
   { label: 'Gestionar vehículos', path: '/manage-vehicles',    roles: ['admin_institucional'] },
   { label: 'Aprobación de solicitudes', path: '/approve-requests', roles: ['admin_institucional'] },
