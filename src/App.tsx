@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Authentication/Login";
 import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
+import InstitutionAdminRegister from "./pages/Authentication/InstitutionAdminRegister";
 import DocumentVerification from "./pages/Authentication/DocumentVerification";
 import Dashboard from "./pages/passengers/Dashboard";
 import SearchRoutes from "./pages/passengers/SearchRoutes";
@@ -37,6 +38,7 @@ import Profile from "./pages/profile/Profile";
 import Unauthorized from './pages/Unauthorized';
 import InstitutionPendingValidation from './pages/institution/InstitutionPendingValidation';
 import InstitutionRequests from './pages/admin/InstitutionRequests';
+import DriverRegister from "./pages/drivers/DriverRegister";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +110,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/institution-admin-register" element={<InstitutionAdminRegister />} />
       <Route path="/institution-register" element={<InstitutionRegister />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       
@@ -299,10 +302,20 @@ const AppRoutes = () => {
       <Route 
         path="/profile" 
         element={
-          <ProtectedRoute allowedRoles={['usuario', 'admin_institucional']}>
+          <ProtectedRoute allowedRoles={['usuario', 'admin_institucional', 'admin']}>
             <Profile />
           </ProtectedRoute>
         }
+      />
+      
+      {/* Driver registration route */}
+      <Route 
+        path="/driver/register" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario']}>
+            <DriverRegister />
+          </ProtectedRoute>
+        } 
       />
       
       {/* 404 Route */}

@@ -285,9 +285,9 @@ const SearchRoutes = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Map Section */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden relative" style={{ zIndex: 1 }}>
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden relative lg:col-span-2" style={{ zIndex: 1, height: '600px' }}>
             <RouteMap 
               origin={selectedRouteDetails ? {
                 lat: selectedRouteDetails.origen_coords.y,
@@ -305,7 +305,7 @@ const SearchRoutes = () => {
           </div>
 
           {/* Routes List */}
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 lg:col-span-2">
             {isLoading ? (
               <div className="flex justify-center items-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -316,7 +316,7 @@ const SearchRoutes = () => {
                   key={trip.id_viaje}
                   className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col gap-4">
                     <div>
                       <h3 className="font-medium text-lg">
                         {trip.conductor?.nombre} {trip.conductor?.apellido}
@@ -333,28 +333,26 @@ const SearchRoutes = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right space-y-2">
-                      <button
-                        className={`w-full px-4 py-2 ${
-                          isUserDriver(trip)
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-primary hover:bg-primary/90'
-                        } text-white rounded-md transition-colors`}
-                        onClick={() => handleReserve(trip)}
-                        disabled={isUserDriver(trip) || isReserving}
-                      >
-                        {isUserDriver(trip)
-                          ? 'No puedes reservar tu propio viaje'
-                          : isReserving
-                          ? 'Reservando...'
-                          : 'Reservar'}
-                      </button>
-                      <button
-                        className="w-full px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        variant="outline"
                         onClick={() => handleViewRoute(trip.id_ruta)}
                       >
                         Ver ruta
-                      </button>
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        onClick={() => {
+                          // TODO: Implement reservation functionality
+                          toast({
+                            title: "Funcionalidad en desarrollo",
+                            description: "La reserva de viajes estará disponible próximamente",
+                          });
+                        }}
+                      >
+                        Reservar
+                      </Button>
                     </div>
                   </div>
                 </div>

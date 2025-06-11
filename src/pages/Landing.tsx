@@ -97,7 +97,7 @@ const LandingPage = () => {
                     
                     <div className="mt-8 text-center">
                       <Link 
-                        to="/register?type=institution" 
+                        to="/institution-admin-register" 
                         className="inline-flex items-center justify-center bg-primary hover:bg-gradient-primary text-white font-medium py-4 px-10 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
                       >
                         <span>Registrar mi institución</span>

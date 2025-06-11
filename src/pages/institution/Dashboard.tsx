@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import InstitutionalLayout from '@/components/layout/InstitutionalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,11 @@ import {
   TrendingUp,
   Star,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  FileText,
+  Calendar,
+  User,
+  UserCog
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -52,67 +56,13 @@ const Dashboard = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [driverRequests, setDriverRequests] = useState<any[]>([]);
   const [registrationRequests, setRegistrationRequests] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [activeRoutes, setActiveRoutes] = useState<any[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [showRouteMap, setShowRouteMap] = useState(false);
 
-  // Función para cargar solicitudes de registro
-  const loadRegistrationRequests = async (institutionId: number) => {
-    try {
-      console.log('🔍 Iniciando carga de solicitudes para institución ID:', institutionId);
-      
-      const { data, error } = await supabase
-        .from('registro')
-        .select(`
-          *,
-          usuario (
-            nombre,
-            apellido,
-            celular
-          )
-        `)
-        .eq('id_institucion', institutionId)
-        .eq('validacion', 'pendiente')
-        .order('fecha_registro', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error cargando solicitudes de registro:', error);
-        return;
-      }
-
-      console.log('✅ Consulta exitosa. Datos obtenidos:', data);
-      console.log('📊 Número de solicitudes pendientes encontradas:', data?.length || 0);
-      
-      if (data && data.length > 0) {
-        console.log('📋 Primera solicitud como ejemplo:', data[0]);
-      } else {
-        console.log('ℹ️ No se encontraron solicitudes pendientes para esta institución');
-        
-        // Verificar si hay alguna solicitud en cualquier estado para esta institución
-        const { data: allRequests, error: allError } = await supabase
-          .from('registro')
-          .select('id_usuario, validacion, rol_institucional')
-          .eq('id_institucion', institutionId);
-          
-        if (allError) {
-          console.error('❌ Error verificando todas las solicitudes:', allError);
-        } else {
-          console.log('📊 Total de registros para esta institución:', allRequests?.length || 0);
-          if (allRequests && allRequests.length > 0) {
-            console.log('🔍 Estados de validación encontrados:', allRequests.map(r => r.validacion));
-          }
-        }
-      }
-
-      setRegistrationRequests(data || []);
-    } catch (error) {
-      console.error('❌ Error inesperado cargando solicitudes:', error);
-    }
-  };
-
-  // Función para cargar datos de la institución
   const loadInstitutionData = async () => {
     if (!user?.id) return;
 
@@ -140,9 +90,10 @@ const Dashboard = () => {
       }
 
       console.log('🏛️ Institución encontrada:', institutionResult.data);
-      setInstitution(institutionResult.data);
+      const institutionData = institutionResult.data;
+      setInstitution(institutionData);
 
-      const institutionId = institutionResult.data.id_institucion;
+      const institutionId = institutionData.id_institucion;
       console.log('🆔 ID de institución obtenido:', institutionId, typeof institutionId);
 
       // 2. Cargar datos en paralelo incluyendo rutas activas
@@ -154,9 +105,6 @@ const Dashboard = () => {
         InstitutionService.getVehiclesByInstitution(institutionId),
         InstitutionService.getActiveRoutesByInstitution(institutionId)
       ]);
-
-      // Cargar solicitudes de registro
-      await loadRegistrationRequests(institutionId);
 
       // 3. Actualizar estado con los datos obtenidos
       if (statsResult.success) {
@@ -199,10 +147,212 @@ const Dashboard = () => {
         setActiveRoutes(routesResult.data || []);
       }
 
+      // 4. Cargar solicitudes de registro y conductores usando el ID de institución directamente
+      console.log('🔄 Iniciando carga de solicitudes con ID de institución:', institutionId);
+      
+      // Primero, verificar la estructura de la tabla registro
+      const { data: tableInfo, error: tableError } = await supabase
+        .from('registro')
+        .select('*')
+        .limit(1);
+
+      if (tableError) {
+        console.error('Error checking registro table structure:', tableError);
+      } else {
+        console.log('📋 Estructura de la tabla registro:', tableInfo);
+      }
+
+      // Intentar cargar las solicitudes una por una para mejor debugging
+      const registrationResult = await supabase
+        .from('registro')
+        .select(`
+          id_usuario,
+          validacion,
+          fecha_registro,
+          rol_institucional,
+          correo_institucional,
+          usuario:usuario (
+            nombre,
+            apellido,
+            celular,
+            fecha_nacimiento
+          )
+        `)
+        .eq('id_institucion', institutionId)
+        .eq('validacion', 'pendiente')
+        .order('fecha_registro', { ascending: false });
+
+      console.log('🔍 Resultado de la consulta de registro:', registrationResult);
+
+      if (registrationResult.error) {
+        console.error('Error loading registration requests:', registrationResult.error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las solicitudes de registro",
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Registration Requests Data:', registrationResult.data);
+        console.log('📊 Number of registration requests:', registrationResult.data?.length);
+        setRegistrationRequests(registrationResult.data || []);
+      }
+
+      const driverResult = await supabase
+        .from('registro')
+        .select(`
+          id_usuario,
+          validacion_conductor,
+          fecha_registro,
+          correo_institucional,
+          usuario:usuario (
+            nombre,
+            apellido,
+            celular
+          )
+        `)
+        .eq('id_institucion', institutionId)
+        .eq('validacion_conductor', 'pendiente')
+        .order('fecha_registro', { ascending: false });
+
+      console.log('🔍 Resultado de la consulta de conductores:', driverResult);
+
+      if (driverResult.error) {
+        console.error('Error loading driver requests:', driverResult.error);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar las solicitudes de conductores",
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Driver Requests Data:', driverResult.data);
+        console.log('📊 Number of driver requests:', driverResult.data?.length);
+        setDriverRequests(driverResult.data || []);
+      }
+
     } catch (error) {
       console.error('❌ Error cargando datos de institución:', error);
+      toast({
+        title: "Error",
+        description: "Hubo un error al cargar los datos de la institución",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Función para cargar solicitudes de registro
+  const loadRegistrationRequests = async () => {
+    if (!institution?.id_institucion) {
+      console.log('❌ No hay ID de institución disponible para cargar solicitudes');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('registro')
+        .select(`
+          id_usuario,
+          validacion,
+          fecha_registro,
+          rol,
+          usuario:usuario (
+            nombre,
+            apellido,
+            correo_institucional,
+            celular,
+            fecha_nacimiento
+          )
+        `)
+        .eq('id_institucion', institution.id_institucion)
+        .eq('validacion', 'pendiente')
+        .order('fecha_registro', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Registration Requests Data:', data);
+      console.log('Number of registration requests:', data?.length);
+
+      if (data.length === 0) {
+        // Si no hay solicitudes pendientes, mostrar todas las solicitudes
+        const { data: allData, error: allError } = await supabase
+          .from('registro')
+          .select(`
+            id_usuario,
+            validacion,
+            fecha_registro,
+            rol,
+            usuario:usuario (
+              nombre,
+              apellido,
+              correo_institucional,
+              celular,
+              fecha_nacimiento
+            )
+          `)
+          .eq('id_institucion', institution.id_institucion)
+          .order('fecha_registro', { ascending: false });
+
+        if (allError) {
+          throw allError;
+        }
+
+        console.log('All Registration Requests Data:', allData);
+        console.log('Number of all registration requests:', allData?.length);
+        setRegistrationRequests(allData || []);
+      } else {
+        setRegistrationRequests(data);
+      }
+    } catch (error: any) {
+      console.error('Error loading registration requests:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadDriverRequests = async () => {
+    if (!institution?.id_institucion) {
+      console.log('❌ No hay ID de institución disponible para cargar solicitudes de conductores');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('registro')
+        .select(`
+          id_usuario,
+          validacion_conductor,
+          fecha_registro,
+          usuario:usuario (
+            nombre,
+            apellido,
+            correo_institucional,
+            celular
+          )
+        `)
+        .eq('id_institucion', institution.id_institucion)
+        .eq('validacion_conductor', 'pendiente')
+        .order('fecha_registro', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Driver Requests Data:', data);
+      console.log('Number of driver requests:', data?.length);
+      setDriverRequests(data || []);
+    } catch (error: any) {
+      console.error('Error loading driver requests:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -376,71 +526,57 @@ const Dashboard = () => {
     ]
   };
 
-  const handleApproveRequest = async (registrationId: number) => {
+  const handleApproveRequest = async (userId: number) => {
     try {
-      console.log('✅ Aprobando solicitud de registro:', registrationId);
-      
       const { error } = await supabase
         .from('registro')
         .update({ validacion: 'validado' })
-        .eq('id_usuario', registrationId); // Usar id_usuario como identificador
+        .eq('id_usuario', userId)
+        .eq('id_institucion', institution?.id_institucion);
 
-      if (error) {
-        console.error('Error aprobando solicitud:', error);
-        toast({
-          title: 'Error',
-          description: 'No se pudo aprobar la solicitud. Inténtalo de nuevo.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (error) throw error;
 
-      // Recargar las solicitudes para actualizar la lista
-      if (institution?.id_institucion) {
-        await loadRegistrationRequests(institution.id_institucion);
-      }
+      // Update state immediately
+      setRegistrationRequests(prev => prev.filter(request => request.id_usuario !== userId));
       
-      console.log('✅ Solicitud aprobada exitosamente');
       toast({
-        title: 'Solicitud aprobada',
-        description: 'La solicitud de registro se ha aprobado exitosamente.',
+        title: "Solicitud aprobada",
+        description: "El usuario ha sido aprobado exitosamente",
       });
     } catch (error) {
-      console.error('Error inesperado aprobando solicitud:', error);
+      console.error('Error approving request:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la solicitud",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleRejectRequest = async (registrationId: number) => {
+  const handleRejectRequest = async (userId: number) => {
     try {
-      console.log('❌ Rechazando solicitud de registro:', registrationId);
-      
       const { error } = await supabase
         .from('registro')
         .update({ validacion: 'denegado' })
-        .eq('id_usuario', registrationId); // Usar id_usuario como identificador
+        .eq('id_usuario', userId)
+        .eq('id_institucion', institution?.id_institucion);
 
-      if (error) {
-        console.error('Error rechazando solicitud:', error);
-        toast({
-          title: 'Error',
-          description: 'No se pudo rechazar la solicitud. Inténtalo de nuevo.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (error) throw error;
 
-      // Recargar las solicitudes para actualizar la lista
-      if (institution?.id_institucion) {
-        await loadRegistrationRequests(institution.id_institucion);
-      }
+      // Update state immediately
+      setRegistrationRequests(prev => prev.filter(request => request.id_usuario !== userId));
       
-      console.log('❌ Solicitud rechazada exitosamente');
       toast({
-        title: 'Solicitud rechazada',
-        description: 'La solicitud de registro se ha rechazado exitosamente.',
+        title: "Solicitud rechazada",
+        description: "El usuario ha sido rechazado",
       });
     } catch (error) {
-      console.error('Error inesperado rechazando solicitud:', error);
+      console.error('Error rejecting request:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la solicitud",
+        variant: "destructive",
+      });
     }
   };
 
@@ -470,6 +606,60 @@ const Dashboard = () => {
       case 'admin': return 'Administrativo';
       case 'external': return 'Externo';
       default: return type;
+    }
+  };
+
+  const handleApproveDriverRequest = async (userId: number) => {
+    try {
+      const { error } = await supabase
+        .from('registro')
+        .update({ validacion_conductor: 'validado' })
+        .eq('id_usuario', userId)
+        .eq('id_institucion', institution?.id_institucion);
+
+      if (error) throw error;
+
+      // Update state immediately
+      setDriverRequests(prev => prev.filter(request => request.id_usuario !== userId));
+      
+      toast({
+        title: "Conductor aprobado",
+        description: "El conductor ha sido aprobado exitosamente",
+      });
+    } catch (error) {
+      console.error('Error approving driver request:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la solicitud del conductor",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectDriverRequest = async (userId: number) => {
+    try {
+      const { error } = await supabase
+        .from('registro')
+        .update({ validacion_conductor: 'denegado' })
+        .eq('id_usuario', userId)
+        .eq('id_institucion', institution?.id_institucion);
+
+      if (error) throw error;
+
+      // Update state immediately
+      setDriverRequests(prev => prev.filter(request => request.id_usuario !== userId));
+      
+      toast({
+        title: "Conductor rechazado",
+        description: "El conductor ha sido rechazado",
+      });
+    } catch (error) {
+      console.error('Error rejecting driver request:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la solicitud del conductor",
+        variant: "destructive",
+      });
     }
   };
 
@@ -776,150 +966,174 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="requests" className="space-y-4">
-            {/* Solicitudes de Conductores */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Solicitudes de Conductores</CardTitle>
+            <div className="grid gap-4">
+            <Card className="bg-white shadow-lg">
+              <CardHeader className="bg-purple-50 border-b">
+                <CardTitle className="text-purple-700 flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Solicitudes de Registro
+                </CardTitle>
+                <CardDescription>Gestiona las solicitudes de registro de usuarios</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {requests.filter(request => request.type === 'driver').length > 0 ? (
-                    requests.filter(request => request.type === 'driver').map((request) => (
-                      <div key={request.id} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold">{request.name}</h4>
-                              <Badge variant="outline">{getRequestTypeLabel(request.type)}</Badge>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Mail className="w-3 h-3 mr-1" />
-                              {request.email}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {request.phone}
-                            </div>
+              <CardContent className="p-6">
+                {registrationRequests.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No hay solicitudes pendientes</p>
+                ) : (
+                  <div className="space-y-4">
+                    {registrationRequests.map((request) => (
+                      <div key={request.id_usuario} className="border rounded-lg p-4 bg-white hover:bg-purple-50 transition-colors">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <User className="w-4 h-4 mr-2" />
+                              Nombre
+                            </p>
+                            <p className="text-gray-700">{request.usuario.nombre} {request.usuario.apellido}</p>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Solicitado: {request.requestDate}
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <Mail className="w-4 h-4 mr-2" />
+                              Correo Institucional
+                            </p>
+                            <p className="text-gray-700">{request.correo_institucional}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <Phone className="w-4 h-4 mr-2" />
+                              Teléfono
+                            </p>
+                            <p className="text-gray-700">{request.usuario.celular}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <Calendar className="w-4 h-4 mr-2" />
+                              Fecha de Nacimiento
+                            </p>
+                            <p className="text-gray-700">{request.usuario.fecha_nacimiento}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <UserCog className="w-4 h-4 mr-2" />
+                              Rol Solicitado
+                            </p>
+                            <p className="text-gray-700">{request.rol_institucional}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <Clock className="w-4 h-4 mr-2" />
+                              Fecha de Solicitud
+                            </p>
+                            <p className="text-gray-700">{new Date(request.fecha_registro).toLocaleDateString()}</p>
                           </div>
                         </div>
-
-                        {/* Información específica de conductor */}
-                        <div className="mb-3 p-3 bg-gray-50 rounded">
-                          <div className="space-y-1 text-sm">
-                            <div><strong>Vehículo:</strong> {request.vehicle}</div>
-                            <div><strong>Documentos:</strong> {request.documents?.join(', ')}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleApproveRequest(request.id)}
-                            className="bg-green-600 hover:bg-green-700"
+                        <div className="mt-4 flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleRejectRequest(request.id_usuario)}
+                            className="hover:bg-red-50 hover:text-red-600 hover:border-red-600"
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Aprobar
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => handleRejectRequest(request.id)}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
+                            <XCircle className="w-4 h-4 mr-2" />
                             Rechazar
                           </Button>
-                          <Button variant="outline" size="sm">
-                            <Eye className="w-4 h-4 mr-1" />
-                            Ver Detalles
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No hay solicitudes de conductores pendientes
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Solicitudes de Usuarios (Estudiantes, Profesores, etc.) */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Solicitudes de Registro de Usuarios</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {registrationRequests.length > 0 ? (
-                    registrationRequests.map((request) => (
-                      <div key={request.id_usuario} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold">
-                                {request.usuario?.nombre} {request.usuario?.apellido}
-                              </h4>
-                              <Badge variant="outline">{request.rol_institucional}</Badge>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Mail className="w-3 h-3 mr-1" />
-                              {request.correo_institucional}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {request.usuario?.celular || 'No especificado'}
-                            </div>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Solicitado: {new Date(request.fecha_registro).toLocaleDateString()}
-                          </div>
-                        </div>
-
-                        {/* Información específica del usuario */}
-                        <div className="mb-3 p-3 bg-gray-50 rounded">
-                          <div className="space-y-1 text-sm">
-                            <div><strong>Código Institucional:</strong> {request.codigo_institucional}</div>
-                            <div><strong>Dirección:</strong> {request.direccion_de_residencia}</div>
-                            <div><strong>Rol Solicitado:</strong> {request.rol_institucional}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
+                          <Button
                             onClick={() => handleApproveRequest(request.id_usuario)}
                             className="bg-green-600 hover:bg-green-700"
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
+                            <CheckCircle className="w-4 h-4 mr-2" />
                             Aprobar
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => handleRejectRequest(request.id_usuario)}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Rechazar
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Eye className="w-4 h-4 mr-1" />
-                            Ver Detalles
                           </Button>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No hay solicitudes de registro pendientes
-                    </div>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            <Card className="bg-white shadow-lg">
+              <CardHeader className="bg-blue-50 border-b">
+                <CardTitle className="text-blue-700 flex items-center">
+                  <Car className="w-5 h-5 mr-2" />
+                  Solicitudes de Conductores
+                </CardTitle>
+                <CardDescription>Gestiona las solicitudes de registro de conductores</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                {driverRequests.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No hay solicitudes pendientes</p>
+                ) : (
+                  <div className="space-y-4">
+                    {driverRequests.map((request) => (
+                      <div key={request.id_usuario} className="border rounded-lg p-4 bg-white hover:bg-blue-50 transition-colors">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="font-semibold text-blue-700 flex items-center">
+                              <User className="w-4 h-4 mr-2" />
+                              Nombre
+                            </p>
+                            <p className="text-gray-700">{request.usuario.nombre} {request.usuario.apellido}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-700 flex items-center">
+                              <Mail className="w-4 h-4 mr-2" />
+                              Correo Institucional
+                            </p>
+                            <p className="text-gray-700">{request.correo_institucional}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-700 flex items-center">
+                              <Phone className="w-4 h-4 mr-2" />
+                              Teléfono
+                            </p>
+                            <p className="text-gray-700">{request.usuario.celular}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-700 flex items-center">
+                              <Clock className="w-4 h-4 mr-2" />
+                              Fecha de Solicitud
+                            </p>
+                            <p className="text-gray-700">{new Date(request.fecha_registro).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex justify-between items-center">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const licenseUrl = supabase.storage
+                                .from('licencia')
+                                .getPublicUrl(`${request.id_usuario}`).data.publicUrl;
+                              window.open(licenseUrl, '_blank');
+                            }}
+                            className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-600"
+                          >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Ver Licencia
+                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => handleRejectDriverRequest(request.id_usuario)}
+                              className="hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Rechazar
+                            </Button>
+                            <Button
+                              onClick={() => handleApproveDriverRequest(request.id_usuario)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Aprobar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="routes" className="space-y-4">

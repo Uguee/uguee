@@ -4,6 +4,9 @@ import { AppSidebar } from './AppSidebar'
 import Navbar from './Navbar';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { UserRole } from '@/types';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useLocation } from 'react-router-dom';
 
 // Componente flotante del chatbot
 const FloatingChatbot = ({ institutionId }: { institutionId?: number }) => {
@@ -33,64 +36,37 @@ const FloatingChatbot = ({ institutionId }: { institutionId?: number }) => {
   }, [isOpen, ChatbotComponent]);
 
   return (
-    <>
-      {/* Botón flotante */}
+    <div className="fixed bottom-4 right-4 z-50">
+      {isOpen && ChatbotComponent && (
+        <div className="mb-4">
+          <ChatbotComponent institutionId={institutionId} />
+        </div>
+      )}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 flex items-center justify-center"
+        className="bg-primary text-white rounded-full p-4 shadow-lg hover:bg-primary/90 transition-colors"
+        disabled={isLoading}
       >
-        {isOpen ? (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        {isLoading ? (
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-2.4-.328l-3.116 1.04a1 1 0 01-1.27-1.27l1.04-3.116A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+            />
           </svg>
         )}
       </button>
-
-      {/* Modal del chatbot */}
-      {isOpen && (
-        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white rounded-lg shadow-2xl z-50 border border-gray-200">
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Asistente UGUEE</h3>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-white hover:text-gray-200 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-sm text-purple-100 mt-1">
-                Información sobre rutas y transporte universitario
-              </p>
-            </div>
-            
-            <div className="flex-1 overflow-hidden">
-              {isLoading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                </div>
-              ) : ChatbotComponent ? (
-                <ChatbotComponent 
-                  institutionId={institutionId}
-                  isEmbedded={true}
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-500">
-                  <p>Error cargando el chatbot</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 
@@ -100,41 +76,48 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user } = useAuth();
+  const { currentUserId } = useCurrentUser();
   const [institutionId, setInstitutionId] = useState<number | undefined>();
+  const location = useLocation();
 
   // Obtener la institución del usuario
   useEffect(() => {
     const fetchUserInstitution = async () => {
-      if (!user?.id) return;
+      if (!currentUserId) return;
 
       try {
         const { data: registro } = await supabase
           .from('registro')
           .select('id_institucion')
-          .eq('id_usuario', user.id)
+          .eq('id_usuario', currentUserId)
           .single();
 
         if (registro) {
           setInstitutionId(registro.id_institucion);
         }
       } catch (error) {
-        console.error('Error obteniendo institución del usuario:', error);
+        console.error('Error fetching user institution:', error);
       }
     };
 
     fetchUserInstitution();
-  }, [user?.id]);
+  }, [currentUserId]);
+
+  // Determinar si se debe mostrar el sidebar
+  const shouldShowSidebar = !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/institution');
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <SidebarProvider>
         <div className="flex-1 flex">
-          <AppSidebar />
+          {shouldShowSidebar && <AppSidebar />}
           <main className="flex-1 flex flex-col">
-            <div className="p-4">
-              <SidebarTrigger />
-            </div>
+            {shouldShowSidebar && (
+              <div className="p-4">
+                <SidebarTrigger />
+              </div>
+            )}
             <div className="flex-1 px-6 pb-6">
               {children}
             </div>
