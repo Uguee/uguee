@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { View, FlatList } from "react-native";
-import { TopMenu } from "../components/DriverTopMenu"; // Ajusta la ruta si es necesario
+import { View, FlatList, Text } from "react-native";
+import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { useAuth } from "../hooks/useAuth";
 
 // Agrega las props
 interface DriverHomeScreenProps {
@@ -16,6 +17,7 @@ interface DriverHomeScreenProps {
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
+  onGoToSeeRoutes?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -25,13 +27,14 @@ export default function DriverHomeScreen({
   onGoToProfile = () => {},
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
+  onGoToSeeRoutes = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
 
   const suggestions = [
-    { label: "Crear ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Modificar rutas", onPress: () => alert("Intracampus") },
-    { label: "Rastrear rutas", onPress: () => alert("Rastrea rutas") },
+    { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
+    { label: "Ver rutas", onPress: onGoToSeeRoutes },
   ];
 
   const navButtons = [
@@ -90,6 +93,20 @@ export default function DriverHomeScreen({
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`¡Hola,${
+                user?.firstName ? ` ${user.firstName}` : ""
+              }! Gracias por conducir con nosotros`}
+            </Text>
             <BigCard
               image={require("../assets/building3D.png")}
               title="¿Tu institución?"
@@ -104,12 +121,7 @@ export default function DriverHomeScreen({
             />
           </>
         }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
       <BottomNavigation buttons={navButtons} />

@@ -14,25 +14,20 @@ interface Suggestion {
 
 interface SuggestionsSectionProps {
   suggestions: Suggestion[];
-  onSeeAll?: () => void;
 }
 
 export const SuggestionsSection: React.FC<SuggestionsSectionProps> = ({
   suggestions,
-  onSeeAll,
 }) => {
   return (
     <View style={styles.container}>
-      {/* Título y botón "Ver todo" */}
+      {/* Título */}
       <View style={styles.header}>
         <Text style={styles.title}>Sugerencias</Text>
-        <TouchableOpacity onPress={onSeeAll}>
-          <Text style={styles.seeAll}>Ver todo</Text>
-        </TouchableOpacity>
       </View>
       {/* Lista horizontal de sugerencias */}
       <FlatList
-        data={suggestions}
+        data={suggestions.slice(0, 2)}
         keyExtractor={(item) => item.label}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -66,24 +61,22 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: "bold",
-    fontSize: 16,
-  },
-  seeAll: {
-    color: "#222",
-    fontWeight: "500",
-    fontSize: 13,
+    fontSize: 20,
   },
   suggestionsList: {
     gap: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 45,
   },
   suggestionCard: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     backgroundColor: "#A259FF",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 35,
+    marginHorizontal: 10,
   },
   suggestionText: {
     color: "#fff",

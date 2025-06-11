@@ -3,7 +3,7 @@
 // en una institución y/o es conductor, consumiendo funciones serverless de Supabase.
 
 import { getCedulaByUUID } from "./userDataService";
-
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ANON_KEY;
 export type InstitutionValidationStatus = "validado" | "pendiente" | "denegado";
 
 export interface InstitutionValidationResponse {
@@ -74,7 +74,8 @@ export async function getInstitutionValidationStatus(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
     },
     body: JSON.stringify(requestBody),
   });
@@ -108,7 +109,8 @@ export async function getConductorValidationStatus(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
     },
     body: JSON.stringify(requestBody2),
   });

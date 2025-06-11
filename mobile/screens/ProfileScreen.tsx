@@ -33,12 +33,12 @@ const ProfileScreen = ({
       onPress: onGoToHomeScreen,
     },
     {
-      label: "Mis viajes",
+      label: "Mis vehiculos",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
       onPress: onGoToMyVehicles,
     },
     {
-      label: "Servicios",
+      label: "Mis viajes",
       icon: <Ionicons name="settings-outline" size={28} color="#000" />,
       onPress: () => {},
     },

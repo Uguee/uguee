@@ -1,83 +1,78 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { TopMenu } from "../components/DriverTopMenu";
 import { BottomNavigation } from "../components/BottomNavigationBar";
 import TripCard from "../components/TripCard";
 import { SearchBar } from "../components/SearchBar";
 import AddRouteButton from "../components/AddRouteButton";
+import { useUserRoutes } from "../hooks/useUserRoutes";
 
-const routesMock = [
-  {
-    id: 1,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 2,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 3,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 4,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 5,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-];
+interface DriverRoutesScreenProps {
+  onGoToRegisterRouteScreen?: () => void;
+  onGoToDriverHome?: () => void;
+  onGoToMyVehicles?: () => void;
+  onGoToProfile?: () => void;
+  refreshKey?: any;
+}
 
-const DriverRoutesScreen = () => {
+function formatPlaceName(nombre: string | null): string {
+  if (!nombre) return "";
+  const partes = nombre.split(",").map((p) => p.trim());
+  // Tomar las primeras 3 partes y añadir "Cali"
+  return `${partes.slice(0, 3).join(", ")}, Cali`;
+}
+
+const DriverRoutesScreen: React.FC<DriverRoutesScreenProps> = ({
+  onGoToRegisterRouteScreen = () => {},
+  onGoToDriverHome = () => {},
+  onGoToMyVehicles = () => {},
+  onGoToProfile = () => {},
+  refreshKey,
+}) => {
   const [search, setSearch] = useState("");
+  const { routes, loading, error } = useUserRoutes(refreshKey);
 
   // Botones de navegación inferior
   const navButtons = [
     {
       label: "Inicio",
       icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: true,
-      onPress: () => {},
+      active: false,
+      onPress: onGoToDriverHome,
+    },
+    {
+      label: "Mis vehiculos",
+      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
+      onPress: onGoToMyVehicles,
     },
     {
       label: "Mis viajes",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: () => {},
-    },
-    {
-      label: "Mis vehículos",
-      icon: <Ionicons name="car-sport-outline" size={28} color="#000" />,
-      onPress: () => {},
+      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
+      onPress: onGoToRegisterRouteScreen,
     },
     {
       label: "Perfil",
       icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: () => {},
+      onPress: onGoToProfile,
     },
   ];
 
-  // Filtrado simple por búsqueda
-  const filteredRoutes = routesMock.filter(
+  // Filtrado simple por búsqueda en nombre_partida o nombre_llegada
+  const filteredRoutes = routes.filter(
     (route) =>
-      route.salida.toLowerCase().includes(search.toLowerCase()) ||
-      route.llegada.toLowerCase().includes(search.toLowerCase())
+      formatPlaceName(route.nombre_partida)
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      formatPlaceName(route.nombre_llegada)
+        .toLowerCase()
+        .includes(search.toLowerCase())
   );
 
   return (
@@ -92,21 +87,31 @@ const DriverRoutesScreen = () => {
           />
         </View>
         <Text style={styles.title}>Rutas actuales disponibles</Text>
-        <FlatList
-          data={filteredRoutes}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <TripCard
-              salida={item.salida}
-              llegada={item.llegada}
-              hora={item.hora}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 140 }}
-        />
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#A259FF"
+            style={{ marginTop: 40 }}
+          />
+        ) : error ? (
+          <Text style={{ color: "red", marginTop: 40 }}>{error}</Text>
+        ) : (
+          <FlatList
+            data={filteredRoutes}
+            keyExtractor={(item) => item.id_ruta.toString()}
+            renderItem={({ item }) => (
+              <TripCard
+                salida={formatPlaceName(item.nombre_partida)}
+                llegada={formatPlaceName(item.nombre_llegada)}
+                hora={""}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 140 }}
+          />
+        )}
         <BottomNavigation buttons={navButtons} />
-        <AddRouteButton onPress={() => {}} />
+        <AddRouteButton onPress={onGoToRegisterRouteScreen} />
       </View>
     </View>
   );

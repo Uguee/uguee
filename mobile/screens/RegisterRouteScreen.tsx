@@ -7,9 +7,8 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import MapView, { Marker, Polyline, MapPressEvent } from "react-native-maps";
+import MapView, { Marker, MapPressEvent } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
-import Constants from "expo-constants";
 import { useRouteManager } from "../hooks/useRouteManager";
 import { useAuth } from "../hooks/useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
