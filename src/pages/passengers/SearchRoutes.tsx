@@ -334,27 +334,25 @@ const SearchRoutes = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        className={`flex-1 px-4 py-2 ${
-                          isUserDriver(trip)
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-primary hover:bg-primary/90'
-                        } text-white rounded-md transition-colors`}
-                        onClick={() => handleReserve(trip)}
-                        disabled={isUserDriver(trip) || isReserving}
-                      >
-                        {isUserDriver(trip)
-                          ? 'No puedes reservar tu propio viaje'
-                          : isReserving
-                          ? 'Reservando...'
-                          : 'Reservar'}
-                      </button>
-                      <button
-                        className="flex-1 px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
+                      <Button
+                        className="flex-1"
+                        variant="outline"
                         onClick={() => handleViewRoute(trip.id_ruta)}
                       >
                         Ver ruta
-                      </button>
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        onClick={() => {
+                          // TODO: Implement reservation functionality
+                          toast({
+                            title: "Funcionalidad en desarrollo",
+                            description: "La reserva de viajes estará disponible próximamente",
+                          });
+                        }}
+                      >
+                        Reservar
+                      </Button>
                     </div>
                   </div>
                 </div>

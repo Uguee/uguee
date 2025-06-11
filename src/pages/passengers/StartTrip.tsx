@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { TripService } from "@/services/tripService";
 
 const StartTrip = () => {
   const [origin, setOrigin] = useState("");
@@ -220,7 +221,7 @@ const StartTrip = () => {
     setError(null);
 
     try {
-      if (!originLocation || !destinationLocation || !transportType) {
+      if (!originLocation || !destinationLocation) {
         throw new Error("Por favor completa todos los campos");
       }
 
@@ -230,9 +231,29 @@ const StartTrip = () => {
         setRoute(routeData.coordinates);
       }
 
-      // Search for available routes
-      const results = await searchRoutes(origin, destination, transportType);
-      setRoutes(Array.isArray(results) ? results : []);
+      // Search for similar trips
+      const similarTrips = await TripService.findSimilarTrips(
+        { lat: originLocation.lat, lng: originLocation.lng },
+        { lat: destinationLocation.lat, lng: destinationLocation.lng },
+        transportType === "all" ? undefined : transportType
+      );
+
+      // Transform the trips into the format expected by the UI
+      const formattedRoutes = similarTrips.map(trip => ({
+        id: trip.id_viaje,
+        driver: {
+          name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
+          phone: trip.conductor?.celular
+        },
+        departureTime: trip.hora_salida,
+        estimatedArrival: trip.hora_llegada,
+        price: 0, // You might want to add price to your trip model
+        availableSeats: 4, // You might want to add capacity to your trip model
+        transportType: trip.vehiculo?.tipo?.tipo,
+        distance: 0 // You might want to calculate this based on the route
+      }));
+
+      setRoutes(formattedRoutes);
     } catch (err: any) {
       setError(err.message || "Error al buscar rutas");
       toast({
@@ -386,15 +407,12 @@ const StartTrip = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Transporte
               </label>
-              <Select
-                value={transportType || ''}
-                onValueChange={(value: string) => setTransportType(value)}
-                disabled={isLoadingTypes}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={isLoadingTypes ? "Cargando tipos..." : "Selecciona el tipo de transporte"} />
+              <Select value={transportType || "all"} onValueChange={setTransportType}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Elige tu medio de transporte preferido" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Todos los vehículos</SelectItem>
                   {isLoadingTypes ? (
                     <SelectItem value="loading" disabled>
                       Cargando tipos...
@@ -419,7 +437,7 @@ const StartTrip = () => {
 
             <Button
               type="submit"
-              disabled={isLoading || !originLocation || !destinationLocation || !transportType}
+              disabled={isLoading || !originLocation || !destinationLocation}
               className="w-full"
             >
               {isLoading ? "Buscando..." : "Buscar ruta"}
