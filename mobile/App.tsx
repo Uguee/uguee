@@ -28,6 +28,7 @@ import { User } from "./services/authService";
 import { View, Text } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
+import { getCedulaByUUID } from "./services/userDataService";
 
 type Screen =
   | "welcome"
@@ -61,6 +62,7 @@ const AppNavigator = () => {
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
+  const [cedula, setCedula] = React.useState<number | null>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -77,6 +79,12 @@ const AppNavigator = () => {
       }
     }
   }, [isAuthenticated, isLoading, user]);
+
+  useEffect(() => {
+    if (user?.id) {
+      getCedulaByUUID(user.id).then(setCedula);
+    }
+  }, [user?.id]);
 
   const handleBackToHome = () => {
     setCurrentScreen("welcome");
@@ -145,7 +153,7 @@ const AppNavigator = () => {
         email: data.email,
         password: data.password,
         phoneNumber: data.phone,
-        role: "pasajero", // Por defecto, los usuarios móviles son pasajeros
+        role: "usuario", // Por defecto, los usuarios móviles son usuarios
         dateOfBirth: data.birthDate,
         id: data.cedula, // Cédula para sync-user
       });
@@ -266,7 +274,8 @@ const AppNavigator = () => {
 
     return (
       <ProtectedRoute
-        allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
+        allowedRoles={["usuario", "admin_institucional", "admin"]}
+        onGoToLogin={() => setCurrentScreen("login")}
       >
         <HomeScreen
           onGoToInstitutions={handleGoToInstitutions}
@@ -346,11 +355,24 @@ const AppNavigator = () => {
           />
         );
       case "document-verification":
+        if (cedula === null) {
+          return (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text>Obteniendo cédula...</Text>
+            </View>
+          );
+        }
         return (
           <DocumentVerificationScreen
             onComplete={handleCompleteDocumentVerification}
             onBack={handleGoBackFromDocuments}
-            userId={user ? parseInt(user.id) : 0}
+            userId={cedula}
           />
         );
       case "dashboard":

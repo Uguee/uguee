@@ -6,7 +6,7 @@ const SUPABASE_FUNCTIONS_BASE =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1";
 
 const ENDPOINT = `${SUPABASE_FUNCTIONS_BASE}/get-user-data-post`;
-
+const currentToken = getCurrentToken();
 export interface GetUserDataResponse {
   success: boolean;
   data?: {
@@ -36,7 +36,7 @@ export async function getUserDataByUUID(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (anonKey) headers["Authorization"] = `Bearer ${anonKey}`;
+    if (anonKey) headers["Authorization"] = `Bearer ${currentToken}`;
 
     const res = await fetch(ENDPOINT, {
       method: "POST",

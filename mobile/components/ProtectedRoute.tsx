@@ -1,13 +1,20 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
-import { User } from '../services/authService';
+import React from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
+import { useAuth } from "../hooks/useAuth";
+import { User } from "../services/authService";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: User['role'][];
+  allowedRoles?: User["role"][];
   fallbackComponent?: React.ComponentType<any>;
   redirectTo?: string;
+  onGoToLogin?: () => void;
 }
 
 // Componente de loading
@@ -19,15 +26,37 @@ const LoadingScreen = () => (
 );
 
 // Componente de acceso denegado
-const AccessDeniedScreen = ({ userRole, allowedRoles }: { userRole: string; allowedRoles: string[] }) => (
+const AccessDeniedScreen = ({
+  userRole,
+  allowedRoles,
+  onGoToLogin,
+}: {
+  userRole: string;
+  allowedRoles: string[];
+  onGoToLogin?: () => void;
+}) => (
   <View style={styles.accessDeniedContainer}>
     <Text style={styles.accessDeniedTitle}>Acceso Denegado</Text>
     <Text style={styles.accessDeniedText}>
       Tu rol ({userRole}) no tiene permisos para acceder a esta sección.
     </Text>
     <Text style={styles.accessDeniedSubtext}>
-      Roles permitidos: {allowedRoles.join(', ')}
+      Roles permitidos: {allowedRoles.join(", ")}
     </Text>
+    <TouchableOpacity
+      style={{
+        marginTop: 32,
+        backgroundColor: "#8B5CF6",
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+      }}
+      onPress={onGoToLogin}
+    >
+      <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+        Volver al inicio de sesión
+      </Text>
+    </TouchableOpacity>
   </View>
 );
 
@@ -45,10 +74,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
   fallbackComponent: FallbackComponent,
+  onGoToLogin,
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  console.log('🛡️ ProtectedRoute check:', {
+  console.log("🛡️ ProtectedRoute check:", {
     isAuthenticated,
     isLoading,
     userRole: user?.role,
@@ -57,28 +87,33 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Mostrar loading mientras se verifica la autenticación
   if (isLoading) {
-    console.log('⏳ Verificando autenticación...');
+    console.log("⏳ Verificando autenticación...");
     return <LoadingScreen />;
   }
 
   // Si no está autenticado
   if (!isAuthenticated) {
-    console.log('🚫 Usuario no autenticado');
-    return FallbackComponent ? <FallbackComponent /> : <NotAuthenticatedScreen />;
+    console.log("🚫 Usuario no autenticado");
+    return FallbackComponent ? (
+      <FallbackComponent />
+    ) : (
+      <NotAuthenticatedScreen />
+    );
   }
 
   // Si hay roles específicos requeridos
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    console.log('❌ Rol no permitido:', user.role, 'Permitidos:', allowedRoles);
+    console.log("❌ Rol no permitido:", user.role, "Permitidos:", allowedRoles);
     return (
-      <AccessDeniedScreen 
-        userRole={user.role} 
-        allowedRoles={allowedRoles} 
+      <AccessDeniedScreen
+        userRole={user.role}
+        allowedRoles={allowedRoles}
+        onGoToLogin={onGoToLogin}
       />
     );
   }
 
-  console.log('✅ Acceso concedido');
+  console.log("✅ Acceso concedido");
   return <>{children}</>;
 };
 
@@ -86,15 +121,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 export const usePermissions = () => {
   const { user, isAuthenticated } = useAuth();
 
-  const hasRole = (role: User['role']): boolean => {
+  const hasRole = (role: User["role"]): boolean => {
     return isAuthenticated && user?.role === role;
   };
 
-  const hasAnyRole = (roles: User['role'][]): boolean => {
+  const hasAnyRole = (roles: User["role"][]): boolean => {
     return isAuthenticated && user ? roles.includes(user.role) : false;
   };
 
-  const canAccess = (allowedRoles?: User['role'][]): boolean => {
+  const canAccess = (allowedRoles?: User["role"][]): boolean => {
     if (!allowedRoles) return isAuthenticated;
     return hasAnyRole(allowedRoles);
   };
@@ -105,73 +140,73 @@ export const usePermissions = () => {
     hasRole,
     hasAnyRole,
     canAccess,
-    isPassenger: hasRole('pasajero'),
-    isDriver: hasRole('conductor'),
-    isInstitutionAdmin: hasRole('admin_institucional'),
-    isAdmin: hasRole('admin'),
+    isPassenger: hasRole("pasajero"),
+    isDriver: hasRole("conductor"),
+    isInstitutionAdmin: hasRole("admin_institucional"),
+    isAdmin: hasRole("admin"),
   };
 };
 
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
   },
   accessDeniedContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
     paddingHorizontal: 24,
   },
   accessDeniedTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#DC2626',
+    fontWeight: "bold",
+    color: "#DC2626",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   accessDeniedText: {
     fontSize: 16,
-    color: '#374151',
-    textAlign: 'center',
+    color: "#374151",
+    textAlign: "center",
     marginBottom: 8,
     lineHeight: 24,
   },
   accessDeniedSubtext: {
     fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: "#6B7280",
+    textAlign: "center",
+    fontStyle: "italic",
   },
   notAuthContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
     paddingHorizontal: 24,
   },
   notAuthTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8B5CF6',
+    fontWeight: "bold",
+    color: "#8B5CF6",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   notAuthText: {
     fontSize: 16,
-    color: '#374151',
-    textAlign: 'center',
+    color: "#374151",
+    textAlign: "center",
     lineHeight: 24,
   },
 });
 
-export default ProtectedRoute; 
+export default ProtectedRoute;

@@ -10,7 +10,7 @@ export interface DocumentData {
   fecha_vencimiento: string;
   imagen_front?: string;
   imagen_back?: string;
-  numero: string;
+  numero?: string;
 }
 
 export interface UploadResponse {
