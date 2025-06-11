@@ -2,8 +2,10 @@
 // Descripción: provee funciones para consultar si un usuario (por cédula) está registrado
 // en una institución y/o es conductor, consumiendo funciones serverless de Supabase.
 
+import { getCurrentToken } from "./authService";
 import { getCedulaByUUID } from "./userDataService";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ANON_KEY;
+const currentToken = getCurrentToken();
 export type InstitutionValidationStatus = "validado" | "pendiente" | "denegado";
 
 export interface InstitutionValidationResponse {
@@ -37,6 +39,8 @@ async function fetchAndValidate<T extends { success: boolean; error?: string }>(
       method: "GET",
       headers: {
         "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${currentToken}`,
       },
     });
 
@@ -75,7 +79,7 @@ export async function getInstitutionValidationStatus(
     headers: {
       "Content-Type": "application/json",
       apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      Authorization: `Bearer ${currentToken}`,
     },
     body: JSON.stringify(requestBody),
   });
@@ -110,7 +114,7 @@ export async function getConductorValidationStatus(
     headers: {
       "Content-Type": "application/json",
       apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      Authorization: `Bearer ${currentToken}`,
     },
     body: JSON.stringify(requestBody2),
   });

@@ -21,11 +21,14 @@ import DriverRoutesScreen from "./screens/DriverRoutesScreen";
 import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
+import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import { View, Text } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
+import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
+import { getCedulaByUUID } from "./services/userDataService";
 
 type Screen =
   | "welcome"
@@ -49,7 +52,9 @@ type Screen =
   | "inst-profile-from-driver"
   | "profile-from-driver"
   | "register-route"
-  | "driver-routes";
+  | "driver-routes"
+  | "driver-my-trips"
+  | "driver-create-trip";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -57,6 +62,7 @@ const AppNavigator = () => {
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
+  const [cedula, setCedula] = React.useState<number | null>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -73,6 +79,12 @@ const AppNavigator = () => {
       }
     }
   }, [isAuthenticated, isLoading, user]);
+
+  useEffect(() => {
+    if (user?.id) {
+      getCedulaByUUID(user.id).then(setCedula);
+    }
+  }, [user?.id]);
 
   const handleBackToHome = () => {
     setCurrentScreen("welcome");
@@ -141,7 +153,7 @@ const AppNavigator = () => {
         email: data.email,
         password: data.password,
         phoneNumber: data.phone,
-        role: "pasajero", // Por defecto, los usuarios móviles son pasajeros
+        role: "usuario", // Por defecto, los usuarios móviles son usuarios
         dateOfBirth: data.birthDate,
         id: data.cedula, // Cédula para sync-user
       });
@@ -245,6 +257,11 @@ const AppNavigator = () => {
     setCurrentScreen("driver-routes");
   };
 
+  const handleGoToMyTripsScreen = () => setCurrentScreen("driver-my-trips");
+
+  const handleGoToCreateTripScreen = () =>
+    setCurrentScreen("driver-create-trip");
+
   // Cuando se crea una ruta, refrescar las rutas
   const handleRouteCreated = () => {
     setRoutesRefreshKey((k) => k + 1);
@@ -257,7 +274,8 @@ const AppNavigator = () => {
 
     return (
       <ProtectedRoute
-        allowedRoles={["pasajero", "conductor", "admin_institucional", "admin"]}
+        allowedRoles={["usuario", "admin_institucional", "admin"]}
+        onGoToLogin={() => setCurrentScreen("login")}
       >
         <HomeScreen
           onGoToInstitutions={handleGoToInstitutions}
@@ -337,11 +355,24 @@ const AppNavigator = () => {
           />
         );
       case "document-verification":
+        if (cedula === null) {
+          return (
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text>Obteniendo cédula...</Text>
+            </View>
+          );
+        }
         return (
           <DocumentVerificationScreen
             onComplete={handleCompleteDocumentVerification}
             onBack={handleGoBackFromDocuments}
-            userId={user ? parseInt(user.id) : 0}
+            userId={cedula}
           />
         );
       case "dashboard":
@@ -391,6 +422,7 @@ const AppNavigator = () => {
             onGoToInstitutionProfile={handleGoToInstProfileFromDriver}
             onGoToRegisterRouteScreen={() => setCurrentScreen("register-route")}
             onGoToSeeRoutes={handleGoToSeeRoutes}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "my-vehicles":
@@ -399,6 +431,7 @@ const AppNavigator = () => {
             onGoToDriverHomeScreen={handleGoToDriverView}
             onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToProfileScreen={handleGoToProfileFromDriver}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "vehicle-registration":
@@ -454,6 +487,23 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             refreshKey={routesRefreshKey}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
+          />
+        );
+      case "driver-my-trips":
+        return (
+          <DriverMyTripsScreen
+            onGoToHomeScreen={handleGoToDriverView}
+            onGoToMyVehicles={handleGoToMyVehicles}
+            onGoToProfile={handleGoToProfileFromDriver}
+            onGoToCreateTripScreen={handleGoToCreateTripScreen}
+          />
+        );
+      case "driver-create-trip":
+        return (
+          <DriverCreateTripScreen
+            onGoToRegisterRouteScreen={handleGoToRegisterRouteScreen}
+            onGoBack={() => setCurrentScreen("driver-my-trips")}
           />
         );
       default:

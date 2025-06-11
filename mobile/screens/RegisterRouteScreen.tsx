@@ -15,10 +15,12 @@ import { getCedulaByUUID } from "../services/userDataService";
 
 interface RegisterRouteScreenProps {
   onGoBack?: () => void;
+  onRouteCreated?: () => void;
 }
 
 export default function RegisterRouteScreen({
   onGoBack,
+  onRouteCreated,
 }: RegisterRouteScreenProps) {
   const [points, setPoints] = useState<
     { latitude: number; longitude: number }[]
@@ -123,6 +125,9 @@ export default function RegisterRouteScreen({
       }
       setSuccess(true);
       Alert.alert("Éxito", "Ruta registrada correctamente");
+      if (onRouteCreated) {
+        onRouteCreated();
+      }
     } catch (e) {
       Alert.alert("Error", error || "No se pudo registrar la ruta");
     }

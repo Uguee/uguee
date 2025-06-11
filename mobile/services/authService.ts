@@ -7,7 +7,7 @@ export interface User {
   lastName: string;
   email: string;
   phoneNumber?: string;
-  role: "pasajero" | "conductor" | "admin_institucional" | "admin";
+  role: "usuario" | "conductor" | "admin_institucional" | "admin";
   createdAt: string;
   dateOfBirth?: string;
 }
@@ -133,7 +133,7 @@ export class AuthService {
         lastName: userData.apellido || userData.lastName || "",
         email: userData.email || userData.correo || "",
         phoneNumber: userData.celular || userData.phoneNumber || "",
-        role: this.mapRole(userData.rol || userData.role || "pasajero"),
+        role: this.mapRole(userData.rol || userData.role || "usuario"),
         createdAt:
           userData.createdAt || userData.created_at || new Date().toISOString(),
         dateOfBirth: userData.fecha_nacimiento || userData.dateOfBirth || "",
@@ -157,7 +157,7 @@ export class AuthService {
       case "admin-institucion":
         return "admin_institucional";
       default:
-        return "pasajero";
+        return "usuario";
     }
   }
 
@@ -238,7 +238,7 @@ export class AuthService {
             firstName: userData.firstName,
             lastName: userData.lastName,
             phoneNumber: userData.phoneNumber,
-            role: userData.role || "pasajero",
+            role: userData.role || "usuario",
             dateOfBirth: userData.dateOfBirth,
             id: userData.id, // Agregar cédula a metadata
           },
@@ -343,7 +343,7 @@ export class AuthService {
         phoneNumber: phoneNumber
           ? parseInt(phoneNumber.replace(/\D/g, ""))
           : null,
-        role: userData.role || "pasajero",
+        role: userData.role || "usuario",
         dateOfBirth: userData.dateOfBirth || "",
       };
 
@@ -459,7 +459,7 @@ export class AuthService {
               email:
                 userData.email || userData.correo || supabaseUser.email || "",
               phoneNumber: userData.celular || userData.phoneNumber || "",
-              role: this.mapRole(userData.rol || userData.role || "pasajero"),
+              role: this.mapRole(userData.rol || userData.role || "usuario"),
               createdAt:
                 userData.createdAt ||
                 userData.created_at ||
@@ -481,7 +481,7 @@ export class AuthService {
       firstName: supabaseUser.user_metadata?.firstName || "",
       lastName: supabaseUser.user_metadata?.lastName || "",
       email: supabaseUser.email || "",
-      role: this.mapRole(supabaseUser.user_metadata?.role || "pasajero"),
+      role: this.mapRole(supabaseUser.user_metadata?.role || "usuario"),
       createdAt: supabaseUser.created_at,
       phoneNumber: supabaseUser.user_metadata?.phoneNumber || "",
       dateOfBirth: supabaseUser.user_metadata?.dateOfBirth || "",

@@ -5,8 +5,7 @@ import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
-import { BottomNavigation } from "../components/BottomNavigationBar";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { useAuth } from "../hooks/useAuth";
 import { useVerificationStatus } from "../hooks/useVerificationStatus";
 import {
@@ -21,6 +20,7 @@ interface HomeScreenProps {
   onGoToDriverView?: () => void;
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
+  onGoToHome?: () => void;
 }
 
 export default function HomeScreen({
@@ -30,6 +30,7 @@ export default function HomeScreen({
   onGoToDriverView,
   onGoToProfile,
   onGoToInstitutionProfile,
+  onGoToHome,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -75,30 +76,6 @@ export default function HomeScreen({
   const suggestions = [
     { label: "Sugerir ruta", onPress: () => alert("Sugerir ruta") },
     { label: "Rastrea rutas", onPress: () => alert("Rastrea rutas") },
-  ];
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: true,
-      onPress: () => HomeScreen,
-    },
-    {
-      label: "Mis viajes",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToDriverView ?? (() => alert("Mis viajes")),
-    },
-    {
-      label: "Servicios",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => alert("Servicios"),
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile ?? (() => alert("Perfil")),
-    },
   ];
 
   const rutas = [
@@ -247,7 +224,11 @@ export default function HomeScreen({
         ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
-      <BottomNavigation buttons={navButtons} />
+      <HomeBottomMenu
+        onGoToProfile={onGoToProfile ?? (() => alert("Perfil"))}
+        onGoToHome={onGoToHome ?? (() => alert("Inicio"))}
+        activeButton="home"
+      />
     </View>
   );
 }

@@ -13,6 +13,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { DocumentService } from "../services/documentService";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface DocumentVerificationScreenProps {
   onComplete: () => void;
@@ -31,12 +32,15 @@ export default function DocumentVerificationScreen({
 
   // Datos del formulario
   const [documentData, setDocumentData] = useState({
-    tipo: "Cédula de Ciudadanía",
+    tipo: "identidad",
     lugar_expedicion: "",
     fecha_expedicion: "",
     fecha_vencimiento: "",
     numero: "",
   });
+
+  const [showExpeditionPicker, setShowExpeditionPicker] = useState(false);
+  const [showExpirationPicker, setShowExpirationPicker] = useState(false);
 
   const requestPermissions = async () => {
     const { status: cameraStatus } =
@@ -141,7 +145,6 @@ export default function DocumentVerificationScreen({
           lugar_expedicion: documentData.lugar_expedicion,
           fecha_expedicion: documentData.fecha_expedicion,
           fecha_vencimiento: documentData.fecha_vencimiento,
-          numero: documentData.numero,
         }
       );
 
@@ -262,26 +265,74 @@ export default function DocumentVerificationScreen({
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Fecha de Expedición *</Text>
-            <TextInput
+            <TouchableOpacity
               style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={documentData.fecha_expedicion}
-              onChangeText={(text) =>
-                setDocumentData({ ...documentData, fecha_expedicion: text })
-              }
-            />
+              onPress={() => setShowExpeditionPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={{
+                  color: documentData.fecha_expedicion ? "#222" : "#888",
+                }}
+              >
+                {documentData.fecha_expedicion || "YYYY-MM-DD"}
+              </Text>
+            </TouchableOpacity>
+            {showExpeditionPicker && (
+              <DateTimePicker
+                value={
+                  documentData.fecha_expedicion
+                    ? new Date(documentData.fecha_expedicion)
+                    : new Date()
+                }
+                mode="date"
+                display="calendar"
+                onChange={(_, date) => {
+                  setShowExpeditionPicker(false);
+                  if (date)
+                    setDocumentData({
+                      ...documentData,
+                      fecha_expedicion: date.toISOString().split("T")[0],
+                    });
+                }}
+              />
+            )}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Fecha de Vencimiento *</Text>
-            <TextInput
+            <TouchableOpacity
               style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={documentData.fecha_vencimiento}
-              onChangeText={(text) =>
-                setDocumentData({ ...documentData, fecha_vencimiento: text })
-              }
-            />
+              onPress={() => setShowExpirationPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={{
+                  color: documentData.fecha_vencimiento ? "#222" : "#888",
+                }}
+              >
+                {documentData.fecha_vencimiento || "YYYY-MM-DD"}
+              </Text>
+            </TouchableOpacity>
+            {showExpirationPicker && (
+              <DateTimePicker
+                value={
+                  documentData.fecha_vencimiento
+                    ? new Date(documentData.fecha_vencimiento)
+                    : new Date()
+                }
+                mode="date"
+                display="calendar"
+                onChange={(_, date) => {
+                  setShowExpirationPicker(false);
+                  if (date)
+                    setDocumentData({
+                      ...documentData,
+                      fecha_vencimiento: date.toISOString().split("T")[0],
+                    });
+                }}
+              />
+            )}
           </View>
         </View>
 

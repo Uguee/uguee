@@ -11,8 +11,7 @@ import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import VehicleCard from "../components/VehicleCard";
 import AddVehicleButton from "../components/AddVehicleButton";
-import { BottomNavigation } from "../components/BottomNavigationBar";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import { useUserVehicles } from "../hooks/useUserVehicles";
 
 interface MyVehiclesScreenProps {
@@ -20,6 +19,7 @@ interface MyVehiclesScreenProps {
   onGoToProfileScreen?: () => void;
   onGoToTravelScreen?: () => void;
   onGoToAddVehicleScreen?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function MyVehiclesScreen({
@@ -27,6 +27,7 @@ export default function MyVehiclesScreen({
   onGoToProfileScreen = () => {},
   onGoToTravelScreen = () => {},
   onGoToAddVehicleScreen = () => {},
+  onGoToMyTripsScreen = () => {},
 }: MyVehiclesScreenProps) {
   const {
     vehicles,
@@ -118,36 +119,13 @@ export default function MyVehiclesScreen({
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.bottomNavContainer}>
-        <BottomNavigation
-          buttons={[
-            {
-              label: "Inicio",
-              icon: <Ionicons name="home-outline" size={28} color="#000" />,
-              active: false,
-              onPress: onGoToDriverHomeScreen,
-            },
-            {
-              label: "Mis vehiculos",
-              active: true,
-              icon: (
-                <MaterialIcons name="airport-shuttle" size={28} color="#000" />
-              ),
-              onPress: () => {},
-            },
-            {
-              label: "Mis viajes",
-              icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-              onPress: onGoToTravelScreen,
-            },
-            {
-              label: "Perfil",
-              icon: <FontAwesome name="user-o" size={26} color="#000" />,
-              onPress: onGoToProfileScreen,
-            },
-          ]}
-        />
-      </View>
+      <DriverHomeBottomMenu
+        onGoToProfile={onGoToProfileScreen}
+        onGoToHome={onGoToDriverHomeScreen}
+        onGoToMyVehicles={() => {}}
+        onGoToMyTrips={onGoToMyTripsScreen}
+        activeButton="vehicles"
+      />
     </View>
   );
 }
@@ -197,13 +175,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 2,
     backgroundColor: "transparent",
-  },
-  bottomNavContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#fff",
   },
   infoButton: {
     backgroundColor: "#FFD700",
