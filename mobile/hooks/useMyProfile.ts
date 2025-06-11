@@ -5,6 +5,7 @@ import {
   getCedulaByUUID,
 } from "../services/userDataService";
 import { getConductorValidationStatus } from "../services/verificationService";
+import { getCurrentToken } from "../services/authService";
 
 export function useMyProfile() {
   const { user } = useAuth();
@@ -21,8 +22,23 @@ export function useMyProfile() {
         setLoading(false);
         return;
       }
+      const token = getCurrentToken && getCurrentToken();
+      if (!token) {
+        setError(
+          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
+        );
+        setLoading(false);
+        return;
+      }
       try {
         const data = await getUserDataByUUID(user.id);
+        if (!data) {
+          setError(
+            "No se pudo obtener los datos del usuario. Puede que tu sesión haya expirado o el token sea inválido."
+          );
+          setLoading(false);
+          return;
+        }
         let esConductor = false;
         const status = await getConductorValidationStatus(user.id);
         esConductor = status === "validado";

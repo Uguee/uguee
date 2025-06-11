@@ -1,3 +1,4 @@
+import { getCurrentToken } from "./authService";
 // Servicio: userDataService.ts
 // Consulta la edge function `get-user-data-post` para obtener la fila completa
 // de la tabla `usuarios` usando el uuid autenticado.

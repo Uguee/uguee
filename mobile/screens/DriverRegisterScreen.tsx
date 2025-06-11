@@ -122,7 +122,6 @@ export default function DriverRegisterScreen({ onGoBack }: Props) {
           lugar_expedicion: form.expeditionPlace,
           fecha_expedicion: form.expeditionDate,
           fecha_vencimiento: form.expirationDate,
-          numero: form.licenseId,
         }
       );
 
