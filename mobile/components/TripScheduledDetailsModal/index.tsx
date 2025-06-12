@@ -12,22 +12,61 @@ import { Ionicons } from "@expo/vector-icons";
 interface TripScheduledDetailsModalProps {
   visible: boolean;
   onClose: () => void;
+  trip?: any;
   onStartTrip?: () => void;
-  pickupPlace?: string;
-  destinationPlace?: string;
-  departureDate?: string;
-  departureTime?: string;
+}
+
+// Función para filtrar y mostrar solo los datos relevantes de la dirección
+function filtrarDireccion(direccion: string): string {
+  if (!direccion) return "";
+  const partes = direccion.split(",").map((p) => p.trim());
+  // Palabras clave para identificar los campos relevantes
+  const claves = [
+    "colegio",
+    "escuela",
+    "universidad", // nombre propio
+    "calle",
+    "carrera",
+    "avenida",
+    "cll",
+    "cra", // vías
+    "villa",
+    "barrio",
+    "neighbourhood", // barrios
+    "comuna", // comuna
+    "cali", // ciudad
+    "colombia", // país
+  ];
+  // Siempre incluye los primeros 1-2 elementos (nombre propio y calle)
+  let resultado: string[] = [];
+  if (partes.length > 0) resultado.push(partes[0]);
+  if (partes.length > 1) resultado.push(partes[1]);
+  // Busca y agrega los campos relevantes que no estén ya incluidos
+  for (let i = 2; i < partes.length; i++) {
+    const parte = partes[i].toLowerCase();
+    if (
+      claves.some((clave) => parte.includes(clave)) &&
+      !resultado.includes(partes[i])
+    ) {
+      resultado.push(partes[i]);
+    }
+  }
+  // Elimina duplicados y filtra frases no deseadas
+  resultado = [...new Set(resultado)].filter(
+    (p) =>
+      !/comuna 8/i.test(p) && // quita Comuna 8 (insensible a mayúsculas)
+      !/perímetro urbano/i.test(p) // quita Perímetro Urbano
+  );
+  return resultado.join(", ");
 }
 
 const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
   visible,
   onClose,
+  trip,
   onStartTrip = () => {},
-  pickupPlace = "Campus Meléndez Calle 13 # 100",
-  destinationPlace = "Cl. 13 #98-10",
-  departureDate = "2025-05-31",
-  departureTime = "07:00:00 p.m",
 }) => {
+  const ruta = trip?.ruta;
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -44,21 +83,23 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
               <Ionicons name="location" size={22} color="#B84CF6" />
               <Text style={styles.pickup}>
                 <Text style={styles.bold}>Lugar de recogida:</Text>{" "}
-                {pickupPlace}
+                {filtrarDireccion(ruta?.nombre_partida) || "-"}
               </Text>
             </View>
             <View style={styles.row}>
               <Ionicons name="flag" size={22} color="#B84CF6" />
               <Text style={styles.destination}>
                 <Text style={styles.bold}>Lugar de destino:</Text>{" "}
-                {destinationPlace}
+                {filtrarDireccion(ruta?.nombre_llegada) || "-"}
               </Text>
             </View>
             <Text style={styles.label}>
-              Fecha de salida: <Text style={styles.value}>{departureDate}</Text>
+              Fecha de salida:{" "}
+              <Text style={styles.value}>{trip?.fecha || "-"}</Text>
             </Text>
             <Text style={styles.label}>
-              Hora de salida: <Text style={styles.value}>{departureTime}</Text>
+              Hora de salida:{" "}
+              <Text style={styles.value}>{trip?.hora_salida || "-"}</Text>
             </Text>
             <Text style={styles.confirmText}>
               ¿Está seguro iniciar su viaje con la ruta actual?
