@@ -7,7 +7,6 @@ const SUPABASE_FUNCTIONS_BASE =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1";
 
 const ENDPOINT = `${SUPABASE_FUNCTIONS_BASE}/get-user-data-post`;
-const currentToken = getCurrentToken();
 export interface GetUserDataResponse {
   success: boolean;
   data?: {
@@ -33,6 +32,7 @@ export async function getUserDataByUUID(
   uuid: string
 ): Promise<GetUserDataResponse["data"] | null> {
   try {
+    const currentToken = getCurrentToken();
     const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

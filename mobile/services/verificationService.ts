@@ -5,7 +5,7 @@
 import { getCurrentToken } from "./authService";
 import { getCedulaByUUID } from "./userDataService";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ANON_KEY;
-const currentToken = getCurrentToken();
+
 export type InstitutionValidationStatus = "validado" | "pendiente" | "denegado";
 
 export interface InstitutionValidationResponse {
@@ -14,7 +14,7 @@ export interface InstitutionValidationResponse {
 }
 
 export interface ConductorVerificationResponse {
-  validacion?: InstitutionValidationStatus;
+  validacion_conductor?: InstitutionValidationStatus;
   error?: string;
 }
 
@@ -35,6 +35,7 @@ async function fetchAndValidate<T extends { success: boolean; error?: string }>(
   url: string
 ): Promise<T> {
   try {
+    const currentToken = getCurrentToken();
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -66,6 +67,7 @@ async function fetchAndValidate<T extends { success: boolean; error?: string }>(
 export async function getInstitutionValidationStatus(
   uuid: string
 ): Promise<InstitutionValidationStatus | null> {
+  const currentToken = getCurrentToken();
   // Traducir uuid (auth.user.id) a id_usuario de la tabla usuarios
   const idUsuario = await getCedulaByUUID(uuid);
   console.log("[getInstitutionValidationStatus] idUsuario:", idUsuario);
@@ -102,6 +104,7 @@ export async function getInstitutionValidationStatus(
 export async function getConductorValidationStatus(
   uuid: string
 ): Promise<InstitutionValidationStatus | null> {
+  const currentToken = getCurrentToken();
   const idUsuario = await getCedulaByUUID(uuid);
   console.log("[getConductorValidationStatus] idUsuario:", idUsuario);
   if (!idUsuario) return null;

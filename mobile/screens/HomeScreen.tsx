@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, FlatList, Text } from "react-native";
+import { View, FlatList, Text, StyleSheet } from "react-native";
 import { TopMenu } from "../components/TopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
@@ -21,6 +21,7 @@ interface HomeScreenProps {
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
   onGoToHome?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function HomeScreen({
@@ -31,6 +32,7 @@ export default function HomeScreen({
   onGoToProfile,
   onGoToInstitutionProfile,
   onGoToHome,
+  onGoToMyTripsScreen,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -226,9 +228,14 @@ export default function HomeScreen({
       />
       <HomeBottomMenu
         onGoToProfile={onGoToProfile ?? (() => alert("Perfil"))}
-        onGoToHome={onGoToHome ?? (() => alert("Inicio"))}
+        onGoToHome={() => {}}
+        onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
         activeButton="home"
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // ... existing code ...
+});
