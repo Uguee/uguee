@@ -22,6 +22,7 @@ import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
+import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
@@ -54,7 +55,8 @@ type Screen =
   | "register-route"
   | "driver-routes"
   | "driver-my-trips"
-  | "driver-create-trip";
+  | "driver-create-trip"
+  | "user-trips";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -262,6 +264,8 @@ const AppNavigator = () => {
   const handleGoToCreateTripScreen = () =>
     setCurrentScreen("driver-create-trip");
 
+  const handleGoToUserTripsScreen = () => setCurrentScreen("user-trips");
+
   // Cuando se crea una ruta, refrescar las rutas
   const handleRouteCreated = () => {
     setRoutesRefreshKey((k) => k + 1);
@@ -284,6 +288,7 @@ const AppNavigator = () => {
           onGoToMyInstitution={() => {}}
           onGoToProfile={handleGoToProfile}
           onGoToInstitutionProfile={handleGoToInstProfile}
+          onGoToMyTripsScreen={handleGoToUserTripsScreen}
         />
       </ProtectedRoute>
     );
@@ -504,6 +509,13 @@ const AppNavigator = () => {
           <DriverCreateTripScreen
             onGoToRegisterRouteScreen={handleGoToRegisterRouteScreen}
             onGoBack={() => setCurrentScreen("driver-my-trips")}
+          />
+        );
+      case "user-trips":
+        return (
+          <UserTripsScreen
+            onGoToHomeScreen={handleGoToHomeScreen}
+            onGoToProfileScreen={handleGoToProfile}
           />
         );
       default:

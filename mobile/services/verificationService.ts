@@ -14,7 +14,7 @@ export interface InstitutionValidationResponse {
 }
 
 export interface ConductorVerificationResponse {
-  validacion?: InstitutionValidationStatus;
+  validacion_conductor?: InstitutionValidationStatus;
   error?: string;
 }
 
@@ -67,6 +67,7 @@ async function fetchAndValidate<T extends { success: boolean; error?: string }>(
 export async function getInstitutionValidationStatus(
   uuid: string
 ): Promise<InstitutionValidationStatus | null> {
+  const currentToken = getCurrentToken();
   // Traducir uuid (auth.user.id) a id_usuario de la tabla usuarios
   const currentToken = getCurrentToken();
   const idUsuario = await getCedulaByUUID(uuid);
