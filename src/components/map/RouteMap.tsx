@@ -34,6 +34,7 @@ interface RouteMapProps {
   origin: Location | null;
   destination: Location | null;
   route: [number, number][] | null;
+  selectedTripRoute?: [number, number][] | null;
   onCurrentLocationChange?: (location: Location) => void;
   onRouteGenerated?: (origin: Location, destination: Location, route: [number, number][]) => void;
   onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
@@ -167,7 +168,8 @@ function FitBounds({ origin, destination, route }: {
 export function RouteMap({ 
   origin, 
   destination, 
-  route, 
+  route,
+  selectedTripRoute,
   onCurrentLocationChange,
   onRouteGenerated,
   onMapClick,
@@ -198,71 +200,96 @@ export function RouteMap({
     <div className="relative h-full w-full" style={{ zIndex: 0 }}>
       {allowClickToSetPoints && (
         <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
-          <h3 className="font-medium text-sm mb-2">📍 Seleccionar Puntos</h3>
-          {!origin && (
-            <p className="text-xs text-gray-600">1. Haz clic derecho para seleccionar el origen</p>
-          )}
-          {origin && !destination && (
-            <p className="text-xs text-gray-600">2. Haz clic izquierdo para seleccionar el destino</p>
-          )}
-          {origin && destination && (
-            <p className="text-xs text-green-600">✅ Ruta generada</p>
-          )}
+          <p className="text-sm text-gray-600">
+            Haz clic derecho para establecer el origen y clic izquierdo para el destino
+          </p>
         </div>
       )}
-
       <MapContainer
-        center={origin ? [origin.lat, origin.lng] : [3.4516, -76.5320]}
+        center={[4.5709, -74.2973]} // Bogotá coordinates
         zoom={13}
-        className="h-full w-full"
+        style={{ height: '100%', width: '100%' }}
         zoomControl={false}
-        whenReady={() => setIsMapReady(true)}
-        style={{ zIndex: 0 }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-
         <ZoomControl position="bottomright" />
-        
-        {isMapReady && (
+
+        {/* Current Location Controller */}
+        <MapController onCurrentLocationChange={onCurrentLocationChange} />
+
+        {/* Map Click Handler */}
+        {allowClickToSetPoints && <MapClickHandler onMapClick={onMapClick} />}
+
+        {/* Fit Bounds Controller */}
+        <FitBounds origin={origin} destination={destination} route={route} />
+
+        {/* Origin Marker */}
+        {origin && (
+          <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
+            <Popup>
+              <div className="text-sm">
+                <p className="font-medium">Origen</p>
+                <p>{origin.address}</p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Destination Marker */}
+        {destination && (
+          <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
+            <Popup>
+              <div className="text-sm">
+                <p className="font-medium">Destino</p>
+                <p>{destination.address}</p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* User's Route */}
+        {route && (
+          <Polyline
+            positions={route}
+            color="#9333EA"
+            weight={4}
+            opacity={0.7}
+          />
+        )}
+
+        {/* Selected Trip Route */}
+        {selectedTripRoute && (
           <>
-            <MapController onCurrentLocationChange={onCurrentLocationChange} />
-            {allowClickToSetPoints && (
-              <MapClickHandler onMapClick={onMapClick} />
-            )}
-            {origin && (
-              <Marker 
-                position={[origin.lat, origin.lng]}
-                icon={originIcon}
-              >
-                <Popup>
-                  <strong>Origen:</strong> {origin.address}
-                </Popup>
-              </Marker>
-            )}
-            {destination && (
-              <Marker 
-                position={[destination.lat, destination.lng]}
-                icon={destinationIcon}
-              >
-                <Popup>
-                  <strong>Destino:</strong> {destination.address}
-                </Popup>
-              </Marker>
-            )}
-            {route && (
-              <Polyline
-                positions={route}
-                color="#8B5CF6"
-                weight={4}
-                opacity={0.7}
-              />
-            )}
-            {(origin || destination || route) && (
-              <FitBounds origin={origin} destination={destination} route={route} />
-            )}
+            <Polyline
+              positions={selectedTripRoute}
+              color="#DC2626"
+              weight={4}
+              opacity={0.7}
+              dashArray="5, 10"
+            />
+            {/* Trip's Origin Marker */}
+            <Marker
+              position={selectedTripRoute[0]}
+              icon={L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="w-4 h-4 bg-black rounded-full border-2 border-white"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              })}
+            />
+            {/* Trip's Destination Marker */}
+            <Marker
+              position={selectedTripRoute[selectedTripRoute.length - 1]}
+              icon={L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="w-4 h-4 bg-black rounded-full border-2 border-white"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              })}
+            />
           </>
         )}
       </MapContainer>

@@ -27,6 +27,7 @@ const SearchRoutes = () => {
   const { vehicleTypes, isLoading: isLoadingTypes, error: typesError, fetchVehicleTypes } = useVehicleTypes();
   const { currentUserId, isLoading: isLoadingUser } = useCurrentUser();
   const [isReserving, setIsReserving] = useState(false);
+  const [userTripStatus, setUserTripStatus] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetchTrips();
@@ -53,6 +54,22 @@ const SearchRoutes = () => {
 
     setFilteredTrips(filtered);
   }, [selectedVehicleType, selectedRoute, trips]);
+
+  // Add effect to check user status for each trip
+  useEffect(() => {
+    const checkUserTripStatus = async () => {
+      if (!currentUserId || trips.length === 0) return;
+
+      const statusMap: Record<number, boolean> = {};
+      for (const trip of trips) {
+        const isDriverOrCreator = await isUserDriver(trip);
+        statusMap[trip.id_viaje] = isDriverOrCreator;
+      }
+      setUserTripStatus(statusMap);
+    };
+
+    checkUserTripStatus();
+  }, [currentUserId, trips]);
 
   const fetchAvailableRoutes = async () => {
     try {
@@ -148,9 +165,42 @@ const SearchRoutes = () => {
     }
   };
 
-  // Función para verificar si el usuario es el conductor del viaje
-  const isUserDriver = (trip: Trip) => {
-    return trip.id_conductor === currentUserId;
+  // Función para verificar si el usuario es el conductor o el pasajero que creó la ruta
+  const isUserDriver = async (trip: Trip) => {
+    console.log('Checking if user is driver or creator:', {
+      currentUserId,
+      tripDriverId: trip.id_conductor,
+      tripRouteId: trip.id_ruta
+    });
+
+    // Check if user is the driver
+    if (trip.id_conductor === currentUserId) {
+      console.log('User is the driver');
+      return true;
+    }
+
+    // Check if user is the passenger who created the route
+    try {
+      const { data: routeCreator, error } = await supabase
+        .from('usuario_ruta')
+        .select('id_usuario')
+        .eq('id_ruta', trip.id_ruta)
+        .single();
+
+      console.log('Route creator check:', { routeCreator, error });
+
+      if (error) {
+        console.error('Error checking route creator:', error);
+        return false;
+      }
+
+      const isCreator = routeCreator?.id_usuario === currentUserId;
+      console.log('Is user the creator?', isCreator);
+      return isCreator;
+    } catch (error) {
+      console.error('Error checking route creator:', error);
+      return false;
+    }
   };
 
   // Función para realizar la reserva
@@ -164,10 +214,19 @@ const SearchRoutes = () => {
       return;
     }
 
-    if (isUserDriver(trip)) {
+    console.log('Attempting to reserve trip:', {
+      tripId: trip.id_viaje,
+      routeId: trip.id_ruta,
+      currentUserId
+    });
+
+    const isDriverOrCreator = await isUserDriver(trip);
+    console.log('Is user driver or creator?', isDriverOrCreator);
+
+    if (isDriverOrCreator) {
       toast({
         title: "Error",
-        description: "No puedes reservar tu propio viaje",
+        description: "No puedes reservar un viaje que has creado",
         variant: "destructive",
       });
       return;
@@ -316,7 +375,7 @@ const SearchRoutes = () => {
                   key={trip.id_viaje}
                   className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
                 >
-                  <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium text-lg">
                         {trip.conductor?.nombre} {trip.conductor?.apellido}
@@ -333,26 +392,28 @@ const SearchRoutes = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1"
-                        variant="outline"
+                    <div className="text-right space-y-2">
+                      <button
+                        className={`w-full px-4 py-2 ${
+                          userTripStatus[trip.id_viaje]
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-primary hover:bg-primary/90'
+                        } text-white rounded-md transition-colors`}
+                        onClick={() => handleReserve(trip)}
+                        disabled={userTripStatus[trip.id_viaje] || isReserving}
+                      >
+                        {userTripStatus[trip.id_viaje]
+                          ? 'No puedes reservar tu propio viaje'
+                          : isReserving
+                          ? 'Reservando...'
+                          : 'Reservar'}
+                      </button>
+                      <button
+                        className="w-full px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
                         onClick={() => handleViewRoute(trip.id_ruta)}
                       >
                         Ver ruta
-                      </Button>
-                      <Button
-                        className="flex-1"
-                        onClick={() => {
-                          // TODO: Implement reservation functionality
-                          toast({
-                            title: "Funcionalidad en desarrollo",
-                            description: "La reserva de viajes estará disponible próximamente",
-                          });
-                        }}
-                      >
-                        Reservar
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
