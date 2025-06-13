@@ -8,17 +8,12 @@ import {
   FlatList,
   TextInput,
   Platform,
-  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useUserRoutes } from "../hooks/useUserRoutes";
 import { useUserVehicles } from "../hooks/useUserVehicles";
 import ReturnButton from "../components/ReturnButton";
-import { createTrip } from "../services/tripServices";
-import { getCedulaByUUID } from "../services/userDataService";
-import { getCurrentToken } from "../services/authService";
-import { useAuth } from "../hooks/useAuth";
 
 interface DriverCreateTripScreenProps {
   onGoToRegisterRouteScreen: () => void;
@@ -45,11 +40,6 @@ export default function DriverCreateTripScreen({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [date, setDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Filtrar solo vehículos validados
   const validVehicles = vehicles.filter(
@@ -85,94 +75,20 @@ export default function DriverCreateTripScreen({
           .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`
       : "";
 
-  // Crear viaje real
-  const handleCreateTrip = async () => {
-    setError(null);
-    setSuccess(null);
-    if (!selectedRoute || !selectedVehicle) {
-      setError("Debes seleccionar una ruta y un vehículo.");
-      return;
-    }
-    setLoading(true);
-    try {
-      if (!user?.id) throw new Error("No hay usuario autenticado");
-      const id_conductor = await getCedulaByUUID(user.id);
-      console.log("[handleCreateTrip] id_conductor:", id_conductor);
-      if (!id_conductor)
-        throw new Error("No se pudo obtener la cédula del usuario");
-      const token = getCurrentToken && getCurrentToken();
-      if (!token) throw new Error("No se encontró un token JWT válido");
-      const tripData = {
-        id_conductor,
-        id_vehiculo: selectedVehicle.placa,
-        id_ruta: selectedRoute.id_ruta,
-        fecha: date ? formatDate(date) : undefined,
-        hora_salida: startTime
-          ? `${startTime.getHours().toString().padStart(2, "0")}:${startTime
-              .getMinutes()
-              .toString()
-              .padStart(2, "0")}:00`
-          : undefined,
-      };
-      const trip = await createTrip(tripData, token);
-      setSuccess("¡Viaje creado exitosamente!");
-      if (onTripCreated) onTripCreated(trip);
-    } catch (err: any) {
-      setError(err.message || "Error al crear el viaje");
-    } finally {
-      setLoading(false);
-    }
+  // Crear viaje (dummy)
+  const handleCreateTrip = () => {
+    if (onTripCreated)
+      onTripCreated({
+        route: selectedRoute,
+        vehicle: selectedVehicle,
+        startTime,
+        date,
+      });
+    // Aquí iría la lógica real de creación
   };
 
-  // Función para filtrar y mostrar solo los datos relevantes de la dirección
-  function filtrarDireccion(direccion: string): string {
-    if (!direccion) return "";
-    const partes = direccion.split(",").map((p) => p.trim());
-    // Palabras clave para identificar los campos relevantes
-    const claves = [
-      "colegio",
-      "escuela",
-      "universidad", // nombre propio
-      "calle",
-      "carrera",
-      "avenida",
-      "cll",
-      "cra", // vías
-      "villa",
-      "barrio",
-      "neighbourhood", // barrios
-      "comuna", // comuna
-      "cali", // ciudad
-      "colombia", // país
-    ];
-    // Siempre incluye los primeros 1-2 elementos (nombre propio y calle)
-    let resultado: string[] = [];
-    if (partes.length > 0) resultado.push(partes[0]);
-    if (partes.length > 1) resultado.push(partes[1]);
-    // Busca y agrega los campos relevantes que no estén ya incluidos
-    for (let i = 2; i < partes.length; i++) {
-      const parte = partes[i].toLowerCase();
-      if (
-        claves.some((clave) => parte.includes(clave)) &&
-        !resultado.includes(partes[i])
-      ) {
-        resultado.push(partes[i]);
-      }
-    }
-    // Elimina duplicados y filtra frases no deseadas
-    resultado = [...new Set(resultado)].filter(
-      (p) =>
-        !/comuna 8/i.test(p) && // quita Comuna 8 (insensible a mayúsculas)
-        !/perímetro urbano/i.test(p) // quita Perímetro Urbano
-    );
-    return resultado.join(", ");
-  }
-
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
+    <View style={styles.container}>
       {onGoBack && <ReturnButton onPress={onGoBack} />}
       <Text style={styles.title}>Ugüee</Text>
       <Text style={styles.subtitle}>
@@ -188,9 +104,7 @@ export default function DriverCreateTripScreen({
       >
         <Text style={{ color: selectedRoute ? "#222" : "#888" }}>
           {selectedRoute
-            ? `${filtrarDireccion(
-                selectedRoute.nombre_partida ?? ""
-              )} → ${filtrarDireccion(selectedRoute.nombre_llegada ?? "")}`
+            ? `${selectedRoute.nombre_partida} → ${selectedRoute.nombre_llegada}`
             : "selecciona una ruta"}
         </Text>
       </TouchableOpacity>
@@ -225,11 +139,10 @@ export default function DriverCreateTripScreen({
                     <View style={styles.routeIcon} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.dropdownTitle}>
-                        {filtrarDireccion(item.nombre_partida ?? "")} →{" "}
-                        {filtrarDireccion(item.nombre_llegada ?? "")}
+                        {item.nombre_partida} → {item.nombre_llegada}
                       </Text>
                       <Text style={styles.dropdownSubtitle}>
-                        Salida: {filtrarDireccion(item.nombre_partida ?? "")}
+                        Salida: {item.nombre_partida}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -348,32 +261,16 @@ export default function DriverCreateTripScreen({
       )}
 
       {/* Botón Crear viaje */}
-      <TouchableOpacity
-        style={styles.createTripBtn}
-        onPress={handleCreateTrip}
-        disabled={loading}
-      >
+      <TouchableOpacity style={styles.createTripBtn} onPress={handleCreateTrip}>
         <Ionicons
           name="add"
           size={28}
           color="#fff"
           style={{ marginRight: 8 }}
         />
-        <Text style={styles.createTripBtnText}>
-          {loading ? "Creando..." : "Crear viaje"}
-        </Text>
+        <Text style={styles.createTripBtnText}>Crear viaje</Text>
       </TouchableOpacity>
-      {error && (
-        <Text style={{ color: "red", textAlign: "center", marginTop: 10 }}>
-          {error}
-        </Text>
-      )}
-      {success && (
-        <Text style={{ color: "green", textAlign: "center", marginTop: 10 }}>
-          {success}
-        </Text>
-      )}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -394,12 +291,10 @@ function getVehicleTitle(vehicle: any) {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-    justifyContent: "flex-start",
+    paddingTop: 70,
   },
   title: {
     fontSize: 32,
@@ -503,8 +398,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     justifyContent: "center",
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 40,
+    marginBottom: 24,
   },
   createTripBtnText: {
     color: "#fff",

@@ -35,7 +35,7 @@ async function fetchAndValidate<T extends { success: boolean; error?: string }>(
   url: string
 ): Promise<T> {
   try {
-    const currentToken = await getCurrentToken();
+    const currentToken = getCurrentToken();
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -104,7 +104,7 @@ export async function getInstitutionValidationStatus(
 export async function getConductorValidationStatus(
   uuid: string
 ): Promise<InstitutionValidationStatus | null> {
-  const currentToken = await getCurrentToken();
+  const currentToken = getCurrentToken();
   const idUsuario = await getCedulaByUUID(uuid);
   console.log("[getConductorValidationStatus] idUsuario:", idUsuario);
   if (!idUsuario) return null;
