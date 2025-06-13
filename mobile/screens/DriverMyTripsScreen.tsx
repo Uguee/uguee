@@ -43,6 +43,7 @@ const DriverMyTripsScreen = ({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   onGoToCreateTripScreen = () => {},
+  onStartTripScreen = (_pickup: string, _dest: string) => {},
 }) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -165,12 +166,21 @@ const DriverMyTripsScreen = ({
         onClose={() => setShowCompletedModal(false)}
         route={selectedTrip?.route}
         passengers={selectedTrip?.passengers}
-        // Puedes pasar más props aquí si lo deseas
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}
         onClose={() => setShowScheduledModal(false)}
-        // Puedes pasar más props aquí si lo deseas
+        pickupPlace={
+          selectedTrip?.pickupPlace || "Campus Meléndez Calle 13 # 100"
+        }
+        destinationPlace={selectedTrip?.destinationPlace || "Cl. 13 #98-10"}
+        onStartTrip={() => {
+          setShowScheduledModal(false);
+          onStartTripScreen(
+            selectedTrip?.pickupPlace || "Campus Meléndez Calle 13 # 100",
+            selectedTrip?.destinationPlace || "Cl. 13 #98-10"
+          );
+        }}
       />
       {/* Menú inferior */}
       <DriverHomeBottomMenu

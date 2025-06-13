@@ -30,6 +30,8 @@ import { View, Text } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
+import DriverTripStartScreen from "./screens/DriverTripStartScreen";
+import DriveQRScreen from "./screens/DriveQRScreen";
 
 type Screen =
   | "welcome"
@@ -56,7 +58,9 @@ type Screen =
   | "driver-routes"
   | "driver-my-trips"
   | "driver-create-trip"
-  | "user-trips";
+  | "user-trips"
+  | "driver-trip-start"
+  | "driver-qr";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -65,6 +69,11 @@ const AppNavigator = () => {
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
   const [cedula, setCedula] = React.useState<number | null>(null);
+  const [tripStartData, setTripStartData] = useState<{
+    pickupPlace: string;
+    destinationPlace: string;
+  } | null>(null);
+  const [qrValue, setQRValue] = useState<string | null>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -434,8 +443,8 @@ const AppNavigator = () => {
         return (
           <MyVehiclesScreen
             onGoToDriverHomeScreen={handleGoToDriverView}
-            onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToProfileScreen={handleGoToProfileFromDriver}
+            onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
@@ -445,6 +454,7 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToHomeScreen={handleGoToDriverView}
             onGoToProfile={handleGoToProfileFromDriver}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "inst-profile":
@@ -502,6 +512,10 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToCreateTripScreen={handleGoToCreateTripScreen}
+            onStartTripScreen={(pickup: string, dest: string) => {
+              setTripStartData({ pickupPlace: pickup, destinationPlace: dest });
+              setCurrentScreen("driver-trip-start");
+            }}
           />
         );
       case "driver-create-trip":
@@ -516,6 +530,25 @@ const AppNavigator = () => {
           <UserTripsScreen
             onGoToHomeScreen={handleGoToHomeScreen}
             onGoToProfileScreen={handleGoToProfile}
+          />
+        );
+      case "driver-trip-start":
+        return (
+          <DriverTripStartScreen
+            pickupPlace={tripStartData?.pickupPlace || ""}
+            destinationPlace={tripStartData?.destinationPlace || ""}
+            onGoBack={() => setCurrentScreen("driver-my-trips")}
+            onGoToQRScreen={(qr) => {
+              setQRValue(qr);
+              setCurrentScreen("driver-qr");
+            }}
+          />
+        );
+      case "driver-qr":
+        return (
+          <DriveQRScreen
+            qrValue={qrValue || "QR-PLACEHOLDER"}
+            onGoBack={() => setCurrentScreen("driver-trip-start")}
           />
         );
       default:

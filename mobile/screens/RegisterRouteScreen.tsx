@@ -37,6 +37,7 @@ export default function RegisterRouteScreen({
     error,
   } = useRouteManager();
   const { user } = useAuth();
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Obtener ubicación actual
   const getLocation = async () => {
@@ -44,7 +45,10 @@ export default function RegisterRouteScreen({
       const { status } = await (
         await import("expo-location")
       ).requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      if (status !== "granted") {
+        setLocationError("Permiso de ubicación denegado.");
+        return;
+      }
       const location = await (
         await import("expo-location")
       ).getCurrentPositionAsync({});
@@ -52,8 +56,11 @@ export default function RegisterRouteScreen({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
+      setLocationError(null);
     } catch (e) {
-      // Manejo simple de error
+      setLocationError("No se pudo obtener la ubicación.");
+      // Para pruebas, puedes poner coordenadas dummy:
+      // setCurrentLocation({ latitude: 3.375, longitude: -76.535 });
     }
   };
 
@@ -180,6 +187,19 @@ export default function RegisterRouteScreen({
             />
           )}
         </MapView>
+      ) : locationError ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: "red" }}>{locationError}</Text>
+          {/* Para pruebas, botón para usar coordenadas dummy */}
+          <Button
+            title="Usar ubicación de prueba"
+            onPress={() =>
+              setCurrentLocation({ latitude: 3.375, longitude: -76.535 })
+            }
+          />
+        </View>
       ) : (
         <ActivityIndicator
           size="large"
