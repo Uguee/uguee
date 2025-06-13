@@ -168,7 +168,7 @@ function FitBounds({ origin, destination, route }: {
 export function RouteMap({ 
   origin, 
   destination, 
-  route,
+  route, 
   selectedTripRoute,
   onCurrentLocationChange,
   onRouteGenerated,
@@ -216,9 +216,9 @@ export function RouteMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ZoomControl position="bottomright" />
-
+        
         {/* Current Location Controller */}
-        <MapController onCurrentLocationChange={onCurrentLocationChange} />
+            <MapController onCurrentLocationChange={onCurrentLocationChange} />
 
         {/* Map Click Handler */}
         {allowClickToSetPoints && <MapClickHandler onMapClick={onMapClick} />}
@@ -227,38 +227,38 @@ export function RouteMap({
         <FitBounds origin={origin} destination={destination} route={route} />
 
         {/* Origin Marker */}
-        {origin && (
+            {origin && (
           <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
-            <Popup>
+                <Popup>
               <div className="text-sm">
                 <p className="font-medium">Origen</p>
                 <p>{origin.address}</p>
               </div>
-            </Popup>
-          </Marker>
-        )}
+                </Popup>
+              </Marker>
+            )}
 
         {/* Destination Marker */}
-        {destination && (
+            {destination && (
           <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
-            <Popup>
+                <Popup>
               <div className="text-sm">
                 <p className="font-medium">Destino</p>
                 <p>{destination.address}</p>
               </div>
-            </Popup>
-          </Marker>
-        )}
+                </Popup>
+              </Marker>
+            )}
 
         {/* User's Route */}
-        {route && (
-          <Polyline
-            positions={route}
+            {route && (
+              <Polyline
+                positions={route}
             color="#9333EA"
-            weight={4}
-            opacity={0.7}
-          />
-        )}
+                weight={4}
+                opacity={0.7}
+              />
+            )}
 
         {/* Selected Trip Route */}
         {selectedTripRoute && (

@@ -500,6 +500,54 @@ export type Database = {
             referencedColumns: ["placa"]
           },
         ]
+      },
+      solicitud_viaje: {
+        Row: {
+          id_solicitud: number
+          id_ruta: number
+          id_pasajero: number
+          fecha: string
+          hora_salida: string
+          hora_llegada: string | null
+          estado: string
+          created_at: string
+        }
+        Insert: {
+          id_solicitud?: number
+          id_ruta: number
+          id_pasajero: number
+          fecha: string
+          hora_salida: string
+          hora_llegada?: string | null
+          estado: string
+          created_at?: string
+        }
+        Update: {
+          id_solicitud?: number
+          id_ruta?: number
+          id_pasajero?: number
+          fecha?: string
+          hora_salida?: string
+          hora_llegada?: string | null
+          estado?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitud_viaje_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "ruta"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "solicitud_viaje_id_pasajero_fkey"
+            columns: ["id_pasajero"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          }
+        ]
       }
     }
     Views: {

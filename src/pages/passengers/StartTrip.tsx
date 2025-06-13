@@ -17,6 +17,7 @@ import { es } from "date-fns/locale";
 import { TripService } from "@/services/tripService";
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { supabase } from "@/integrations/supabase/client";
+import { useViajeManager } from '@/hooks/useViajeManager';
 
 const StartTrip = () => {
   const [origin, setOrigin] = useState<string>("");
@@ -39,10 +40,13 @@ const StartTrip = () => {
   const [destinationSuggestions, setDestinationSuggestions] = useState<Location[]>([]);
   const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
-  const [departureTime, setDepartureTime] = useState<Date | null>(null);
-  const [isDepartureDialogOpen, setIsDepartureDialogOpen] = useState(false);
+  const [departureTime, setDepartureTime] = useState<string>("");
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [selectedTripRoute, setSelectedTripRoute] = useState<[number, number][] | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
+
+  const { crearSolicitudViaje } = useViajeManager();
 
   // Debounce function for address search
   const debounce = (func: Function, wait: number) => {
@@ -319,26 +323,116 @@ const StartTrip = () => {
 
   // Handle new request
   const handleNewRequest = () => {
-    setOrigin("");
-    setOriginLocation(null);
-    setDestination("");
-    setDestinationLocation(null);
-    setRoute(null);
-    setRoutes([]);
-    setError(null);
-    setDepartureTime(null);
-    setIsDepartureDialogOpen(true);
+    if (!originLocation || !destinationLocation) {
+      toast({
+        title: "Error",
+        description: "Debes especificar origen y destino antes de crear una solicitud",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsRequestDialogOpen(true);
   };
 
-  // Handle departure time selection
-  const handleDepartureTimeChange = (value: string) => {
-    if (value === "now") {
-      setDepartureTime(new Date());
-    } else {
-      const [hours, minutes] = value.split(":").map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes, 0, 0);
-      setDepartureTime(date);
+  const handleSubmitRequest = async () => {
+    if (!departureTime) {
+      toast({
+        title: "Error",
+        description: "Debes especificar la hora de salida",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!route || !originLocation || !destinationLocation) {
+      toast({
+        title: "Error",
+        description: "Debes especificar una ruta válida con origen y destino",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      // Format the route data for PostGIS
+      const routeLineString = route.map(coord => `${coord[1]} ${coord[0]}`).join(',');
+      const originPoint = `${originLocation.lng} ${originLocation.lat}`;
+      const destinationPoint = `${destinationLocation.lng} ${destinationLocation.lat}`;
+
+      console.log('📍 Creando ruta con puntos:', {
+        origin: originPoint,
+        destination: destinationPoint,
+        routeLength: route.length
+      });
+
+      // First, create the route using the PostGIS function
+      const { data: routeData, error: routeError } = await supabase
+        .rpc('insertar_ruta', {
+          p_longitud: route.length,
+          p_punto_partida_wkt: `POINT(${originPoint})`,
+          p_punto_llegada_wkt: `POINT(${destinationPoint})`,
+          p_trayecto_wkt: `LINESTRING(${routeLineString})`
+        });
+
+      if (routeError) {
+        console.error('❌ Error creating route:', routeError);
+        throw new Error('No se pudo crear la ruta');
+      }
+
+      if (!routeData || !routeData[0]?.id_ruta_nuevo) {
+        throw new Error('No se pudo obtener el ID de la ruta creada');
+      }
+
+      console.log('✅ Ruta creada:', routeData[0]);
+
+      // Format the date and time for the trip
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      const [hours, minutes] = departureTime.split(':');
+      const formattedTime = `${hours}:${minutes}:00`;
+
+      console.log('🕒 Creando solicitud de viaje con datos:', {
+        id_ruta: routeData[0].id_ruta_nuevo,
+        fecha: formattedDate,
+        hora_salida: formattedTime
+      });
+
+      // Create the trip request using crearSolicitudViaje
+      const solicitudCreada = await crearSolicitudViaje({
+        id_ruta: routeData[0].id_ruta_nuevo,
+        id_conductor: currentUserId, // This will be used as id_pasajero
+        id_vehiculo: null,
+        fecha: formattedDate,
+        hora_salida: formattedTime,
+        hora_llegada: null
+      });
+
+      console.log('✅ Solicitud de viaje creada:', solicitudCreada);
+
+      toast({
+        title: "Éxito",
+        description: "Tu solicitud de viaje ha sido creada",
+        variant: "default",
+      });
+
+      setIsRequestDialogOpen(false);
+      setDepartureTime("");
+    } catch (error) {
+      console.error('❌ Error creating trip request:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'object' && error !== null
+          ? JSON.stringify(error)
+          : "No se pudo crear la solicitud de viaje";
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -685,48 +779,62 @@ const StartTrip = () => {
                 </p>
               )}
               <div className="mt-4">
-                <Dialog open={isDepartureDialogOpen} onOpenChange={setIsDepartureDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleNewRequest}
-                    >
-                      Hacer nueva solicitud
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Selecciona la hora de partida</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <RadioGroup
-                        defaultValue="now"
-                        onValueChange={handleDepartureTimeChange}
-                        className="space-y-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="now" id="now" />
-                          <Label htmlFor="now">Ahora mismo</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="custom" id="custom" />
-                          <Label htmlFor="custom">Personalizar hora</Label>
-                        </div>
-                      </RadioGroup>
-                      {departureTime && (
-                        <div className="mt-4 text-sm text-gray-600">
-                          Hora seleccionada: {format(departureTime, "HH:mm", { locale: es })}
-                        </div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleNewRequest}
+                >
+                  Hacer nueva solicitud
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Add the new request dialog */}
+      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear solicitud de viaje</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="departureTime">Hora de salida</Label>
+              <Input
+                id="departureTime"
+                type="time"
+                value={departureTime}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value) {
+                    setDepartureTime(value);
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRequestDialogOpen(false);
+                  setDepartureTime("");
+                }}
+                disabled={isSubmittingRequest}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmitRequest}
+                disabled={isSubmittingRequest || !departureTime}
+              >
+                {isSubmittingRequest ? "Creando solicitud..." : "Crear solicitud"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
