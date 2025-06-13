@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
@@ -15,22 +16,7 @@ import DriverTripButton from "../components/DriverTripButton";
 import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
-
-const TRIPS = [
-  {
-    id: "1",
-    type: "completed",
-    route: "Univalle ➔ Multicentro",
-    passengers: 3,
-  },
-  {
-    id: "2",
-    type: "scheduled",
-    route: "Univalle ➔ Multicentro",
-    arrivalDateTime: "2025-06-17 ➔ 08:00:00 p.m",
-  },
-  // Puedes agregar más viajes aquí
-];
+import { useDriverTrips } from "../hooks/useDriverTrips";
 
 const FILTERS = [
   { label: "Terminado", value: "completed" },
@@ -52,27 +38,32 @@ const DriverMyTripsScreen = ({
   const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
 
+  // Elimina el array TRIPS y usa los viajes reales
+  const { trips, loading, error } = useDriverTrips();
+  console.log("[DriverMyTripsScreen] trips:", trips);
+
   // Filtrado por estado
   let filteredTrips =
     filter === "all"
-      ? TRIPS
-      : TRIPS.filter((trip) =>
+      ? trips
+      : trips.filter((trip: any) =>
           filter === "completed"
-            ? trip.type === "completed"
-            : trip.type === "scheduled"
+            ? trip.hora_llegada !== null
+            : trip.hora_llegada === null
         );
 
   // Filtrado por búsqueda
-  filteredTrips = filteredTrips.filter((trip) =>
-    trip.route.toLowerCase().includes(search.toLowerCase())
+  filteredTrips = filteredTrips.filter((trip: any) =>
+    (trip.ruta_nombre || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const renderTrip = ({ item }: { item: any }) => {
-    if (item.type === "completed") {
+    if (item.hora_llegada !== null) {
+      // Terminado
       return (
         <TripCompletedCard
-          route={item.route}
-          passengers={item.passengers}
+          route={item.ruta_nombre || `${item.id_ruta}`}
+          passengers={item.pasajeros || 0}
           onPress={() => {
             setSelectedTrip(item);
             setShowCompletedModal(true);
@@ -80,15 +71,26 @@ const DriverMyTripsScreen = ({
         />
       );
     } else {
+      // Programado
       return (
-        <TripScheduledCard
-          route={item.route}
-          arrivalDateTime={item.arrivalDateTime}
-          onPress={() => {
-            setSelectedTrip(item);
-            setShowScheduledModal(true);
+        <View
+          style={{
+            backgroundColor: "#E9D6FF",
+            borderRadius: 16,
+            marginBottom: 12,
           }}
-        />
+        >
+          <TripScheduledCard
+            route={item.ruta_nombre || `${item.id_ruta}`}
+            arrivalDateTime={
+              item.fecha + (item.hora_salida ? ` ➔ ${item.hora_salida}` : "")
+            }
+            onPress={() => {
+              setSelectedTrip(item);
+              setShowScheduledModal(true);
+            }}
+          />
+        </View>
       );
     }
   };
@@ -149,13 +151,27 @@ const DriverMyTripsScreen = ({
       </Modal>
       {/* Lista de viajes */}
       <Text style={styles.sectionTitle}>Viajes creados</Text>
-      <FlatList
-        data={filteredTrips}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTrip}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color="#A259FF" />
+          <Text style={{ textAlign: "center", color: "#A259FF", marginTop: 8 }}>
+            Cargando viajes...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTrips}
+          keyExtractor={(item) => item.id_viaje.toString()}
+          renderItem={renderTrip}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+      {error && (
+        <Text style={{ textAlign: "center", color: "red" }}>{error}</Text>
+      )}
       {/* Botón de crear viaje */}
       <View style={styles.createButtonContainer} pointerEvents="box-none">
         <DriverTripButton onPress={onGoToCreateTripScreen} />
@@ -164,23 +180,12 @@ const DriverMyTripsScreen = ({
       <TripCompletedDetailsModal
         visible={showCompletedModal}
         onClose={() => setShowCompletedModal(false)}
-        route={selectedTrip?.route}
-        passengers={selectedTrip?.passengers}
+        trip={selectedTrip}
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}
         onClose={() => setShowScheduledModal(false)}
-        pickupPlace={
-          selectedTrip?.pickupPlace || "Campus Meléndez Calle 13 # 100"
-        }
-        destinationPlace={selectedTrip?.destinationPlace || "Cl. 13 #98-10"}
-        onStartTrip={() => {
-          setShowScheduledModal(false);
-          onStartTripScreen(
-            selectedTrip?.pickupPlace || "Campus Meléndez Calle 13 # 100",
-            selectedTrip?.destinationPlace || "Cl. 13 #98-10"
-          );
-        }}
+        trip={selectedTrip}
       />
       {/* Menú inferior */}
       <DriverHomeBottomMenu

@@ -17,33 +17,66 @@ interface Review {
 interface TripCompletedDetailsModalProps {
   visible: boolean;
   onClose: () => void;
-  route?: string;
-  address?: string;
-  departureDate?: string;
-  departureTime?: string;
-  arrivalDate?: string;
-  arrivalTime?: string;
-  passengers?: number;
-  reviews?: Review[];
+  trip?: any;
+}
+
+// Función para filtrar y mostrar solo los datos relevantes de la dirección
+function filtrarDireccion(direccion: string): string {
+  if (!direccion) return "";
+  const partes = direccion.split(",").map((p) => p.trim());
+  // Palabras clave para identificar los campos relevantes
+  const claves = [
+    "colegio",
+    "escuela",
+    "universidad", // nombre propio
+    "calle",
+    "carrera",
+    "avenida",
+    "cll",
+    "cra", // vías
+    "villa",
+    "barrio",
+    "neighbourhood", // barrios
+    "comuna", // comuna
+    "cali", // ciudad
+    "colombia", // país
+  ];
+  // Siempre incluye los primeros 1-2 elementos (nombre propio y calle)
+  let resultado: string[] = [];
+  if (partes.length > 0) resultado.push(partes[0]);
+  if (partes.length > 1) resultado.push(partes[1]);
+  // Busca y agrega los campos relevantes que no estén ya incluidos
+  for (let i = 2; i < partes.length; i++) {
+    const parte = partes[i].toLowerCase();
+    if (
+      claves.some((clave) => parte.includes(clave)) &&
+      !resultado.includes(partes[i])
+    ) {
+      resultado.push(partes[i]);
+    }
+  }
+  // Elimina duplicados y filtra frases no deseadas
+  resultado = [...new Set(resultado)].filter(
+    (p) =>
+      !/comuna 8/i.test(p) && // quita Comuna 8 (insensible a mayúsculas)
+      !/perímetro urbano/i.test(p) // quita Perímetro Urbano
+  );
+  return resultado.join(", ");
 }
 
 const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
   visible,
   onClose,
-  route = "Univalle ➔ Multicentro",
-  address = "Campus Meléndez Calle 13 # 100",
-  departureDate = "2025-05-31",
-  departureTime = "07:00:00 p.m",
-  arrivalDate = "2025-05-31",
-  arrivalTime = "08:00:00 p.m",
-  passengers = 3,
-  reviews = [
+  trip,
+}) => {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const reviews = trip?.reviews || [
     { rating: 3, comment: "Muy buen viaje" },
     { rating: 4, comment: "Buen viaje, muy cómodo" },
     { rating: 3, comment: "Me gustó el viaje" },
-  ],
-}) => {
-  const [expanded, setExpanded] = useState<number | null>(null);
+  ];
+  const ruta = trip?.ruta;
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -58,27 +91,35 @@ const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
           >
             <Text style={styles.title}>Detalles de viaje:</Text>
             <Text style={styles.route}>
-              <Text style={styles.bold}>{route}</Text>
+              <Text style={styles.bold}>
+                {trip?.ruta_nombre || trip?.id_ruta}
+              </Text>
             </Text>
-            <Text style={styles.address}>Salida: {address}</Text>
-            <Text style={styles.label}>
-              Fecha de salida: <Text style={styles.value}>{departureDate}</Text>
-            </Text>
-            <Text style={styles.label}>
-              Hora de salida: <Text style={styles.value}>{departureTime}</Text>
+            <Text style={styles.address}>
+              Salida: {ruta?.nombre_partida || "-"}
             </Text>
             <Text style={styles.label}>
-              Fecha de llegada: <Text style={styles.value}>{arrivalDate}</Text>
+              Fecha de salida:{" "}
+              <Text style={styles.value}>{trip?.fecha || "-"}</Text>
             </Text>
             <Text style={styles.label}>
-              Hora de llegada: <Text style={styles.value}>{arrivalTime}</Text>
+              Hora de salida:{" "}
+              <Text style={styles.value}>{trip?.hora_salida || "-"}</Text>
+            </Text>
+            <Text style={styles.label}>
+              Fecha de llegada:{" "}
+              <Text style={styles.value}>{trip?.fecha || "-"}</Text>
+            </Text>
+            <Text style={styles.label}>
+              Hora de llegada:{" "}
+              <Text style={styles.value}>{trip?.hora_llegada || "-"}</Text>
             </Text>
             <Text style={styles.label}>
               Numero de pasajeros:{" "}
-              <Text style={styles.value}>{passengers}</Text>
+              <Text style={styles.value}>{trip?.pasajeros || 0}</Text>
             </Text>
             <Text style={[styles.label, { marginTop: 10 }]}>Reseñas:</Text>
-            {reviews.map((review, idx) => (
+            {reviews.map((review: Review, idx: number) => (
               <View key={idx} style={styles.reviewBox}>
                 <TouchableOpacity
                   style={styles.starsRow}
