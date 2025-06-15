@@ -548,6 +548,39 @@ export type Database = {
             referencedColumns: ["id_usuario"]
           }
         ]
+      },
+      reserva: {
+        Row: {
+          id: number
+          id_usuario: number
+          id_viaje: number
+        }
+        Insert: {
+          id?: number
+          id_usuario: number
+          id_viaje: number
+        }
+        Update: {
+          id?: number
+          id_usuario?: number
+          id_viaje?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserva_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          },
+          {
+            foreignKeyName: "reserva_id_viaje_fkey"
+            columns: ["id_viaje"]
+            isOneToOne: false
+            referencedRelation: "viaje"
+            referencedColumns: ["id_viaje"]
+          }
+        ]
       }
     }
     Views: {

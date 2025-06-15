@@ -25,53 +25,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   // Función para obtener datos completos del usuario
   const fetchUserData = async (supabaseUser: SupabaseUser, accessToken?: string): Promise<User | null> => {
     console.log('🔍 Fetching user data for UUID:', supabaseUser.id);
     
+    // Check if we have cached data that's still valid
+    const now = Date.now();
+    if (user && (now - lastFetchTime) < CACHE_DURATION) {
+      console.log('✅ Using cached user data');
+      return user;
+    }
+    
     try {
-      // Intentar obtener datos del endpoint con timeout aumentado y retry
-      const maxRetries = 2;
-      let attempt = 0;
+      const userData = await UserService.getUserByUuid(supabaseUser.id, accessToken);
       
-      while (attempt < maxRetries) {
-        try {
-          const userData = await Promise.race([
-            UserService.getUserByUuid(supabaseUser.id, accessToken), // Pasar token directamente
-            new Promise<null>((_, reject) => 
-              setTimeout(() => reject(new Error('User service timeout')), 20000) // Aumentado a 20 segundos
-            )
-          ]);
-          
-          if (userData) {
-            console.log('✅ Datos obtenidos del UserService:', userData);
-            
-            // Si no hay email en los datos del endpoint, usar el de Supabase como respaldo
-            if (!userData.email && supabaseUser.email) {
-              console.log('🔧 Usando email de Supabase como respaldo:', supabaseUser.email);
-              userData.email = supabaseUser.email;
-            }
-            
-            return userData;
-          } else {
-            console.warn(`⚠️ Intento ${attempt + 1}: No se recibieron datos del endpoint`);
-          }
-        } catch (error: any) {
-          console.warn(`⚠️ Intento ${attempt + 1} falló:`, error.message);
-          if (attempt === maxRetries - 1) {
-            throw error;
-          }
+      if (userData) {
+        console.log('✅ Datos obtenidos del UserService:', userData);
+        
+        // Si no hay email en los datos del endpoint, usar el de Supabase como respaldo
+        if (!userData.email && supabaseUser.email) {
+          console.log('🔧 Usando email de Supabase como respaldo:', supabaseUser.email);
+          userData.email = supabaseUser.email;
         }
         
-        attempt++;
-        if (attempt < maxRetries) {
-          console.log(`🔄 Reintentando en 2 segundos... (intento ${attempt + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+        setLastFetchTime(now);
+        return userData;
       }
       
-      console.error('❌ Todos los intentos fallaron');
+      console.error('❌ No se recibieron datos del endpoint');
       return null;
     } catch (error) {
       console.error('❌ Error fetching user data from endpoint:', error);
@@ -88,15 +72,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       async (event, session) => {
         console.log('🔐 Auth state change:', event, 'session exists:', !!session);
         
-        // Solo procesar eventos importantes, no TOKEN_REFRESHED
+        if (!isMounted) return;
+        
+        // Solo procesar eventos importantes
         if (event === 'TOKEN_REFRESHED') {
-          if (isMounted) {
-            setSession(session);
-          }
+          setSession(session);
           return;
         }
-        
-        if (!isMounted) return;
         
         setSession(session);
         
@@ -120,13 +102,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           }
           if (isMounted) {
-            console.log('🔄 Setting isLoading to false, user loaded:', !!user);
             setIsLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
           if (isMounted) {
             console.log('🚪 User signed out, clearing state');
             setUser(null);
+            setLastFetchTime(0);
             setIsLoading(false);
           }
         }
@@ -154,8 +136,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session?.user) {
           console.log('✅ Existing session found for user:', session.user.id);
           
-          // Solo procesar si NO tenemos usuario ya cargado (evitar condición de carrera)
-          if (!user) {
+          // Solo procesar si NO tenemos usuario ya cargado o si la caché expiró
+          const now = Date.now();
+          if (!user || (now - lastFetchTime) >= CACHE_DURATION) {
             console.log('🔄 Loading user data from session...');
             setIsLoading(true);
             try {
@@ -174,27 +157,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
             }
             if (isMounted) {
-              console.log('🔄 Setting isLoading to false from checkSession, user loaded successfully');
               setIsLoading(false);
             }
           } else {
-            console.log('ℹ️ User already loaded, skipping session check');
+            console.log('ℹ️ Using cached user data');
             if (isMounted) {
-              console.log('🔄 Setting isLoading to false, user already exists');
               setIsLoading(false);
             }
           }
         } else {
           console.log('ℹ️ No existing session found');
           if (isMounted) {
-            console.log('🔄 Setting isLoading to false, no session');
             setIsLoading(false);
           }
         }
       } catch (error) {
         console.error('❌ Error checking session:', error);
         if (isMounted) {
-          console.log('🔄 Setting isLoading to false due to error');
           setIsLoading(false);
         }
       }
@@ -206,7 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Sin dependencias para evitar bucles infinitos
+  }, [user, lastFetchTime]); // Add dependencies to properly handle cache invalidation
 
   // Login function
   const login = async (email: string, password: string): Promise<User | null> => {

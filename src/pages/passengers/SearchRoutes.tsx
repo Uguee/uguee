@@ -28,6 +28,7 @@ const SearchRoutes = () => {
   const { currentUserId, isLoading: isLoadingUser } = useCurrentUser();
   const [isReserving, setIsReserving] = useState(false);
   const [userTripStatus, setUserTripStatus] = useState<Record<number, boolean>>({});
+  const [reservedTrips, setReservedTrips] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetchTrips();
@@ -69,6 +70,33 @@ const SearchRoutes = () => {
     };
 
     checkUserTripStatus();
+  }, [currentUserId, trips]);
+
+  // Add effect to check user's reservations
+  useEffect(() => {
+    const checkUserReservations = async () => {
+      if (!currentUserId || trips.length === 0) return;
+
+      try {
+        const { data: reservations, error } = await supabase
+          .from('reserva')
+          .select('id_viaje')
+          .eq('id_usuario', currentUserId);
+
+        if (error) throw error;
+
+        const reservationMap: Record<number, boolean> = {};
+        reservations?.forEach(reservation => {
+          reservationMap[reservation.id_viaje] = true;
+        });
+
+        setReservedTrips(reservationMap);
+      } catch (error) {
+        console.error('Error checking reservations:', error);
+      }
+    };
+
+    checkUserReservations();
   }, [currentUserId, trips]);
 
   const fetchAvailableRoutes = async () => {
@@ -170,7 +198,7 @@ const SearchRoutes = () => {
     console.log('Checking if user is driver or creator:', {
       currentUserId,
       tripDriverId: trip.id_conductor,
-      tripRouteId: trip.id_ruta
+      tripId: trip.id_viaje
     });
 
     // Check if user is the driver
@@ -182,9 +210,9 @@ const SearchRoutes = () => {
     // Check if user is the passenger who created the route
     try {
       const { data: routeCreator, error } = await supabase
-        .from('usuario_ruta')
+        .from('reserva')
         .select('id_usuario')
-        .eq('id_ruta', trip.id_ruta)
+        .eq('id_viaje', trip.id_viaje)
         .single();
 
       console.log('Route creator check:', { routeCreator, error });
@@ -216,7 +244,6 @@ const SearchRoutes = () => {
 
     console.log('Attempting to reserve trip:', {
       tripId: trip.id_viaje,
-      routeId: trip.id_ruta,
       currentUserId
     });
 
@@ -235,19 +262,19 @@ const SearchRoutes = () => {
     try {
       setIsReserving(true);
 
-      // Verificar si ya existe una reserva para este usuario y ruta
+      // Verificar si ya existe una reserva para este usuario y viaje
       const { data: existingReservation, error: checkError } = await supabase
-        .from('usuario_ruta')
+        .from('reserva')
         .select('*')
         .eq('id_usuario', currentUserId)
-        .eq('id_ruta', trip.id_ruta)
+        .eq('id_viaje', trip.id_viaje)
         .maybeSingle();
 
       if (checkError) throw checkError;
       if (existingReservation) {
         toast({
           title: "Información",
-          description: "Ya tienes una reserva para esta ruta",
+          description: "Ya tienes una reserva para este viaje",
           variant: "default",
         });
         return;
@@ -255,13 +282,19 @@ const SearchRoutes = () => {
 
       // Crear la reserva
       const { error: insertError } = await supabase
-        .from('usuario_ruta')
+        .from('reserva')
         .insert({
           id_usuario: currentUserId,
-          id_ruta: trip.id_ruta
+          id_viaje: trip.id_viaje
         });
 
       if (insertError) throw insertError;
+
+      // Update local state to show reservation
+      setReservedTrips(prev => ({
+        ...prev,
+        [trip.id_viaje]: true
+      }));
 
       toast({
         title: "¡Éxito!",
@@ -395,14 +428,18 @@ const SearchRoutes = () => {
                     <div className="text-right space-y-2">
                       <button
                         className={`w-full px-4 py-2 ${
-                          userTripStatus[trip.id_viaje]
+                          reservedTrips[trip.id_viaje]
+                            ? 'bg-green-500 cursor-default'
+                            : userTripStatus[trip.id_viaje]
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-primary hover:bg-primary/90'
                         } text-white rounded-md transition-colors`}
                         onClick={() => handleReserve(trip)}
-                        disabled={userTripStatus[trip.id_viaje] || isReserving}
+                        disabled={reservedTrips[trip.id_viaje] || userTripStatus[trip.id_viaje] || isReserving}
                       >
-                        {userTripStatus[trip.id_viaje]
+                        {reservedTrips[trip.id_viaje]
+                          ? 'Reservado'
+                          : userTripStatus[trip.id_viaje]
                           ? 'No puedes reservar tu propio viaje'
                           : isReserving
                           ? 'Reservando...'

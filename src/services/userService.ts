@@ -26,12 +26,7 @@ export class UserService {
       }
 
       // Solo hacer getSession si no se proporciona token
-      const { data: { session }, error } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 15000)
-        )
-      ]);
+      const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
         throw new Error(`Session error: ${error.message}`);
@@ -126,6 +121,8 @@ export class UserService {
       const response = await fetch(url, {
         method: 'GET',
         headers,
+        // Add a reasonable timeout
+        signal: AbortSignal.timeout(5000) // 5 second timeout
       });
 
       if (!response.ok) {
@@ -157,7 +154,11 @@ export class UserService {
 
       return mappedUser;
     } catch (error) {
-      console.error('❌ Error en getUserByUuid:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('❌ Request timeout');
+      } else {
+        console.error('❌ Error en getUserByUuid:', error);
+      }
       return null;
     }
   }
