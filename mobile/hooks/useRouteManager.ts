@@ -89,23 +89,23 @@ export const useRouteManager = () => {
   };
 
   /**
-   * Crea la relación entre usuario y ruta en la tabla usuario_ruta
+   * Crea la relación entre usuario y viaje en la tabla reserva
    */
   const createUserRouteRelation = async (
     id_usuario: number,
-    id_ruta: number
+    id_viaje: number
   ) => {
     try {
       const { data, error } = await supabase
-        .from("usuario_ruta")
-        .insert({ id_usuario, id_ruta });
+        .from("reserva")
+        .insert({ id_usuario, id_viaje });
       if (error) throw error;
       return data;
     } catch (err) {
       const errorMessage =
         err instanceof Error
           ? err.message
-          : "Error creando relación usuario-ruta";
+          : "Error creando reserva";
       setError(errorMessage);
       throw err;
     }

@@ -93,10 +93,10 @@ const MyTrips = () => {
 
     try {
       const { error } = await supabase
-        .from('usuario_ruta')
+        .from('reserva')
         .delete()
         .eq('id_usuario', currentUserId)
-        .eq('id_ruta', tripId);
+        .eq('id_viaje', tripId);
 
       if (error) throw error;
 

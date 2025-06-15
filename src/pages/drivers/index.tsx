@@ -10,6 +10,7 @@ import { ReviewService } from '@/services/reviewService';
 import { UserService } from '@/services/userService';
 import { useAuth } from '@/hooks/useAuth';
 import { Star } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -19,6 +20,10 @@ const Dashboard = () => {
   const [reservasHoy, setReservasHoy] = useState(0);
   const [loading, setLoading] = useState(true);
   const [calificacion, setCalificacion] = useState(0);
+  const [selectedTrip, setSelectedTrip] = useState<any | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [requesters, setRequesters] = useState<any[]>([]);
+  const [loadingRequesters, setLoadingRequesters] = useState(false);
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -61,9 +66,9 @@ const Dashboard = () => {
         // Luego, para cada viaje, obtenemos sus reservas
         const viajesConReservas = await Promise.all(viajesData?.map(async (viaje) => {
           const { data: reservas, error: reservasError } = await supabase
-            .from('usuario_ruta')
+            .from('reserva')
             .select('id_usuario')
-            .eq('id_ruta', viaje.id_ruta);
+            .eq('id_viaje', viaje.id_viaje);
 
           if (reservasError) {
             console.error('Error obteniendo reservas:', reservasError);
@@ -110,6 +115,32 @@ const Dashboard = () => {
 
     cargarDatos();
   }, [user]);
+
+  const handleViewRequesters = async (tripId: number) => {
+    setLoadingRequesters(true);
+    try {
+      const { data: reservas, error } = await supabase
+        .from('reserva')
+        .select(`
+          id_usuario,
+          usuario:usuario (
+            nombre,
+            apellido,
+            celular
+          )
+        `)
+        .eq('id_viaje', tripId);
+
+      if (error) throw error;
+
+      setRequesters(reservas?.map(r => r.usuario) || []);
+      setIsDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching requesters:', error);
+    } finally {
+      setLoadingRequesters(false);
+    }
+  };
 
   // Componente para mostrar estrellas
   const StarRating = ({ rating }: { rating: number }) => {
@@ -187,7 +218,7 @@ const Dashboard = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Próximas Rutas</h2>
             <Link
-              to="/driver/historial-viajes"
+              to="/driver/history"
               className="text-primary hover:text-primary/80 transition-colors"
             >
               Ver historial completo →
@@ -214,9 +245,13 @@ const Dashboard = () => {
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600">
+                    <button
+                      onClick={() => handleViewRequesters(viaje.id_viaje)}
+                      className="text-sm text-primary hover:text-primary/80 transition-colors"
+                      disabled={loadingRequesters}
+                    >
                       {viaje.cantidadReservas} reservas
-                    </span>
+                    </button>
                     <span className="px-3 py-1 text-sm bg-primary/20 text-primary rounded-full">
                       Programado
                     </span>
@@ -231,6 +266,35 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Dialog para mostrar los pasajeros */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pasajeros del viaje</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {loadingRequesters ? (
+              <div className="text-center py-4">Cargando pasajeros...</div>
+            ) : requesters.length > 0 ? (
+              <div className="space-y-3">
+                {requesters.map((requester, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{requester.nombre} {requester.apellido}</p>
+                      <p className="text-sm text-gray-600">{requester.celular}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                No hay pasajeros registrados
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

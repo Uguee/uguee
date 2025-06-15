@@ -62,19 +62,19 @@ export class TripService {
 
   static async getUserTrips(userId: number): Promise<Trip[]> {
     try {
-      // Obtener las rutas que el usuario ha reservado
-      const { data: userRoutes, error: routesError } = await supabase
-        .from('usuario_ruta')
-        .select('id_ruta')
+      // Obtener los viajes que el usuario ha reservado
+      const { data: userReservations, error: reservationsError } = await supabase
+        .from('reserva')
+        .select('id_viaje')
         .eq('id_usuario', userId);
 
-      if (routesError) throw routesError;
+      if (reservationsError) throw reservationsError;
 
-      if (!userRoutes || userRoutes.length === 0) {
+      if (!userReservations || userReservations.length === 0) {
         return [];
       }
 
-      // Obtener los viajes asociados a esas rutas
+      // Obtener los viajes asociados a esas reservas
       const { data: trips, error: tripsError } = await supabase
         .from('viaje')
         .select(`
@@ -100,7 +100,7 @@ export class TripService {
             trayecto
           )
         `)
-        .in('id_ruta', userRoutes.map(r => r.id_ruta));
+        .in('id_viaje', userReservations.map(r => r.id_viaje));
 
       if (tripsError) throw tripsError;
 
