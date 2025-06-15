@@ -284,16 +284,16 @@ const StartTrip = () => {
         return {
           id_viaje: trip.id_viaje,
           id_ruta: trip.id_ruta,
-          driver: {
-            name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
-            phone: trip.conductor?.celular
-          },
+        driver: {
+          name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
+          phone: trip.conductor?.celular
+        },
           departureTime,
           estimatedArrival: arrivalTime,
-          price: 0, // You might want to add price to your trip model
-          availableSeats: 4, // You might want to add capacity to your trip model
-          transportType: trip.vehiculo?.tipo?.tipo,
-          distance: 0 // You might want to calculate this based on the route
+        price: 0, // You might want to add price to your trip model
+        availableSeats: 4, // You might want to add capacity to your trip model
+        transportType: trip.vehiculo?.tipo?.tipo,
+        distance: 0 // You might want to calculate this based on the route
         };
       });
 
@@ -516,7 +516,7 @@ const StartTrip = () => {
           });
           setSelectedTripRoute([]);
         }
-      } else {
+    } else {
         console.log('No route data found');
         toast({
           title: "Error",
@@ -729,13 +729,13 @@ const StartTrip = () => {
 
                         {/* Trip Details */}
                         <div className="space-y-1">
-                          <p className="text-sm">
-                            <span className="font-medium">Teléfono:</span> {route.driver?.phone}
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium">Vehículo:</span> {route.transportType}
-                          </p>
-                        </div>
+                            <p className="text-sm">
+                              <span className="font-medium">Teléfono:</span> {route.driver?.phone}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Vehículo:</span> {route.transportType}
+                            </p>
+                          </div>
 
                         {/* Action Buttons */}
                         <div className="space-y-2 pt-2">
@@ -779,13 +779,13 @@ const StartTrip = () => {
                 </p>
               )}
               <div className="mt-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleNewRequest}
-                >
-                  Hacer nueva solicitud
-                </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleNewRequest}
+                    >
+                      Hacer nueva solicitud
+                    </Button>
               </div>
             </div>
           </div>

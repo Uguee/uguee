@@ -125,6 +125,11 @@ export const AppSidebar = () => {
       icon: Plus,
     },
     {
+      title: "Solicitudes de viaje",
+      url: "/driver/trip-requests",
+      icon: Calendar,
+    },
+    {
       title: "Historial de viajes",
       url: "/driver/history",
       icon: History,
