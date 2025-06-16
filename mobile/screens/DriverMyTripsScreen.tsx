@@ -29,6 +29,7 @@ const DriverMyTripsScreen = ({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   onGoToCreateTripScreen = () => {},
+  onStartTripScreen = (_pickup: string, _dest: string) => {},
 }) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
