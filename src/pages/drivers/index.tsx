@@ -85,22 +85,22 @@ const Dashboard = () => {
         }) || []);
 
         // Procesar los viajes
-        const viajesProcesados = viajesConReservas.map(viaje => {
+        const viajesFiltrados = viajesConReservas.map(viaje => {
           const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
-          fechaHoraViaje.setMinutes(fechaHoraViaje.getMinutes() + fechaHoraViaje.getTimezoneOffset());
+          const now = new Date();
           
           return {
             ...viaje,
-            esFuturo: fechaHoraViaje > new Date()
+            esFuturo: fechaHoraViaje > now
           };
         });
 
         // Filtrar solo los viajes futuros
-        const viajesProximos = viajesProcesados.filter(viaje => viaje.esFuturo);
+        const viajesProximos = viajesFiltrados.filter(viaje => viaje.esFuturo);
         setProximasRutas(viajesProximos);
         
         // Contar reservas de hoy
-        const reservasDeHoy = viajesProcesados
+        const reservasDeHoy = viajesFiltrados
           .filter(viaje => viaje.fecha === today)
           .reduce((total, viaje) => total + viaje.cantidadReservas, 0);
 
@@ -234,7 +234,7 @@ const Dashboard = () => {
                   <div>
                     <h3 className="font-medium">Viaje #{viaje.id_viaje}</h3>
                     <p className="text-sm text-gray-600">
-                      {new Date(viaje.fecha).toLocaleDateString('es-CO', {
+                      {new Date(viaje.fecha + 'T00:00:00').toLocaleDateString('es-CO', {
                         weekday: 'long',
                         day: 'numeric',
                         month: 'long'

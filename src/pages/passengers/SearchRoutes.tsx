@@ -285,7 +285,8 @@ const SearchRoutes = () => {
         .from('reserva')
         .insert({
           id_usuario: currentUserId,
-          id_viaje: trip.id_viaje
+          id_viaje: trip.id_viaje,
+          fecha: new Date().toISOString()
         });
 
       if (insertError) throw insertError;

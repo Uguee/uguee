@@ -2,19 +2,27 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface TripRequest {
   id_solicitud: number;
-  id_ruta: number;
-  id_pasajero: number;
   fecha: string;
   hora_salida: string;
-  hora_llegada: string | null;
+  hora_llegada: string;
   estado: 'pendiente' | 'aceptada' | 'rechazada';
   created_at: string;
-  // Additional fields we'll get from joins
-  pasajero_nombre?: string;
-  pasajero_apellido?: string;
-  punto_partida?: any;
-  punto_llegada?: any;
-  longitud?: number;
+  ruta: {
+    id_ruta: number;
+    punto_partida: any;
+    punto_llegada: any;
+    trayecto: any;
+    longitud: number;
+  };
+  pasajero: {
+    nombre: string;
+    apellido: string;
+  };
+  pasajero_nombre: string;
+  pasajero_apellido: string;
+  punto_partida: any;
+  punto_llegada: any;
+  longitud: number;
 }
 
 export class TripRequestService {
@@ -22,13 +30,20 @@ export class TripRequestService {
     const { data, error } = await supabase
       .from('solicitud_viaje')
       .select(`
-        *,
-        ruta:ruta(
+        id_solicitud,
+        fecha,
+        hora_salida,
+        hora_llegada,
+        estado,
+        created_at,
+        ruta!inner (
+          id_ruta,
           punto_partida,
           punto_llegada,
+          trayecto,
           longitud
         ),
-        pasajero:usuario(
+        pasajero:usuario!solicitud_viaje_id_pasajero_fkey (
           nombre,
           apellido
         )
@@ -41,21 +56,14 @@ export class TripRequestService {
       throw error;
     }
 
-    // Transform the data to match our interface
     return data.map(request => ({
-      id_solicitud: request.id_solicitud,
-      id_ruta: request.id_ruta,
-      id_pasajero: request.id_pasajero,
-      fecha: request.fecha,
-      hora_salida: request.hora_salida,
-      hora_llegada: request.hora_llegada,
-      estado: request.estado as 'pendiente' | 'aceptada' | 'rechazada',
-      created_at: request.created_at,
-      pasajero_nombre: request.pasajero?.nombre,
-      pasajero_apellido: request.pasajero?.apellido,
+      ...request,
+      pasajero_nombre: request.pasajero?.nombre || '',
+      pasajero_apellido: request.pasajero?.apellido || '',
       punto_partida: request.ruta?.punto_partida,
       punto_llegada: request.ruta?.punto_llegada,
-      longitud: request.ruta?.longitud
+      longitud: request.ruta?.longitud,
+      estado: request.estado as 'pendiente' | 'aceptada' | 'rechazada'
     }));
   }
 

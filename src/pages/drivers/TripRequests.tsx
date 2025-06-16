@@ -8,17 +8,22 @@ import { TripRequest, TripRequestService } from "@/services/tripRequestService"
 import { useToast } from "@/hooks/use-toast"
 import { RouteMap } from "@/components/map/RouteMap"
 import { supabase } from "@/integrations/supabase/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
-// Helper function to extract coordinates from PostGIS point
+// Helper function to extract coordinates from GeoJSON point
 const extractCoordinates = (point: any): { lat: number; lng: number } | null => {
   if (!point) return null;
   try {
-    // PostGIS point format: "POINT(lng lat)"
-    const match = point.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
-    if (match) {
+    if (point.coordinates) {
       return {
-        lng: parseFloat(match[1]),
-        lat: parseFloat(match[2])
+        lng: point.coordinates[0],
+        lat: point.coordinates[1]
       };
     }
   } catch (error) {
@@ -27,11 +32,16 @@ const extractCoordinates = (point: any): { lat: number; lng: number } | null => 
   return null;
 };
 
+type RequestAction = 'aceptada' | 'rechazada';
+
 export default function TripRequests() {
   const [requests, setRequests] = useState<TripRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<TripRequest | null>(null);
   const [routeDetails, setRouteDetails] = useState<any>(null);
+  const [showVehicleDialog, setShowVehicleDialog] = useState(false);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,12 +65,58 @@ export default function TripRequests() {
     }
   };
 
-  const handleRequestAction = async (requestId: number, action: 'aceptada' | 'rechazada') => {
+  const fetchUserVehicles = async (userId: number) => {
     try {
-      await TripRequestService.updateRequestStatus(requestId, action);
+      const { data, error } = await supabase
+        .from('vehiculo')
+        .select('*')
+        .eq('id_usuario', userId);
+
+      if (error) throw error;
+      setVehicles(data || []);
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los vehículos",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRequestAction = async (requestId: number, action: RequestAction) => {
+    try {
+      if (action === 'aceptada') {
+        // Get current user's ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No user found');
+
+        const { data: userData, error: userError } = await supabase
+          .from('usuario')
+          .select('id_usuario')
+          .eq('uuid', user.id)
+          .single();
+
+        if (userError || !userData) throw new Error('No se encontró información del conductor');
+
+        // Fetch user's vehicles and show selection dialog
+        await fetchUserVehicles(userData.id_usuario);
+        setSelectedRequest(requests.find(r => r.id_solicitud === requestId) || null);
+        setShowVehicleDialog(true);
+        return;
+      } else {
+        // For rejected requests, just update the status
+        const { error } = await supabase
+          .from('solicitud_viaje')
+          .update({ estado: action })
+          .eq('id_solicitud', requestId);
+
+        if (error) throw error;
+      }
+
       toast({
         title: "Éxito",
-        description: `Solicitud ${action === 'aceptada' ? 'aceptada' : 'rechazada'} correctamente`,
+        description: `Solicitud ${(action as string) === 'aceptada' ? 'aceptada' : 'rechazada'} correctamente`,
       });
       // Refresh the requests list
       fetchRequests();
@@ -74,12 +130,58 @@ export default function TripRequests() {
     }
   };
 
+  const handleVehicleSelect = async () => {
+    if (!selectedVehicle || !selectedRequest) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const { data: userData, error: userError } = await supabase
+        .from('usuario')
+        .select('id_usuario')
+        .eq('uuid', user.id)
+        .single();
+
+      if (userError || !userData) throw new Error('No se encontró información del conductor');
+
+      // Update request with driver and vehicle info
+      const { error } = await supabase
+        .from('solicitud_viaje')
+        .update({
+          estado: 'aceptada',
+          id_conductor: userData.id_usuario,
+          id_vehiculo: selectedVehicle
+        })
+        .eq('id_solicitud', selectedRequest.id_solicitud);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Solicitud aceptada correctamente",
+      });
+
+      setShowVehicleDialog(false);
+      setSelectedVehicle(null);
+      setSelectedRequest(null);
+      fetchRequests();
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aceptar la solicitud",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewRoute = async (request: TripRequest) => {
     try {
       setSelectedRequest(request);
       const { data, error } = await supabase
         .rpc('obtener_ruta_con_coordenadas', {
-          p_id_ruta: request.id_ruta
+          p_id_ruta: request.ruta.id_ruta
         });
 
       if (error) {
@@ -228,6 +330,60 @@ export default function TripRequests() {
             </ScrollArea>
           </div>
         </div>
+
+        {/* Vehicle Selection Dialog */}
+        <Dialog open={showVehicleDialog} onOpenChange={setShowVehicleDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Seleccionar Vehículo</DialogTitle>
+              <DialogDescription>
+                Elige el vehículo que utilizarás para este viaje
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {vehicles.map((vehicle) => (
+                <Card
+                  key={vehicle.placa}
+                  className={`cursor-pointer transition-all ${
+                    selectedVehicle === vehicle.placa
+                      ? 'ring-2 ring-primary'
+                      : 'hover:shadow-md'
+                  }`}
+                  onClick={() => setSelectedVehicle(vehicle.placa)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">Placa: {vehicle.placa}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Modelo: {vehicle.modelo} | Color: {vehicle.color}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowVehicleDialog(false);
+                  setSelectedVehicle(null);
+                  setSelectedRequest(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleVehicleSelect}
+                disabled={!selectedVehicle}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   )

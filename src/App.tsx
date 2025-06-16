@@ -14,7 +14,7 @@ import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
 import InstitutionAdminRegister from "./pages/Authentication/InstitutionAdminRegister";
 import DocumentVerification from "./pages/Authentication/DocumentVerification";
-import Dashboard from "./pages/passengers/Dashboard";
+import Dashboard from "./pages/passengers/index";
 import SearchRoutes from "./pages/passengers/SearchRoutes";
 import StartTrip from "./pages/passengers/StartTrip";
 import RouteDetail from "./pages/passengers/RouteDetail";

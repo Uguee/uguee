@@ -7,7 +7,7 @@ import { TripService } from '@/services/tripService';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { RouteMap } from '@/components/map/RouteMap';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,6 @@ const MyTrips = () => {
   const { currentUserId } = useCurrentUser();
   const { toast } = useToast();
   const [selectedTrip, setSelectedTrip] = useState<any | null>(null);
-  const [showDetails, setShowDetails] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -37,8 +36,64 @@ const MyTrips = () => {
     setError(null);
 
     try {
-      const data = await TripService.getUserTrips(currentUserId);
-      setTrips(data);
+      // Obtener las reservas del usuario
+      const { data: reservas, error: reservasError } = await supabase
+        .from('reserva')
+        .select(`
+          id_viaje,
+          viaje (
+            id_viaje,
+            fecha,
+            hora_salida,
+            hora_llegada,
+            id_ruta,
+            id_conductor,
+            id_vehiculo,
+            conductor:usuario!viaje_id_conductor_fkey (
+              nombre,
+              apellido,
+              celular
+            ),
+            vehiculo:vehiculo (
+              placa,
+              color,
+              modelo,
+              tipo:tipo_vehiculo (
+                tipo
+              )
+            ),
+            ruta:ruta (
+              id_ruta,
+              longitud,
+              punto_partida,
+              punto_llegada,
+              trayecto
+            )
+          )
+        `)
+        .eq('id_usuario', currentUserId);
+
+      if (reservasError) throw reservasError;
+
+      // Procesar los viajes
+      const viajesFiltrados = reservas
+        ?.map(r => r.viaje)
+        .filter(v => v !== null)
+        .map(viaje => {
+          const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+          const now = new Date();
+          
+          return {
+            ...viaje,
+            esFuturo: fechaHoraViaje > now
+          };
+        }) || [];
+
+      // Separar viajes futuros y pasados
+      const viajesFuturos = viajesFiltrados.filter(viaje => viaje.esFuturo);
+      const viajesPasados = viajesFiltrados.filter(viaje => !viaje.esFuturo);
+
+      setTrips(viajesFuturos);
     } catch (err) {
       console.error('Error fetching trips:', err);
       setError('No se pudieron cargar tus viajes. Por favor, intenta de nuevo más tarde.');
@@ -61,15 +116,13 @@ const MyTrips = () => {
     }
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Fecha no disponible';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Fecha no disponible';
-      return format(date, "EEEE d 'de' MMMM", { locale: es });
-    } catch (error) {
-      return 'Fecha no disponible';
-    }
+  const formatDate = (dateStr: string) => {
+    const fecha = new Date(dateStr + 'T00:00:00');
+    return fecha.toLocaleDateString('es-CO', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    });
   };
 
   // Filtrar viajes según la pestaña activa
@@ -227,7 +280,7 @@ const MyTrips = () => {
                       </button>
                       {activeTab === 'upcoming' && (
                         <button
-                          onClick={() => handleCancelTrip(trip.id_ruta)}
+                          onClick={() => handleCancelTrip(trip.id_viaje)}
                           className="px-4 py-2 text-red-500 border border-red-500 rounded-md hover:bg-red-50"
                         >
                           Cancelar
@@ -249,66 +302,14 @@ const MyTrips = () => {
             <DialogTitle>Detalles del viaje</DialogTitle>
           </DialogHeader>
           {selectedTrip && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-medium mb-4">Información del conductor</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Nombre:</span> {selectedTrip.conductor?.nombre} {selectedTrip.conductor?.apellido}</p>
-                    <p><span className="font-medium">Teléfono:</span> {selectedTrip.conductor?.celular}</p>
-                  </div>
-
-                  <h3 className="font-medium mb-4 mt-6">Información del viaje</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Fecha:</span> {formatDate(selectedTrip.fecha)}</p>
-                    <p><span className="font-medium">Hora de salida:</span> {formatTime(selectedTrip.hora_salida)}</p>
-                    <p><span className="font-medium">Hora estimada de llegada:</span> {formatTime(selectedTrip.hora_llegada)}</p>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-4">Información del vehículo</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Tipo:</span> {selectedTrip.vehiculo?.tipo?.tipo}</p>
-                    <p><span className="font-medium">Color:</span> {selectedTrip.vehiculo?.color}</p>
-                    <p><span className="font-medium">Modelo:</span> {selectedTrip.vehiculo?.modelo}</p>
-                    <p><span className="font-medium">Placa:</span> {selectedTrip.vehiculo?.placa}</p>
-                  </div>
-                </div>
+            <div className="mt-4">
+              <div className="h-[400px] rounded-lg overflow-hidden">
+                <RouteMap
+                  origin={selectedTrip.routeDetails?.punto_partida}
+                  destination={selectedTrip.routeDetails?.punto_llegada}
+                  route={selectedTrip.routeDetails?.trayecto}
+                />
               </div>
-
-              <div>
-                <h3 className="font-medium mb-4">Ruta del viaje</h3>
-                <div className="h-[300px] rounded-lg overflow-hidden">
-                  <RouteMap
-                    origin={selectedTrip.routeDetails?.origen_coords ? {
-                      lat: selectedTrip.routeDetails.origen_coords.y,
-                      lng: selectedTrip.routeDetails.origen_coords.x,
-                      address: selectedTrip.routeDetails.origen_coords.address || "Origen"
-                    } : null}
-                    destination={selectedTrip.routeDetails?.destino_coords ? {
-                      lat: selectedTrip.routeDetails.destino_coords.y,
-                      lng: selectedTrip.routeDetails.destino_coords.x,
-                      address: selectedTrip.routeDetails.destino_coords.address || "Destino"
-                    } : null}
-                    route={selectedTrip.routeDetails?.trayecto_coords?.map((coord: any) => [coord.y, coord.x]) || null}
-                    allowClickToSetPoints={false}
-                  />
-                </div>
-              </div>
-
-              {activeTab === 'upcoming' && (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => {
-                      handleCancelTrip(selectedTrip.id_ruta);
-                      setIsDialogOpen(false);
-                    }}
-                    className="px-4 py-2 text-red-500 border border-red-500 rounded-md hover:bg-red-50"
-                  >
-                    Cancelar viaje
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>
