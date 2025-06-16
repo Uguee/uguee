@@ -69,7 +69,6 @@ export async function getInstitutionValidationStatus(
 ): Promise<InstitutionValidationStatus | null> {
   const currentToken = getCurrentToken();
   // Traducir uuid (auth.user.id) a id_usuario de la tabla usuarios
-  const currentToken = getCurrentToken();
   const idUsuario = await getCedulaByUUID(uuid);
   console.log("[getInstitutionValidationStatus] idUsuario:", idUsuario);
   if (!idUsuario) return null;
