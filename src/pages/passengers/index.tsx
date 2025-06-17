@@ -255,7 +255,8 @@ const PassengerDashboard = () => {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'Fecha no disponible';
     try {
-      const date = new Date(dateString);
+      // Add T00:00:00 to ensure proper timezone handling
+      const date = new Date(dateString + 'T00:00:00');
       if (isNaN(date.getTime())) return 'Fecha no disponible';
       return format(date, "EEEE d 'de' MMMM", { locale: es });
     } catch (error) {

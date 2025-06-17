@@ -196,6 +196,46 @@ const MyTrips = () => {
     }
   };
 
+  // Add getRouteData helper function
+  const getRouteData = (trip: any) => {
+    if (!trip?.ruta?.punto_partida || !trip?.ruta?.punto_llegada) {
+      return null;
+    }
+
+    try {
+      const puntoPartida = trip.ruta.punto_partida;
+      const puntoLlegada = trip.ruta.punto_llegada;
+      const trayecto = trip.ruta.trayecto;
+
+      // Extract coordinates: [longitud, latitud] -> [latitud, longitud]
+      const [lngPartida, latPartida] = puntoPartida.coordinates;
+      const [lngLlegada, latLlegada] = puntoLlegada.coordinates;
+
+      const origin = {
+        lat: latPartida,
+        lng: lngPartida,
+        address: 'Punto de partida'
+      };
+
+      const destination = {
+        lat: latLlegada,
+        lng: lngLlegada,
+        address: 'Punto de llegada'
+      };
+
+      // Convert route if it exists
+      let route: [number, number][] = [];
+      if (trayecto && trayecto.coordinates) {
+        route = trayecto.coordinates.map(([lng, lat]: number[]) => [lat, lng]);
+      }
+
+      return { origin, destination, route };
+    } catch (error) {
+      console.error('Error parsing route data:', error);
+      return null;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -304,11 +344,25 @@ const MyTrips = () => {
           {selectedTrip && (
             <div className="mt-4">
               <div className="h-[400px] rounded-lg overflow-hidden">
-                <RouteMap
-                  origin={selectedTrip.routeDetails?.punto_partida}
-                  destination={selectedTrip.routeDetails?.punto_llegada}
-                  route={selectedTrip.routeDetails?.trayecto}
-                />
+                {(() => {
+                  const routeData = getRouteData(selectedTrip);
+                  if (routeData && routeData.origin && routeData.destination) {
+                    return (
+                      <RouteMap
+                        origin={routeData.origin}
+                        destination={routeData.destination}
+                        route={routeData.route || []}
+                        allowClickToSetPoints={false}
+                      />
+                    );
+                  } else {
+                    return (
+                      <div className="flex items-center justify-center h-full bg-gray-100">
+                        <p className="text-gray-500">No hay información de ruta disponible</p>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             </div>
           )}
