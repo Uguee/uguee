@@ -32,7 +32,7 @@ export async function getUserDataByUUID(
   uuid: string
 ): Promise<GetUserDataResponse["data"] | null> {
   try {
-    const currentToken = getCurrentToken();
+    const currentToken = await getCurrentToken();
     const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
