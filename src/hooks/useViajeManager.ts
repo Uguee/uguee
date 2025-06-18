@@ -141,15 +141,22 @@ export const useViajeManager = () => {
     try {
       console.log('🚗 Iniciando creación de solicitud de viaje...', viajeData);
 
+      // Limpiar el formato de la fecha primero
+      const fechaLimpia = viajeData.programado_at.replace(/:00$/, ''); // Elimina el último ":00"
+      const fecha = new Date(fechaLimpia);
+
+      // Extraer fecha y hora por separado usando split
+      const [fechaParte, horaParte] = fechaLimpia.split('T');
+
       // Crear la solicitud de viaje
       const { data, error } = await supabase
         .from('solicitud_viaje')
         .insert({
           id_ruta: viajeData.id_ruta,
           id_pasajero: viajeData.id_conductor, // En este caso, id_conductor es el id del pasajero
-          fecha: viajeData.programado_at,
-          hora_salida: viajeData.salida_at,
-          hora_llegada: viajeData.llegada_at,
+          fecha: fechaParte,
+          hora_salida: horaParte,
+          hora_llegada: null,
           estado: 'pendiente'
         })
         .select();
