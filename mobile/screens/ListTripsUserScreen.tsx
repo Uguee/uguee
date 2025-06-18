@@ -21,27 +21,6 @@ const tripsMock = [
     hora: "2:30 PM",
     direccion: "Campus Meléndez Calle 13 # 100",
   },
-  {
-    id: 3,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "2:30 PM",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 4,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "2:30 PM",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
-  {
-    id: 5,
-    salida: "Univalle",
-    llegada: "Multicentro",
-    hora: "2:30 PM",
-    direccion: "Campus Meléndez Calle 13 # 100",
-  },
 ];
 
 const ListTripsUserScreen = () => {

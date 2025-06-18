@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { TopMenu } from "../components/TopMenu";
-import { BottomNavigation } from "../components/BottomNavigationBar";
+import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { InstitutionCard } from "../components/InstitutionCard";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import SearchBarInst from "../components/SearchBarInst";
@@ -16,11 +16,13 @@ import { useInstitutions } from "../hooks/useInstitutions";
 interface InstitutionListScreenProps {
   onGoHome: () => void;
   onSelectInstitution: (institution: any) => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function InstitutionListScreen({
   onGoHome,
   onSelectInstitution,
+  onGoToMyTripsScreen,
 }: InstitutionListScreenProps) {
   const [search, setSearch] = useState("");
   const { institutions, loading, error } = useInstitutions();
@@ -70,32 +72,11 @@ export default function InstitutionListScreen({
           />
         )}
       </View>
-      <BottomNavigation
-        buttons={[
-          {
-            label: "Inicio",
-            icon: <Ionicons name="home-outline" size={28} color="#000" />,
-            active: false,
-            onPress: onGoHome,
-          },
-          {
-            label: "Mis viajes",
-            icon: (
-              <MaterialIcons name="airport-shuttle" size={28} color="#000" />
-            ),
-            onPress: () => alert("Mis viajes"),
-          },
-          {
-            label: "Servicios",
-            icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-            onPress: () => alert("Servicios"),
-          },
-          {
-            label: "Perfil",
-            icon: <FontAwesome name="user-o" size={26} color="#000" />,
-            onPress: () => alert("Perfil"),
-          },
-        ]}
+      <HomeBottomMenu
+        onGoToProfile={() => {}}
+        onGoToHome={onGoHome}
+        onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
+        activeButton="home"
       />
     </View>
   );

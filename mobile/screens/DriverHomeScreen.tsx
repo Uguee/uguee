@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { View, FlatList } from "react-native";
-import { TopMenu } from "../components/DriverTopMenu"; // Ajusta la ruta si es necesario
+import { View, FlatList, Text, StyleSheet } from "react-native";
+import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
-import { BottomNavigation } from "../components/BottomNavigationBar";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
+import { useAuth } from "../hooks/useAuth";
+import DriverTripButton from "../components/DriverTripButton";
+import DriverCreateTripScreen from "./DriverCreateTripScreen";
 
 // Agrega las props
 interface DriverHomeScreenProps {
@@ -16,6 +18,8 @@ interface DriverHomeScreenProps {
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
   onGoToRegisterRouteScreen?: () => void;
+  onGoToSeeRoutes?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function DriverHomeScreen({
@@ -25,37 +29,16 @@ export default function DriverHomeScreen({
   onGoToProfile = () => {},
   onGoToInstitutionProfile = () => {},
   onGoToRegisterRouteScreen = () => {},
+  onGoToSeeRoutes = () => {},
+  onGoToMyTripsScreen = () => {},
 }: DriverHomeScreenProps) {
   const [search, setSearch] = useState("");
+  const { user } = useAuth();
+  const [showCreateTrip, setShowCreateTrip] = useState(false);
 
   const suggestions = [
-    { label: "Crear ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Modificar rutas", onPress: () => alert("Intracampus") },
-    { label: "Rastrear rutas", onPress: () => alert("Rastrea rutas") },
-  ];
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: true,
-      onPress: () => {},
-    },
-    {
-      label: "Mis vehiculos",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToMyVehicles,
-    },
-    {
-      label: "Mis viajes",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: onGoToRegisterRouteScreen,
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile ?? (() => alert("Perfil")),
-    },
+    { label: "Crear ruta", onPress: onGoToRegisterRouteScreen },
+    { label: "Ver rutas", onPress: onGoToSeeRoutes },
   ];
 
   const rutas = [
@@ -69,6 +52,16 @@ export default function DriverHomeScreen({
   const rutasFiltradas = rutas.filter((ruta) =>
     ruta.title.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (showCreateTrip) {
+    return (
+      <DriverCreateTripScreen
+        onGoToRegisterRouteScreen={onGoToRegisterRouteScreen}
+        onTripCreated={() => setShowCreateTrip(false)}
+        onGoBack={() => setShowCreateTrip(false)}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -90,6 +83,20 @@ export default function DriverHomeScreen({
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`¡Hola,${
+                user?.firstName ? ` ${user.firstName}` : ""
+              }! Gracias por conducir con nosotros`}
+            </Text>
             <BigCard
               image={require("../assets/building3D.png")}
               title="¿Tu institución?"
@@ -104,15 +111,29 @@ export default function DriverHomeScreen({
             />
           </>
         }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
-        contentContainerStyle={{ paddingBottom: 80 }}
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
-      <BottomNavigation buttons={navButtons} />
+      {/* Botón flotante */}
+      <View style={styles.fabContainer} pointerEvents="box-none">
+        <DriverTripButton onPress={() => setShowCreateTrip(true)} />
+      </View>
+      <DriverHomeBottomMenu
+        onGoToProfile={onGoToProfile}
+        onGoToHome={onGoToHomeScreen ?? (() => alert("Inicio"))}
+        onGoToMyVehicles={onGoToMyVehicles}
+        onGoToMyTrips={onGoToMyTripsScreen}
+        activeButton="home"
+      />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  fabContainer: {
+    position: "absolute",
+    right: 1,
+    bottom: 90,
+    zIndex: 10,
+  },
+});

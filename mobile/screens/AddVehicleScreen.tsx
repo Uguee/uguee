@@ -3,7 +3,7 @@ import { View, ScrollView, StyleSheet, Alert } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import VehicleForm from "../components/VehicleForm";
 import AddVehicleButton from "../components/AddVehicleButton";
-import { BottomNavigation } from "../components/BottomNavigationBar";
+import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
@@ -19,12 +19,14 @@ interface AddVehicleScreenProps {
   onGoToMyVehicles?: () => void;
   onGoToHomeScreen?: () => void;
   onGoToProfile?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function AddVehicleScreen({
   onGoToMyVehicles = () => {},
   onGoToHomeScreen = () => {},
   onGoToProfile = () => {},
+  onGoToMyTripsScreen = () => {},
 }: AddVehicleScreenProps) {
   const { user } = useAuth();
   const [form, setForm] = useState<{
@@ -171,6 +173,11 @@ export default function AddVehicleScreen({
     try {
       // Obtener el token de sesión actual desde AuthService
       const token = getCurrentToken();
+      if (!token) {
+        Alert.alert("Error", "No se pudo obtener el token de sesión");
+        setLoading(false);
+        return;
+      }
       console.log("Token actual:", token);
       const result = await sendRegisterForVehicle(vehiculo, token);
       if (!result.success) {
@@ -292,30 +299,6 @@ export default function AddVehicleScreen({
       setLoading(false);
     }
   };
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      onPress: onGoToHomeScreen,
-    },
-    {
-      label: "Mis vehiculos",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToMyVehicles,
-    },
-    {
-      label: "Mis viajes",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => alert("Mis viajes"),
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile,
-    },
-  ];
-
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <TopMenu />
@@ -327,7 +310,13 @@ export default function AddVehicleScreen({
         />
         <AddVehicleButton onPress={handleSubmit} disabled={loading} />
       </ScrollView>
-      <BottomNavigation buttons={navButtons} />
+      <DriverHomeBottomMenu
+        onGoToProfile={onGoToProfile}
+        onGoToHome={onGoToHomeScreen}
+        onGoToMyVehicles={onGoToMyVehicles}
+        onGoToMyTrips={onGoToMyTripsScreen}
+        activeButton="vehicles"
+      />
     </View>
   );
 }

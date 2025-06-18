@@ -15,3 +15,8 @@ export { default as MyVehiclesScreen } from "./MyVehiclesScreen";
 export { default as AddVehicleScreen } from "./AddVehicleScreen";
 export { default as InstProfileScreen } from "./InstProfileScreen";
 export { default as ProfileScreen } from "./ProfileScreen";
+export { default as DriverCreateTripScreen } from "./DriverCreateTripScreen";
+export { default as DriverMyTripsScreen } from "./DriverMyTripsScreen";
+export { default as UserTripsScreen } from "./UserTripsScreen";
+export { default as DriverTripStartScreen } from "./DriverTripStartScreen";
+export { default as ScanQRScreen } from "./ScanQRScreen";

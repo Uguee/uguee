@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,10 +9,11 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import * as ImagePicker from 'expo-image-picker';
-import { DocumentService } from '../services/documentService';
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import * as ImagePicker from "expo-image-picker";
+import { DocumentService } from "../services/documentService";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface DocumentVerificationScreenProps {
   onComplete: () => void;
@@ -28,23 +29,29 @@ export default function DocumentVerificationScreen({
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   // Datos del formulario
   const [documentData, setDocumentData] = useState({
-    tipo: 'Cédula de Ciudadanía',
-    lugar_expedicion: '',
-    fecha_expedicion: '',
-    fecha_vencimiento: '',
+    tipo: "identidad",
+    lugar_expedicion: "",
+    fecha_expedicion: "",
+    fecha_vencimiento: "",
+    numero: "",
   });
 
+  const [showExpeditionPicker, setShowExpeditionPicker] = useState(false);
+  const [showExpirationPicker, setShowExpirationPicker] = useState(false);
+
   const requestPermissions = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
+    const { status: cameraStatus } =
+      await ImagePicker.requestCameraPermissionsAsync();
+    const { status: mediaStatus } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (cameraStatus !== "granted" || mediaStatus !== "granted") {
       Alert.alert(
-        'Permisos requeridos',
-        'Necesitamos permisos de cámara y galería para continuar'
+        "Permisos requeridos",
+        "Necesitamos permisos de cámara y galería para continuar"
       );
       return false;
     }
@@ -52,15 +59,11 @@ export default function DocumentVerificationScreen({
   };
 
   const showImagePicker = (isBackImage: boolean = false) => {
-    Alert.alert(
-      'Seleccionar imagen',
-      'Elige una opción',
-      [
-        { text: 'Cámara', onPress: () => takePhoto(isBackImage) },
-        { text: 'Galería', onPress: () => pickImage(isBackImage) },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
+    Alert.alert("Seleccionar imagen", "Elige una opción", [
+      { text: "Cámara", onPress: () => takePhoto(isBackImage) },
+      { text: "Galería", onPress: () => pickImage(isBackImage) },
+      { text: "Cancelar", style: "cancel" },
+    ]);
   };
 
   const takePhoto = async (isBackImage: boolean = false) => {
@@ -106,22 +109,27 @@ export default function DocumentVerificationScreen({
   const handleSubmit = async () => {
     // Validaciones
     if (!frontImage) {
-      Alert.alert('Error', 'Por favor toma una foto del frente del documento');
+      Alert.alert("Error", "Por favor toma una foto del frente del documento");
       return;
     }
 
     if (!documentData.lugar_expedicion.trim()) {
-      Alert.alert('Error', 'Por favor ingresa el lugar de expedición');
+      Alert.alert("Error", "Por favor ingresa el lugar de expedición");
       return;
     }
 
     if (!documentData.fecha_expedicion) {
-      Alert.alert('Error', 'Por favor ingresa la fecha de expedición');
+      Alert.alert("Error", "Por favor ingresa la fecha de expedición");
       return;
     }
 
     if (!documentData.fecha_vencimiento) {
-      Alert.alert('Error', 'Por favor ingresa la fecha de vencimiento');
+      Alert.alert("Error", "Por favor ingresa la fecha de vencimiento");
+      return;
+    }
+
+    if (!documentData.numero.trim()) {
+      Alert.alert("Error", "Por favor ingresa el número de documento");
       return;
     }
 
@@ -141,30 +149,30 @@ export default function DocumentVerificationScreen({
       );
 
       if (result.success) {
-        Alert.alert(
-          'Éxito',
-          'Documento subido correctamente',
-          [{ text: 'OK', onPress: onComplete }]
-        );
+        Alert.alert("Éxito", "Documento subido correctamente", [
+          { text: "OK", onPress: onComplete },
+        ]);
       } else {
-        Alert.alert('Error', result.error || 'Error subiendo documento');
+        Alert.alert("Error", result.error || "Error subiendo documento");
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Error subiendo documento');
+      Alert.alert("Error", error.message || "Error subiendo documento");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const isFormValid = frontImage && 
-    documentData.lugar_expedicion.trim() && 
-    documentData.fecha_expedicion && 
-    documentData.fecha_vencimiento;
+  const isFormValid =
+    frontImage &&
+    documentData.lugar_expedicion.trim() &&
+    documentData.fecha_expedicion &&
+    documentData.fecha_vencimiento &&
+    documentData.numero.trim();
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
@@ -173,7 +181,10 @@ export default function DocumentVerificationScreen({
         <Text style={styles.title}>Validación de Documento</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Tipo de documento */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tipo de Documento</Text>
@@ -204,7 +215,9 @@ export default function DocumentVerificationScreen({
 
         {/* Imagen trasera */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reverso del Documento (Opcional)</Text>
+          <Text style={styles.sectionTitle}>
+            Reverso del Documento (Opcional)
+          </Text>
           <TouchableOpacity
             style={styles.imageContainer}
             onPress={() => showImagePicker(true)}
@@ -225,7 +238,7 @@ export default function DocumentVerificationScreen({
         {/* Formulario */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información del Documento</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Lugar de Expedición *</Text>
             <TextInput
@@ -239,27 +252,87 @@ export default function DocumentVerificationScreen({
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Fecha de Expedición *</Text>
+            <Text style={styles.label}>Número de Documento *</Text>
             <TextInput
               style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={documentData.fecha_expedicion}
+              placeholder="Ingrese el número de documento"
+              value={documentData.numero}
               onChangeText={(text) =>
-                setDocumentData({ ...documentData, fecha_expedicion: text })
+                setDocumentData({ ...documentData, numero: text })
               }
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Fecha de Vencimiento *</Text>
-            <TextInput
+            <Text style={styles.label}>Fecha de Expedición *</Text>
+            <TouchableOpacity
               style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={documentData.fecha_vencimiento}
-              onChangeText={(text) =>
-                setDocumentData({ ...documentData, fecha_vencimiento: text })
-              }
-            />
+              onPress={() => setShowExpeditionPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={{
+                  color: documentData.fecha_expedicion ? "#222" : "#888",
+                }}
+              >
+                {documentData.fecha_expedicion || "YYYY-MM-DD"}
+              </Text>
+            </TouchableOpacity>
+            {showExpeditionPicker && (
+              <DateTimePicker
+                value={
+                  documentData.fecha_expedicion
+                    ? new Date(documentData.fecha_expedicion)
+                    : new Date()
+                }
+                mode="date"
+                display="calendar"
+                onChange={(_, date) => {
+                  setShowExpeditionPicker(false);
+                  if (date)
+                    setDocumentData({
+                      ...documentData,
+                      fecha_expedicion: date.toISOString().split("T")[0],
+                    });
+                }}
+              />
+            )}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Fecha de Vencimiento *</Text>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowExpirationPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={{
+                  color: documentData.fecha_vencimiento ? "#222" : "#888",
+                }}
+              >
+                {documentData.fecha_vencimiento || "YYYY-MM-DD"}
+              </Text>
+            </TouchableOpacity>
+            {showExpirationPicker && (
+              <DateTimePicker
+                value={
+                  documentData.fecha_vencimiento
+                    ? new Date(documentData.fecha_vencimiento)
+                    : new Date()
+                }
+                mode="date"
+                display="calendar"
+                onChange={(_, date) => {
+                  setShowExpirationPicker(false);
+                  if (date)
+                    setDocumentData({
+                      ...documentData,
+                      fecha_vencimiento: date.toISOString().split("T")[0],
+                    });
+                }}
+              />
+            )}
           </View>
         </View>
 
@@ -288,16 +361,16 @@ export default function DocumentVerificationScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     paddingVertical: 8,
@@ -305,14 +378,14 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   backButtonText: {
-    color: '#8B5CF6',
+    color: "#8B5CF6",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     flex: 1,
   },
   scrollView: {
@@ -324,38 +397,38 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 16,
   },
   documentTypeContainer: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     padding: 16,
     borderRadius: 8,
   },
   documentType: {
     fontSize: 16,
-    color: '#374151',
-    fontWeight: '500',
+    color: "#374151",
+    fontWeight: "500",
   },
   imageContainer: {
     borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
+    borderColor: "#D1D5DB",
+    borderStyle: "dashed",
     borderRadius: 12,
     height: 200,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   imagePlaceholder: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
   },
   imageIcon: {
     fontSize: 48,
@@ -363,40 +436,40 @@ const styles = StyleSheet.create({
   },
   imagePlaceholderText: {
     fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: "#6B7280",
+    textAlign: "center",
   },
   inputContainer: {
     marginBottom: 16,
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: "600",
+    color: "#374151",
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: "#D1D5DB",
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
   },
   submitButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: "#8B5CF6",
     marginHorizontal: 24,
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: "#D1D5DB",
   },
   submitButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-}); 
+});

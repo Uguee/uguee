@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, FlatList } from "react-native";
-import { TopMenu } from "../components/TopMenu"; // Ajusta la ruta si es necesario
+import { View, FlatList, Text, StyleSheet } from "react-native";
+import { TopMenu } from "../components/TopMenu";
 import { SearchBar } from "../components/SearchBar";
 import { BigCard } from "../components/BigCardHome";
 import { RouteCard } from "../components/RouteCardHome";
 import { SuggestionsSection } from "../components/SuggestionsSection";
-import { BottomNavigation } from "../components/BottomNavigationBar";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { useAuth } from "../hooks/useAuth";
 import { useVerificationStatus } from "../hooks/useVerificationStatus";
 import {
@@ -21,6 +20,8 @@ interface HomeScreenProps {
   onGoToDriverView?: () => void;
   onGoToProfile?: () => void;
   onGoToInstitutionProfile?: () => void;
+  onGoToHome?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function HomeScreen({
@@ -30,6 +31,8 @@ export default function HomeScreen({
   onGoToDriverView,
   onGoToProfile,
   onGoToInstitutionProfile,
+  onGoToHome,
+  onGoToMyTripsScreen,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -42,7 +45,6 @@ export default function HomeScreen({
     error,
   } = useVerificationStatus();
 
-  // Log de verificación al cargar la pantalla
   useEffect(() => {
     if (!verificationLoading) {
       console.log("[HomeScreen] Usuario actual:", user);
@@ -75,32 +77,7 @@ export default function HomeScreen({
 
   const suggestions = [
     { label: "Sugerir ruta", onPress: () => alert("Sugerir ruta") },
-    { label: "Intracampus", onPress: () => alert("Intracampus") },
     { label: "Rastrea rutas", onPress: () => alert("Rastrea rutas") },
-  ];
-
-  const navButtons = [
-    {
-      label: "Inicio",
-      icon: <Ionicons name="home-outline" size={28} color="#000" />,
-      active: true,
-      onPress: () => HomeScreen,
-    },
-    {
-      label: "Mis viajes",
-      icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
-      onPress: onGoToDriverView ?? (() => alert("Mis viajes")),
-    },
-    {
-      label: "Servicios",
-      icon: <Ionicons name="settings-outline" size={28} color="#000" />,
-      onPress: () => alert("Servicios"),
-    },
-    {
-      label: "Perfil",
-      icon: <FontAwesome name="user-o" size={26} color="#000" />,
-      onPress: onGoToProfile ?? (() => alert("Perfil")),
-    },
   ];
 
   const rutas = [
@@ -111,20 +88,16 @@ export default function HomeScreen({
     { title: "Unicentro - Sur", address: "Cra. 100 #5-169 - Centro comercial" },
   ];
 
-  // 1. Filtra las rutas según el texto de búsqueda
+  // Filtra las rutas según el texto de búsqueda
   const rutasFiltradas = rutas.filter((ruta) =>
     ruta.title.toLowerCase().includes(search.toLowerCase())
   );
 
   // Construimos dinámicamente las BigCards según el estado de verificación.
   const renderDynamicCards = () => {
-    if (verificationLoading) return null; // Aún consultando, no mostrar nada.
-
-    const cards: JSX.Element[] = [];
-
-    // Tarjeta de solicitud pendiente de conductor
+    if (verificationLoading) return null;
+    const cards: React.ReactElement[] = [];
     if (conductorStatus === "pendiente") {
-      // Si la institución está validada, mostrar también la tarjeta de institución
       if (institutionStatus === "validado") {
         cards.push(
           <BigCard
@@ -148,11 +121,8 @@ export default function HomeScreen({
           }
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta de solicitud pendiente
     if (institutionStatus === "pendiente") {
       cards.push(
         <BigCard
@@ -163,11 +133,8 @@ export default function HomeScreen({
           onPress={() => {}}
         />
       );
-      // No mostrar las otras tarjetas si está pendiente
       return cards;
     }
-
-    // Tarjeta institución
     if (institutionStatus !== "validado") {
       cards.push(
         <BigCard
@@ -191,8 +158,6 @@ export default function HomeScreen({
         />
       );
     }
-
-    // Tarjetas de conductor basadas en status
     if (institutionStatus === "validado" && conductorStatus !== "validado") {
       cards.push(
         <BigCard
@@ -219,7 +184,6 @@ export default function HomeScreen({
         />
       );
     }
-
     return cards;
   };
 
@@ -243,19 +207,35 @@ export default function HomeScreen({
               onChangeText={setSearch}
               onLaterPress={() => alert("Más tarde")}
             />
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: "#8B5CF6",
+                marginHorizontal: 16,
+                marginBottom: 16,
+                textAlign: "center",
+              }}
+            >
+              {`Te damos la bienvenida, ${user?.firstName || ""}`}
+            </Text>
             {/* Tarjetas dinámicas según verificación */}
             {renderDynamicCards()}
           </>
         }
-        ListFooterComponent={
-          <SuggestionsSection
-            suggestions={suggestions}
-            onSeeAll={() => alert("Ver todas las sugerencias")}
-          />
-        }
+        ListFooterComponent={<SuggestionsSection suggestions={suggestions} />}
         contentContainerStyle={{ paddingBottom: 80 }}
       />
-      <BottomNavigation buttons={navButtons} />
+      <HomeBottomMenu
+        onGoToProfile={onGoToProfile ?? (() => alert("Perfil"))}
+        onGoToHome={() => {}}
+        onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
+        activeButton="home"
+      />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // ... existing code ...
+});
