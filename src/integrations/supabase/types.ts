@@ -27,7 +27,7 @@ export type Database = {
           imagen_back?: string | null
           imagen_front: string
           lugar_expedicion: string
-          numero: number
+          numero?: number
           tipo: string
         }
         Update: {
@@ -61,7 +61,7 @@ export type Database = {
         Insert: {
           fecha_vencimiento: string
           imagen: string
-          numero: number
+          numero?: number
           placa_vehiculo: string
           tipo: string
         }
@@ -81,6 +81,45 @@ export type Database = {
             referencedColumns: ["placa"]
           },
         ]
+      }
+      geocoding_cache: {
+        Row: {
+          ciudad: string
+          created_at: string | null
+          direccion: string
+          expires_at: string | null
+          id: number
+          lat: number
+          lon: number
+          pais: string
+          precision_meters: number | null
+          provider: string | null
+        }
+        Insert: {
+          ciudad: string
+          created_at?: string | null
+          direccion: string
+          expires_at?: string | null
+          id?: number
+          lat: number
+          lon: number
+          pais: string
+          precision_meters?: number | null
+          provider?: string | null
+        }
+        Update: {
+          ciudad?: string
+          created_at?: string | null
+          direccion?: string
+          expires_at?: string | null
+          id?: number
+          lat?: number
+          lon?: number
+          pais?: string
+          precision_meters?: number | null
+          provider?: string | null
+        }
+        Relationships: []
       }
       institucion: {
         Row: {
@@ -222,6 +261,42 @@ export type Database = {
           },
         ]
       }
+      reserva: {
+        Row: {
+          fecha: string | null
+          id: number
+          id_usuario: number | null
+          id_viaje: number | null
+        }
+        Insert: {
+          fecha?: string | null
+          id?: number
+          id_usuario?: number | null
+          id_viaje?: number | null
+        }
+        Update: {
+          fecha?: string | null
+          id?: number
+          id_usuario?: number | null
+          id_viaje?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserva_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          },
+          {
+            foreignKeyName: "reserva_id_viaje_fkey"
+            columns: ["id_viaje"]
+            isOneToOne: false
+            referencedRelation: "viaje"
+            referencedColumns: ["id_viaje"]
+          },
+        ]
+      }
       rol: {
         Row: {
           id_rol: number
@@ -260,6 +335,81 @@ export type Database = {
           trayecto?: unknown
         }
         Relationships: []
+      }
+      solicitud_viaje: {
+        Row: {
+          created_at: string | null
+          estado: string
+          fecha: string
+          hora_llegada: string | null
+          hora_salida: string
+          id_conductor: number | null
+          id_pasajero: number
+          id_ruta: number
+          id_solicitud: number
+          id_vehiculo: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          estado: string
+          fecha: string
+          hora_llegada?: string | null
+          hora_salida: string
+          id_conductor?: number | null
+          id_pasajero: number
+          id_ruta: number
+          id_solicitud?: number
+          id_vehiculo?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          estado?: string
+          fecha?: string
+          hora_llegada?: string | null
+          hora_salida?: string
+          id_conductor?: number | null
+          id_pasajero?: number
+          id_ruta?: number
+          id_solicitud?: number
+          id_vehiculo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitud_viaje_id_conductor_fkey"
+            columns: ["id_conductor"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          },
+          {
+            foreignKeyName: "solicitud_viaje_id_pasajero_fkey"
+            columns: ["id_pasajero"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          },
+          {
+            foreignKeyName: "solicitud_viaje_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "ruta"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "solicitud_viaje_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "ruta_geojson"
+            referencedColumns: ["id_ruta"]
+          },
+          {
+            foreignKeyName: "solicitud_viaje_id_vehiculo_fkey"
+            columns: ["id_vehiculo"]
+            isOneToOne: false
+            referencedRelation: "vehiculo"
+            referencedColumns: ["placa"]
+          },
+        ]
       }
       spatial_ref_sys: {
         Row: {
@@ -341,36 +491,6 @@ export type Database = {
           },
         ]
       }
-      usuario_rol: {
-        Row: {
-          id_rol: number
-          id_usuario: number
-        }
-        Insert: {
-          id_rol: number
-          id_usuario: number
-        }
-        Update: {
-          id_rol?: number
-          id_usuario?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "usuario_rol_id_rol_fkey"
-            columns: ["id_rol"]
-            isOneToOne: false
-            referencedRelation: "rol"
-            referencedColumns: ["id_rol"]
-          },
-          {
-            foreignKeyName: "usuario_rol_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id_usuario"]
-          },
-        ]
-      }
       usuario_ruta: {
         Row: {
           id_ruta: number
@@ -393,6 +513,13 @@ export type Database = {
             referencedColumns: ["id_ruta"]
           },
           {
+            foreignKeyName: "usuario_ruta_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "ruta_geojson"
+            referencedColumns: ["id_ruta"]
+          },
+          {
             foreignKeyName: "usuario_ruta_id_usuario_fkey"
             columns: ["id_usuario"]
             isOneToOne: false
@@ -404,33 +531,33 @@ export type Database = {
       vehiculo: {
         Row: {
           color: string
-          fecha_tecnicomecanica: string
+          fecha_tecnicomecanica: string | null
           id_usuario: number
           modelo: number
           placa: string
           tipo: number
           validacion: string | null
-          vigencia_soat: string
+          vigencia_soat: string | null
         }
         Insert: {
           color: string
-          fecha_tecnicomecanica: string
+          fecha_tecnicomecanica?: string | null
           id_usuario: number
           modelo: number
           placa: string
           tipo: number
           validacion?: string | null
-          vigencia_soat: string
+          vigencia_soat?: string | null
         }
         Update: {
           color?: string
-          fecha_tecnicomecanica?: string
+          fecha_tecnicomecanica?: string | null
           id_usuario?: number
           modelo?: number
           placa?: string
           tipo?: number
           validacion?: string | null
-          vigencia_soat?: string
+          vigencia_soat?: string | null
         }
         Relationships: [
           {
@@ -451,31 +578,31 @@ export type Database = {
       }
       viaje: {
         Row: {
-          fecha: string
-          hora_llegada: string
-          hora_salida: string
-          id_conductor: number
+          id_conductor: number | null
           id_ruta: number
-          id_vehiculo: string
+          id_vehiculo: string | null
           id_viaje: number
+          llegada_at: string | null
+          programado_at: string | null
+          salida_at: string | null
         }
         Insert: {
-          fecha: string
-          hora_llegada: string
-          hora_salida: string
-          id_conductor: number
+          id_conductor?: number | null
           id_ruta: number
-          id_vehiculo: string
+          id_vehiculo?: string | null
           id_viaje?: number
+          llegada_at?: string | null
+          programado_at?: string | null
+          salida_at?: string | null
         }
         Update: {
-          fecha?: string
-          hora_llegada?: string
-          hora_salida?: string
-          id_conductor?: number
+          id_conductor?: number | null
           id_ruta?: number
-          id_vehiculo?: string
+          id_vehiculo?: string | null
           id_viaje?: number
+          llegada_at?: string | null
+          programado_at?: string | null
+          salida_at?: string | null
         }
         Relationships: [
           {
@@ -493,93 +620,19 @@ export type Database = {
             referencedColumns: ["id_ruta"]
           },
           {
+            foreignKeyName: "viaje_id_ruta_fkey"
+            columns: ["id_ruta"]
+            isOneToOne: false
+            referencedRelation: "ruta_geojson"
+            referencedColumns: ["id_ruta"]
+          },
+          {
             foreignKeyName: "viaje_id_vehiculo_fkey"
             columns: ["id_vehiculo"]
             isOneToOne: false
             referencedRelation: "vehiculo"
             referencedColumns: ["placa"]
           },
-        ]
-      },
-      solicitud_viaje: {
-        Row: {
-          id_solicitud: number
-          id_ruta: number
-          id_pasajero: number
-          fecha: string
-          hora_salida: string
-          hora_llegada: string | null
-          estado: string
-          created_at: string
-        }
-        Insert: {
-          id_solicitud?: number
-          id_ruta: number
-          id_pasajero: number
-          fecha: string
-          hora_salida: string
-          hora_llegada?: string | null
-          estado: string
-          created_at?: string
-        }
-        Update: {
-          id_solicitud?: number
-          id_ruta?: number
-          id_pasajero?: number
-          fecha?: string
-          hora_salida?: string
-          hora_llegada?: string | null
-          estado?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "solicitud_viaje_id_ruta_fkey"
-            columns: ["id_ruta"]
-            isOneToOne: false
-            referencedRelation: "ruta"
-            referencedColumns: ["id_ruta"]
-          },
-          {
-            foreignKeyName: "solicitud_viaje_id_pasajero_fkey"
-            columns: ["id_pasajero"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id_usuario"]
-          }
-        ]
-      },
-      reserva: {
-        Row: {
-          id: number
-          id_usuario: number
-          id_viaje: number
-        }
-        Insert: {
-          id?: number
-          id_usuario: number
-          id_viaje: number
-        }
-        Update: {
-          id?: number
-          id_usuario?: number
-          id_viaje?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reserva_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id_usuario"]
-          },
-          {
-            foreignKeyName: "reserva_id_viaje_fkey"
-            columns: ["id_viaje"]
-            isOneToOne: false
-            referencedRelation: "viaje"
-            referencedColumns: ["id_viaje"]
-          }
         ]
       }
     }
@@ -623,6 +676,30 @@ export type Database = {
           f_table_schema?: unknown | null
           srid?: number | null
           type?: string | null
+        }
+        Relationships: []
+      }
+      ruta_geojson: {
+        Row: {
+          id_ruta: number | null
+          longitud: number | null
+          punto_llegada_geojson: Json | null
+          punto_partida_geojson: Json | null
+          trayecto_geojson: Json | null
+        }
+        Insert: {
+          id_ruta?: number | null
+          longitud?: number | null
+          punto_llegada_geojson?: never
+          punto_partida_geojson?: never
+          trayecto_geojson?: never
+        }
+        Update: {
+          id_ruta?: number | null
+          longitud?: number | null
+          punto_llegada_geojson?: never
+          punto_partida_geojson?: never
+          trayecto_geojson?: never
         }
         Relationships: []
       }
@@ -1089,6 +1166,16 @@ export type Database = {
           tipo: string
         }[]
       }
+      get_cached_address: {
+        Args: { lat: number; lon: number }
+        Returns: {
+          direccion: string
+          ciudad: string
+          pais: string
+          precision_result: number
+          expira: string
+        }[]
+      }
       get_proj4_from_srid: {
         Args: { "": number }
         Returns: string
@@ -1157,6 +1244,10 @@ export type Database = {
           destino_lng: number
           trayecto_json: Json
         }[]
+      }
+      obtener_viaje_con_ruta: {
+        Args: { p_id_viaje: number }
+        Returns: Json
       }
       path: {
         Args: { "": unknown }
