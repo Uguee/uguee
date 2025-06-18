@@ -168,25 +168,8 @@ const SearchRoutes = () => {
 
   const formatDate = (dateString: string) => {
     try {
-      // First try to parse as ISO string
-      try {
-        const date = new Date(dateString);
-        if (!isNaN(date.getTime())) {
-          return format(date, "EEEE d 'de' MMMM 'a las' h:mm a", { locale: es });
-        }
-      } catch (e) {
-        // If ISO parsing fails, try to parse as custom format
-        try {
-          // Assuming the date is in format "YYYY-MM-DD HH:mm:ss"
-          const date = parse(dateString, "yyyy-MM-dd HH:mm:ss", new Date());
-          if (!isNaN(date.getTime())) {
-            return format(date, "EEEE d 'de' MMMM 'a las' h:mm a", { locale: es });
-          }
-        } catch (e) {
-          console.error('Error parsing date:', e);
-        }
-      }
-      return 'Fecha no disponible';
+      const date = new Date(dateString);
+      return format(date, "EEEE d 'de' MMMM 'a las' h:mm a", { locale: es });
     } catch (error) {
       console.error('Error formatting date:', error);
       return 'Fecha no disponible';
@@ -209,22 +192,22 @@ const SearchRoutes = () => {
 
     // Check if user is the passenger who created the route
     try {
-      const { data: routeCreator, error } = await supabase
+      const { data: routeCreators, error } = await supabase
         .from('reserva')
         .select('id_usuario')
-        .eq('id_viaje', trip.id_viaje)
-        .single();
+        .eq('id_viaje', trip.id_viaje);
 
-      console.log('Route creator check:', { routeCreator, error });
+      console.log('Route creator check:', { routeCreators, error });
 
       if (error) {
         console.error('Error checking route creator:', error);
         return false;
       }
 
-      const isCreator = routeCreator?.id_usuario === currentUserId;
+      // Verificar si el usuario actual está entre los creadores
+      const isCreator = routeCreators?.some(creator => creator.id_usuario === currentUserId);
       console.log('Is user the creator?', isCreator);
-      return isCreator;
+      return isCreator || false;
     } catch (error) {
       console.error('Error checking route creator:', error);
       return false;
@@ -415,7 +398,7 @@ const SearchRoutes = () => {
                         {trip.conductor?.nombre} {trip.conductor?.apellido}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {formatDate(trip.fecha + ' ' + trip.hora_salida)}
+                        {formatDate(trip.programado_at)}
                       </p>
                       <div className="mt-2 space-y-1">
                         <p className="text-sm">

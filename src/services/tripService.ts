@@ -45,8 +45,8 @@ export class TripService {
             )
           )
         `)
-        .gte('fecha', new Date().toISOString().split('T')[0])
-        .order('fecha', { ascending: true });
+        .gte('programado_at', new Date().toISOString())
+        .order('programado_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching trips:', error);
@@ -113,7 +113,6 @@ export class TripService {
 
   static async findSimilarTrips(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }, transportType?: string): Promise<Trip[]> {
     try {
-      // First get all upcoming trips
       const { data: trips, error: tripsError } = await supabase
         .from('viaje')
         .select(`
@@ -132,8 +131,8 @@ export class TripService {
             )
           )
         `)
-        .gte('fecha', new Date().toISOString().split('T')[0])
-        .order('fecha', { ascending: true });
+        .gte('programado_at', new Date().toISOString())
+        .order('programado_at', { ascending: true });
 
       if (tripsError) throw tripsError;
 
