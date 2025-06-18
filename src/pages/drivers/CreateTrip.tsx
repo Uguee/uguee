@@ -62,7 +62,6 @@ const CreateTrip = () => {
   // Datos del viaje
   const [fecha, setFecha] = useState('');
   const [horaSalida, setHoraSalida] = useState('');
-  const [horaLlegada, setHoraLlegada] = useState('');
   const [vehiculo, setVehiculo] = useState('');
 
   const { saveRoute, isLoading: isLoadingRoute } = useRouteManager();
@@ -177,8 +176,8 @@ const CreateTrip = () => {
 
     console.log('🔍 DEBUG - currentUserId actual:', currentUserId);
 
-    // Validaciones existentes
-    if (!fecha || !horaSalida || !horaLlegada || !vehiculo) {
+    // Validaciones actualizadas
+    if (!fecha || !horaSalida || !vehiculo) {
       toast({
         title: "❌ Campos requeridos",
         description: "Por favor completa todos los campos del viaje",
@@ -235,15 +234,27 @@ const CreateTrip = () => {
         throw new Error('ID de ruta inválido');
       }
 
-      // Crear el viaje CON VALIDACIONES
-      console.log('Creando viaje...');
+      // Formatear la fecha correctamente
+      const fechaHora = new Date(`${fecha}T${horaSalida}`);
+      const ahora = new Date();
+
+      if (fechaHora <= ahora) {
+        toast({
+          title: "❌ Fecha inválida",
+          description: "La fecha y hora programada debe ser futura",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Creando viaje con fecha:', fechaHora.toISOString());
       const viajeCreado = await crearViaje({
         id_ruta: idRutaAUsar,
         id_conductor: currentUserId,
         id_vehiculo: vehiculo,
-        fecha: fecha,
-        hora_salida: horaSalida,
-        hora_llegada: horaLlegada
+        programado_at: fechaHora.toISOString(),
+        salida_at: null,
+        llegada_at: null
       });
 
       console.log('Viaje creado:', viajeCreado);
@@ -262,7 +273,6 @@ const CreateTrip = () => {
       setRutaSeleccionada(null);
       setFecha('');
       setHoraSalida('');
-      setHoraLlegada('');
       setVehiculo('');
 
       // Recargar rutas disponibles
@@ -508,24 +518,12 @@ const CreateTrip = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Hora de salida
+                      Hora programada
                     </label>
                     <Input
                       type="time"
                       value={horaSalida}
                       onChange={(e) => setHoraSalida(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Hora estimada de llegada
-                    </label>
-                    <Input
-                      type="time"
-                      value={horaLlegada}
-                      onChange={(e) => setHoraLlegada(e.target.value)}
                       className="w-full"
                     />
                   </div>

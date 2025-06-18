@@ -5,9 +5,9 @@ export interface Trip {
   id_conductor: number;
   id_ruta: number;
   id_vehiculo: string;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string;
+  programado_at: string;
+  salida_at: string | null;
+  llegada_at: string | null;
   reseña?: number;
   conductor: {
     nombre: string;

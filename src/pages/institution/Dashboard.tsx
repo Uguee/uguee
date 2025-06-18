@@ -1170,8 +1170,8 @@ const Dashboard = () => {
                                   Distancia: {route.ruta?.longitud ? `${(route.ruta.longitud / 1000).toFixed(2)} km` : 'N/A'}
                                 </div>
                                 <div className="flex items-center text-sm text-muted-foreground">
-                                  <Clock className="w-4 h-4 mr-1" />
-                                  {route.fecha} | {route.hora_salida} - {route.hora_llegada}
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  {route.programado_at} | {route.salida_at} - {route.llegada_at}
                                 </div>
                               </div>
                               <div className="flex gap-2">
@@ -1488,7 +1488,7 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Clock className="w-4 h-4 mr-2" />
-                      {selectedRoute.fecha} | {selectedRoute.hora_salida} - {selectedRoute.hora_llegada}
+                      {selectedRoute.programado_at} | {selectedRoute.salida_at} - {selectedRoute.llegada_at}
                     </div>
                   </div>
                 </div>

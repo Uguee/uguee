@@ -12,9 +12,9 @@ interface ViajeData {
   id_ruta: number;
   id_conductor: number | null;
   id_vehiculo: string | null;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string | null;
+  programado_at: string | null;
+  salida_at: string | null;
+  llegada_at: string | null;
   reseña?: number;
 }
 
@@ -108,9 +108,9 @@ export const useViajeManager = () => {
           id_ruta: viajeData.id_ruta,
           id_conductor: viajeData.id_conductor,
           id_vehiculo: viajeData.id_vehiculo,
-          fecha: viajeData.fecha,
-          hora_salida: viajeData.hora_salida,
-          hora_llegada: viajeData.hora_llegada
+          programado_at: viajeData.programado_at,
+          salida_at: viajeData.salida_at,
+          llegada_at: viajeData.llegada_at
         })
         .select();
 
@@ -147,9 +147,9 @@ export const useViajeManager = () => {
         .insert({
           id_ruta: viajeData.id_ruta,
           id_pasajero: viajeData.id_conductor, // En este caso, id_conductor es el id del pasajero
-          fecha: viajeData.fecha,
-          hora_salida: viajeData.hora_salida,
-          hora_llegada: viajeData.hora_llegada,
+          fecha: viajeData.programado_at,
+          hora_salida: viajeData.salida_at,
+          hora_llegada: viajeData.llegada_at,
           estado: 'pendiente'
         })
         .select();

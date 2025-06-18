@@ -403,9 +403,9 @@ const StartTrip = () => {
         id_ruta: routeData[0].id_ruta_nuevo,
         id_conductor: currentUserId, // This will be used as id_pasajero
         id_vehiculo: null,
-        fecha: formattedDate,
-        hora_salida: formattedTime,
-        hora_llegada: null
+        programado_at: `${formattedDate}T${formattedTime}:00`,
+        salida_at: null,
+        llegada_at: null
       });
 
       console.log('✅ Solicitud de viaje creada:', solicitudCreada);

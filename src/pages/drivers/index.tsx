@@ -76,26 +76,34 @@ const Dashboard = () => {
         setUserData(userData as { id_usuario: number; nombre: string });
 
         // Cargar próximas rutas
-        const { data: rutas, error: rutasError } = await supabase
+        const { data: viajesData, error: viajesError } = await supabase
           .from('viaje')
           .select(`
-            id_viaje,
-            fecha,
-            hora_salida,
-            hora_llegada,
-            id_ruta,
+            *,
             ruta (
+              id_ruta,
               punto_partida,
               punto_llegada,
+              longitud,
               trayecto
+            ),
+            vehiculo (
+              placa,
+              tipo,
+              tipo_vehiculo (
+                tipo
+              )
+            ),
+            pasajeros (
+              id_usuario
             )
           `)
           .eq('id_conductor', parseInt(user?.id || '0'))
-          .gte('fecha', new Date().toISOString().split('T')[0])
-          .order('fecha', { ascending: true });
+          .gte('programado_at', new Date().toISOString())
+          .order('programado_at', { ascending: true });
 
-        if (rutasError) throw rutasError;
-        setProximasRutas(rutas || []);
+        if (viajesError) throw viajesError;
+        setProximasRutas(viajesData || []);
 
         // Cargar solicitudes aceptadas
         const { data: acceptedRequestsData, error: acceptedRequestsError } = await supabase
@@ -134,64 +142,22 @@ const Dashboard = () => {
         const today = new Date().toISOString().split('T')[0];
         
         // Primero obtenemos los viajes
-        const { data: viajesData, error: viajesError } = await supabase
-          .from('viaje')
-          .select(`
-            id_viaje,
-            fecha,
-            hora_salida,
-            hora_llegada,
-            id_ruta,
-            ruta (
-              punto_partida,
-              punto_llegada,
-              trayecto
-            )
-          `)
-          .eq('id_conductor', userData.id_usuario)
-          .gte('fecha', today)
-          .order('fecha', { ascending: true });
-
-        if (viajesError) throw viajesError;
-
-        // Luego, para cada viaje, obtenemos sus reservas
-        const viajesConReservas = await Promise.all(viajesData?.map(async (viaje) => {
-          const { data: reservas, error: reservasError } = await supabase
-            .from('reserva')
-            .select('id_usuario')
-            .eq('id_viaje', viaje.id_viaje);
-
-          if (reservasError) {
-            console.error('Error obteniendo reservas:', reservasError);
-            return {
-              ...viaje,
-              cantidadReservas: 0
-            };
-          }
-
-          return {
-            ...viaje,
-            cantidadReservas: reservas?.length || 0
-          };
-        }) || []);
-
-        // Procesar los viajes
-        const viajesFiltrados = viajesConReservas.map(viaje => {
-          const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+        const viajesFiltrados = viajesData?.map(viaje => {
+          const fechaHoraViaje = new Date(`${viaje.programado_at}`);
           const now = new Date();
           
           return {
             ...viaje,
             esFuturo: fechaHoraViaje > now
           };
-        });
+        }) || [];
 
         // Filtrar solo los viajes futuros
         const viajesProximos = viajesFiltrados.filter(viaje => viaje.esFuturo);
         setProximasRutas(viajesProximos);
         
         // Contar reservas de hoy
-        const reservasDeHoy = viajesFiltrados
+        const reservasDeHoy = viajesProximos
           .filter(viaje => viaje.fecha === today)
           .reduce((total, viaje) => total + viaje.cantidadReservas, 0);
 
@@ -446,10 +412,10 @@ const Dashboard = () => {
                   <div>
                     <h3 className="font-medium">Viaje #{viaje.id_viaje}</h3>
                     <p className="text-sm text-gray-600">
-                      {formatDate(viaje.fecha)}
+                      {formatDate(viaje.programado_at)}
                     </p>
                     <p className="text-sm text-gray-600">
-                      {formatTime(viaje.hora_salida)} - {formatTime(viaje.hora_llegada)}
+                      {formatTime(viaje.salida_at)} - {formatTime(viaje.llegada_at)}
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
@@ -513,7 +479,7 @@ const Dashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedTrip.fecha)} - {formatTime(selectedTrip.hora_salida)} a {formatTime(selectedTrip.hora_llegada)}
+                  {formatDate(selectedTrip.programado_at)} - {formatTime(selectedTrip.salida_at)} a {formatTime(selectedTrip.llegada_at)}
                 </div>
               </div>
               <div>

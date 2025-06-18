@@ -31,9 +31,9 @@ interface ViajeDetalle {
   id_ruta: number;
   id_conductor: number;
   id_vehiculo: string;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string;
+  programado_at: string | null;
+  salida_at: string | null;
+  llegada_at: string | null;
   origen: string;
   destino: string;
   pasajeros: number;
@@ -116,7 +116,7 @@ const HistorialViajes = () => {
             )
           `)
           .eq('id_conductor', id_usuario)
-          .order('fecha', { ascending: true });
+          .order('programado_at', { ascending: true });
 
         if (viajesError) throw viajesError;
 
@@ -199,7 +199,7 @@ const HistorialViajes = () => {
   // Filtrar viajes según la pestaña activa
   const viajesFiltrados = viajes.filter(viaje => {
     // Ajustar la fecha para la zona horaria local
-    const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+    const fechaHoraViaje = new Date(`${viaje.programado_at}T${viaje.salida_at}`);
     fechaHoraViaje.setMinutes(fechaHoraViaje.getMinutes() + fechaHoraViaje.getTimezoneOffset());
     const now = new Date();
     
@@ -370,14 +370,14 @@ const HistorialViajes = () => {
                         <div className="mb-4 md:mb-0">
                           <div className="flex items-center mb-1">
                             <span className="font-medium mr-2">
-                              {formatDate(viaje.fecha)}
+                              {formatDate(viaje.programado_at)}
                             </span>
                             <span className={`text-sm px-2 py-0.5 rounded-full ${
-                              new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date()
+                              new Date(`${viaje.programado_at}T${viaje.salida_at}`) > new Date()
                                 ? 'bg-blue-100 text-blue-800'  // Viaje próximo
                                 : 'bg-green-100 text-green-800' // Viaje pasado
                             }`}>
-                              {new Date(`${viaje.fecha}T${viaje.hora_salida}`) > new Date() ? 'Próximo' : 'Completado'}
+                              {new Date(`${viaje.programado_at}T${viaje.salida_at}`) > new Date() ? 'Próximo' : 'Completado'}
                             </span>
                             {viajesReviews[viaje.id_viaje] && (
                               <div className="flex items-center ml-3">
@@ -405,7 +405,7 @@ const HistorialViajes = () => {
                             De {viaje.origen} a {viaje.destino}
                           </h3>
                           <p className="text-gray-500">
-                            Salida: {formatTime(viaje.hora_salida)} | Llegada estimada: {formatTime(viaje.hora_llegada)}
+                            Salida: {formatTime(viaje.salida_at)} | Llegada estimada: {formatTime(viaje.llegada_at)}
                           </p>
                           <div className="mt-2 flex items-center">
                             <span className="text-gray-700">
@@ -449,15 +449,15 @@ const HistorialViajes = () => {
                                 </li>
                                 <li className="flex items-start">
                                   <span className="font-medium mr-2">Fecha:</span>
-                                  <span>{formatDate(viaje.fecha)}</span>
+                                  <span>{formatDate(viaje.programado_at)}</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="font-medium mr-2">Hora de salida:</span>
-                                  <span>{formatTime(viaje.hora_salida)}</span>
+                                  <span>{formatTime(viaje.salida_at)}</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="font-medium mr-2">Hora estimada de llegada:</span>
-                                  <span>{formatTime(viaje.hora_llegada)}</span>
+                                  <span>{formatTime(viaje.llegada_at)}</span>
                                 </li>
                                 <li className="flex items-start">
                                   <span className="font-medium mr-2">Pasajeros:</span>
