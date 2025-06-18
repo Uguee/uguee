@@ -1,6 +1,32 @@
 import { supabaseAnonKey } from "./documentService";
 import { getCurrentToken } from "../services/authService";
 
+export interface RoutePoint {
+  type: string;
+  coordinates: [number, number];
+}
+
+export interface RouteLineString {
+  type: string;
+  coordinates: [number, number][];
+}
+
+export interface RouteData {
+  id_ruta: number;
+  longitud: number;
+  nombre_partida: string | null;
+  nombre_llegada: string | null;
+  punto_partida?: RoutePoint;
+  punto_llegada?: RoutePoint;
+  trayecto?: RouteLineString;
+}
+
+export interface RouteResponse {
+  success: boolean;
+  data?: RouteData;
+  error?: string;
+}
+
 export async function registerRoute({
   punto_partida,
   punto_llegada,
@@ -58,9 +84,13 @@ export async function registerRoute({
 /**
  * Obtiene la información de una ruta por su ID, incluyendo los campos GeoJSON y los nombres legibles de partida y llegada.
  * @param {number} id_ruta - ID único de la ruta.
- * @returns {Promise<any>} Información de la ruta.
+ * @param {0 | 1} full_data - Indicador para obtener datos completos (1) o solo los campos básicos (0).
+ * @returns {Promise<RouteResponse>} Información de la ruta.
  */
-export async function getRouteById(id_ruta: number) {
+export async function getRouteById(
+  id_ruta: number,
+  full_data: 0 | 1 = 1
+): Promise<RouteResponse> {
   if (!id_ruta) {
     throw new Error("El id_ruta es requerido");
   }
@@ -74,14 +104,34 @@ export async function getRouteById(id_ruta: number) {
           apikey: supabaseAnonKey,
           Authorization: `Bearer ${getCurrentToken()}`,
         },
-        body: JSON.stringify({ id_ruta }),
+        body: JSON.stringify({ id_ruta, full_data }),
       }
     );
-    const data = await response.json();
-    if (!response.ok || data.error) {
-      throw new Error(data.error || "Error al obtener la ruta");
+
+    // Verificar si la respuesta es OK
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
     }
-    return data;
+
+    // Intentar parsear la respuesta como JSON
+    let data;
+    try {
+      const text = await response.text();
+      data = JSON.parse(text);
+    } catch (parseError) {
+      console.error("Error al parsear la respuesta:", parseError);
+      throw new Error("Error al procesar la respuesta del servidor");
+    }
+
+    // Verificar si hay error en la respuesta
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return {
+      success: true,
+      data: data.data,
+    };
   } catch (e) {
     console.error("Error en getRouteById:", e);
     return {

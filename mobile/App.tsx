@@ -72,6 +72,15 @@ const AppNavigator = () => {
   const [tripStartData, setTripStartData] = useState<{
     pickupPlace: string;
     destinationPlace: string;
+    punto_partida?: {
+      coordinates: [number, number];
+    };
+    punto_llegada?: {
+      coordinates: [number, number];
+    };
+    trayecto?: {
+      coordinates: [number, number][];
+    };
   } | null>(null);
   const [qrValue, setQRValue] = useState<string | null>(null);
 
@@ -512,8 +521,8 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToCreateTripScreen={handleGoToCreateTripScreen}
-            onStartTripScreen={(pickup: string, dest: string) => {
-              setTripStartData({ pickupPlace: pickup, destinationPlace: dest });
+            onStartTripScreen={(trip: any) => {
+              setTripStartData(trip);
               setCurrentScreen("driver-trip-start");
             }}
           />
@@ -535,8 +544,7 @@ const AppNavigator = () => {
       case "driver-trip-start":
         return (
           <DriverTripStartScreen
-            pickupPlace={tripStartData?.pickupPlace || ""}
-            destinationPlace={tripStartData?.destinationPlace || ""}
+            trip={tripStartData}
             onGoBack={() => setCurrentScreen("driver-my-trips")}
             onGoToQRScreen={(qr) => {
               setQRValue(qr);

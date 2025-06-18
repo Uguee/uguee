@@ -17,6 +17,14 @@ import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
 import { useDriverTrips } from "../hooks/useDriverTrips";
+import { getRouteById } from "../services/routeService";
+
+function formatPlaceName(nombre: string | null): string {
+  if (!nombre) return "";
+  const partes = nombre.split(",").map((p) => p.trim());
+  // Tomar las primeras 3 partes y añadir "Cali"
+  return `${partes.slice(0, 3).join(", ")}, Cali`;
+}
 
 const FILTERS = [
   { label: "Terminado", value: "completed" },
@@ -29,7 +37,7 @@ const DriverMyTripsScreen = ({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   onGoToCreateTripScreen = () => {},
-  onStartTripScreen = (_pickup: string, _dest: string) => {},
+  onStartTripScreen = (_trip: any) => {},
 }) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -42,27 +50,128 @@ const DriverMyTripsScreen = ({
   const { trips, loading, error } = useDriverTrips();
   console.log("[DriverMyTripsScreen] trips:", trips);
 
+  // Log para verificar el orden original
+  if (trips.length > 0) {
+    console.log("[DriverMyTripsScreen] Orden original de viajes:");
+    trips.slice(0, 3).forEach((trip, index) => {
+      console.log(
+        `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+          trip.estado
+        }`
+      );
+    });
+  }
+
+  const handleSelectTrip = async (trip: any) => {
+    // Usar directamente los datos del viaje que ya vienen de la edge function
+    setSelectedTrip(trip);
+    setShowScheduledModal(true);
+  };
+
   // Filtrado por estado
   let filteredTrips =
     filter === "all"
       ? trips
       : trips.filter((trip: any) =>
           filter === "completed"
-            ? trip.hora_llegada !== null
-            : trip.hora_llegada === null
+            ? trip.estado === "terminado"
+            : trip.estado !== "terminado"
         );
 
   // Filtrado por búsqueda
-  filteredTrips = filteredTrips.filter((trip: any) =>
-    (trip.ruta_nombre || "").toLowerCase().includes(search.toLowerCase())
-  );
+  filteredTrips = filteredTrips.filter((trip: any) => {
+    const routeName =
+      trip.ruta?.nombre_partida && trip.ruta?.nombre_llegada
+        ? `${trip.ruta.nombre_partida} ➔ ${trip.ruta.nombre_llegada}`
+        : `Ruta ${trip.id_ruta}`;
+    return routeName.toLowerCase().includes(search.toLowerCase());
+  });
+
+  // Ordenar por fecha programada (más recientes primero)
+  console.log("[DriverMyTripsScreen] Antes del sort - primeros 3 viajes:");
+  filteredTrips.slice(0, 3).forEach((trip, index) => {
+    console.log(
+      `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+        trip.estado
+      }`
+    );
+  });
+
+  filteredTrips.sort((a, b) => {
+    const dateA = new Date(a.programado_at);
+    const dateB = new Date(b.programado_at);
+    const diff = dateB.getTime() - dateA.getTime(); // Descendente (más reciente primero)
+
+    console.log(
+      `[Sort] Comparando: Viaje ${
+        a.id_viaje
+      } (${dateA.toISOString()}) vs Viaje ${
+        b.id_viaje
+      } (${dateB.toISOString()}) = ${diff}`
+    );
+
+    return diff;
+  });
+
+  // Log para verificar el orden después del sort
+  console.log("[DriverMyTripsScreen] Después del sort - primeros 3 viajes:");
+  filteredTrips.slice(0, 3).forEach((trip, index) => {
+    console.log(
+      `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+        trip.estado
+      }`
+    );
+  });
+
+  const canStartTrip = (trip: any) => {
+    // Permitir iniciar viajes pendientes y programados si están cerca de la hora
+    if (trip.estado !== "pendiente" && trip.estado !== "programado")
+      return false;
+
+    // Verificar si la fecha/hora actual está cerca de la hora programada
+    const now = new Date();
+    const tripDate = new Date(trip.programado_at);
+    const diffInMinutes = Math.abs(
+      (tripDate.getTime() - now.getTime()) / (1000 * 60)
+    );
+
+    // Log para debuggear
+    console.log(`[canStartTrip] Viaje ${trip.id_viaje}:`, {
+      estado: trip.estado,
+      programado_at: trip.programado_at,
+      hora_actual: now.toISOString(),
+      diffInMinutes: diffInMinutes,
+      puedeIniciar: diffInMinutes <= 30,
+    });
+
+    // Permitir iniciar el viaje si estamos dentro de los 30 minutos antes o después de la hora programada
+    return diffInMinutes <= 30;
+  };
+
+  const handleStartTrip = async (trip: any) => {
+    console.log("[DriverMyTripsScreen] handleStartTrip - trip:", trip);
+    console.log(
+      "[DriverMyTripsScreen] onStartTripScreen function:",
+      typeof onStartTripScreen
+    );
+
+    // Pasa el objeto trip completo
+    onStartTripScreen(trip);
+  };
 
   const renderTrip = ({ item }: { item: any }) => {
-    if (item.hora_llegada !== null) {
-      // Terminado
+    // Usar el estado que viene de la edge function
+    const estado = item.estado;
+
+    if (estado === "terminado") {
+      // Terminado - sin color de reborde
       return (
         <TripCompletedCard
-          route={item.ruta_nombre || `${item.id_ruta}`}
+          route={
+            formatPlaceName(item.ruta?.nombre_partida) +
+              " ➔ " +
+              formatPlaceName(item.ruta?.nombre_llegada) || `${item.id_ruta}`
+          }
           passengers={item.pasajeros || 0}
           onPress={() => {
             setSelectedTrip(item);
@@ -70,24 +179,72 @@ const DriverMyTripsScreen = ({
           }}
         />
       );
-    } else {
-      // Programado
+    } else if (estado === "en-curso") {
+      // En curso - morado muy oscuro
       return (
         <View
           style={{
-            backgroundColor: "#E9D6FF",
-            borderRadius: 16,
-            marginBottom: 12,
+            backgroundColor: "#7C3AED", // Morado muy oscuro
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2, // Reducir el padding del reborde
           }}
         >
           <TripScheduledCard
-            route={item.ruta_nombre || `${item.id_ruta}`}
-            arrivalDateTime={
-              item.fecha + (item.hora_salida ? ` ➔ ${item.hora_salida}` : "")
-            }
+            trip={item}
             onPress={() => {
-              setSelectedTrip(item);
-              setShowScheduledModal(true);
+              handleSelectTrip(item);
+            }}
+            canStartTrip={false} // No se puede iniciar si ya está en curso
+            onStartTrip={() => {}}
+          />
+        </View>
+      );
+    } else if (estado === "pendiente") {
+      // Pendiente - morado más oscuro
+      return (
+        <View
+          style={{
+            backgroundColor: "#A855F7", // Morado más oscuro
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2, // Reducir el padding del reborde
+          }}
+        >
+          <TripScheduledCard
+            trip={item}
+            onPress={() => {
+              handleSelectTrip(item);
+            }}
+            canStartTrip={canStartTrip(item)}
+            onStartTrip={() => {
+              handleStartTrip(item);
+            }}
+          />
+        </View>
+      );
+    } else {
+      // Programado - morado muy claro
+      return (
+        <View
+          style={{
+            backgroundColor: "#E9D5FF", // Morado muy claro
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2, // Reducir el padding del reborde
+          }}
+        >
+          <TripScheduledCard
+            trip={item}
+            onPress={() => {
+              handleSelectTrip(item);
+            }}
+            canStartTrip={canStartTrip(item)} // Permitir iniciar si está cerca de la hora
+            onStartTrip={() => {
+              handleStartTrip(item);
             }}
           />
         </View>
@@ -186,6 +343,12 @@ const DriverMyTripsScreen = ({
         visible={showScheduledModal}
         onClose={() => setShowScheduledModal(false)}
         trip={selectedTrip}
+        onStartTrip={() => {
+          if (selectedTrip) {
+            handleStartTrip(selectedTrip);
+            setShowScheduledModal(false);
+          }
+        }}
       />
       {/* Menú inferior */}
       <DriverHomeBottomMenu
