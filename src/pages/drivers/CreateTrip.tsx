@@ -41,6 +41,16 @@ interface RutaDetalle {
   trayecto_coords: CoordenadaPoint[];
 }
 
+interface Vehiculo {
+  placa: string;
+  color: string;
+  modelo: number;
+  tipo_vehiculo: {
+    tipo: string;
+  };
+  validacion: string;
+}
+
 const CreateTrip = () => {
   // Estados para nueva ruta
   const [currentRoute, setCurrentRoute] = useState<{
@@ -63,6 +73,7 @@ const CreateTrip = () => {
   const [fecha, setFecha] = useState('');
   const [horaSalida, setHoraSalida] = useState('');
   const [vehiculo, setVehiculo] = useState('');
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
 
   const { saveRoute, isLoading: isLoadingRoute } = useRouteManager();
   const { fetchRutasDisponibles, crearViaje, isLoading: isLoadingViaje } = useViajeManager();
@@ -150,6 +161,38 @@ const CreateTrip = () => {
 
     cargarDetalleRuta();
   }, [rutaSeleccionada, modoCreacion]);
+
+  // Cargar vehículos del conductor
+  useEffect(() => {
+    const cargarVehiculos = async () => {
+      if (!currentUserId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('vehiculo')
+          .select(`
+            *,
+            tipo_vehiculo (
+              tipo
+            )
+          `)
+          .eq('id_usuario', currentUserId)
+          .eq('validacion', 'validado');
+
+        if (error) throw error;
+        setVehiculos(data || []);
+      } catch (err) {
+        console.error('Error cargando vehículos:', err);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los vehículos",
+          variant: "destructive",
+        });
+      }
+    };
+
+    cargarVehiculos();
+  }, [currentUserId]);
 
   const handleRouteGenerated = (
     origin: RoutePoint, 
@@ -530,15 +573,23 @@ const CreateTrip = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Vehículo (ID)
+                      Vehículo
                     </label>
-                    <Input
-                      type="text"
+                    <Select
                       value={vehiculo}
-                      onChange={(e) => setVehiculo(e.target.value)}
-                      placeholder="Ingresa el ID del vehículo"
-                      className="w-full"
-                    />
+                      onValueChange={setVehiculo}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un vehículo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehiculos.map((v) => (
+                          <SelectItem key={v.placa} value={v.placa}>
+                            {v.placa} - {v.tipo_vehiculo.tipo} ({v.color})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
