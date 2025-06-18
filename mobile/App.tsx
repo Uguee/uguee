@@ -32,6 +32,7 @@ import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
 import DriverTripStartScreen from "./screens/DriverTripStartScreen";
 import DriveQRScreen from "./screens/DriveQRScreen";
+import ScanQRScreen from "./screens/ScanQRScreen";
 
 type Screen =
   | "welcome"
@@ -60,7 +61,8 @@ type Screen =
   | "driver-create-trip"
   | "user-trips"
   | "driver-trip-start"
-  | "driver-qr";
+  | "driver-qr"
+  | "scan-qr";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -74,6 +76,8 @@ const AppNavigator = () => {
     destinationPlace: string;
   } | null>(null);
   const [qrValue, setQRValue] = useState<string | null>(null);
+  const [showScanQRScreen, setShowScanQRScreen] = useState(false);
+  const [scanQRTripData, setScanQRTripData] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -281,6 +285,11 @@ const AppNavigator = () => {
     setCurrentScreen("driver-routes");
   };
 
+  const handleShowScanQRScreen = (tripData: any) => {
+    setScanQRTripData(tripData);
+    setShowScanQRScreen(true);
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -312,6 +321,23 @@ const AppNavigator = () => {
         >
           <Text>Cargando...</Text>
         </View>
+      );
+    }
+
+    if (showScanQRScreen) {
+      return (
+        <ScanQRScreen
+          onScan={(qrData) => {
+            setShowScanQRScreen(false);
+            setScanQRTripData(null);
+            setCurrentScreen("user-trips");
+          }}
+          onGoBack={() => {
+            setShowScanQRScreen(false);
+            setScanQRTripData(null);
+            setCurrentScreen("user-trips");
+          }}
+        />
       );
     }
 
@@ -530,6 +556,7 @@ const AppNavigator = () => {
           <UserTripsScreen
             onGoToHomeScreen={handleGoToHomeScreen}
             onGoToProfileScreen={handleGoToProfile}
+            onShowScanQRScreen={handleShowScanQRScreen}
           />
         );
       case "driver-trip-start":

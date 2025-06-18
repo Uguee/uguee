@@ -28,10 +28,17 @@ const TRIPS = [
   // ...más viajes
 ];
 
+interface UserTripsScreenProps {
+  onGoToHomeScreen?: () => void;
+  onGoToProfileScreen?: () => void;
+  onShowScanQRScreen?: (tripData: any) => void;
+}
+
 export default function UserTripsScreen({
   onGoToHomeScreen = () => {},
   onGoToProfileScreen = () => {},
-}) {
+  onShowScanQRScreen = () => {},
+}: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -79,6 +86,10 @@ export default function UserTripsScreen({
         vehicleType="bus"
         color="rosado"
         plate="ABC123"
+        onStartTrip={() => {
+          setShowDetails(false);
+          onShowScanQRScreen(selectedTrip);
+        }}
       />
       <HomeBottomMenu
         onGoToHome={onGoToHomeScreen}

@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 interface UserTripDetailsModalProps {
   visible: boolean;
   onClose: () => void;
+  onStartTrip?: () => void;
   pickupPlace?: string;
   destinationPlace?: string;
   departureDate?: string;
@@ -25,6 +26,7 @@ interface UserTripDetailsModalProps {
 const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
   visible,
   onClose,
+  onStartTrip = () => {},
   pickupPlace = "Campus Meléndez Calle 13 # 100",
   destinationPlace = "Cl. 13 #98-10",
   departureDate = "2025-05-31",
@@ -83,7 +85,7 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
               Placa: <Text style={styles.value}>{plate}</Text>
             </Text>
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.startBtn} onPress={() => {}}>
+              <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
                 <Text style={styles.startBtnText}>Iniciar viaje</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn2} onPress={onClose}>
