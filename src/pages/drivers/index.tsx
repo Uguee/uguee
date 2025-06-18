@@ -103,7 +103,23 @@ const Dashboard = () => {
           .order('programado_at', { ascending: true });
 
         if (viajesError) throw viajesError;
-        setProximasRutas(viajesData || []);
+
+        // Filtrar solo los viajes futuros
+        const viajesProximos = (viajesData || []).filter(viaje => {
+          const fechaViaje = new Date(viaje.programado_at);
+          const ahora = new Date();
+          return fechaViaje > ahora;
+        });
+
+        setProximasRutas(viajesProximos);
+        
+        // Contar reservas de hoy
+        const today = new Date().toISOString().split('T')[0];
+        const reservasDeHoy = viajesProximos
+          .filter(viaje => viaje.programado_at.startsWith(today))
+          .reduce((total, viaje) => total + (viaje.pasajeros?.length || 0), 0);
+
+        setReservasHoy(reservasDeHoy);
 
         // Cargar solicitudes aceptadas
         const { data: acceptedRequestsData, error: acceptedRequestsError } = await supabase
@@ -137,31 +153,6 @@ const Dashboard = () => {
         // Obtener estadísticas del conductor
         const driverStats = await ReviewService.getDriverStats(userData.id_usuario);
         setCalificacion(driverStats.promedio);
-
-        // Obtener próximos viajes
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Primero obtenemos los viajes
-        const viajesFiltrados = viajesData?.map(viaje => {
-          const fechaHoraViaje = new Date(`${viaje.programado_at}`);
-          const now = new Date();
-          
-          return {
-            ...viaje,
-            esFuturo: fechaHoraViaje > now
-          };
-        }) || [];
-
-        // Filtrar solo los viajes futuros
-        const viajesProximos = viajesFiltrados.filter(viaje => viaje.esFuturo);
-        setProximasRutas(viajesProximos);
-        
-        // Contar reservas de hoy
-        const reservasDeHoy = viajesProximos
-          .filter(viaje => viaje.fecha === today)
-          .reduce((total, viaje) => total + viaje.cantidadReservas, 0);
-
-        setReservasHoy(reservasDeHoy);
 
       } catch (error) {
         console.error('Error cargando datos:', error);
@@ -218,29 +209,21 @@ const Dashboard = () => {
     );
   };
 
-  const formatTime = (timeString: string | null | undefined) => {
-    if (!timeString) return 'Hora no disponible';
-    try {
-      return timeString.substring(0, 5); // Formato HH:mm
-    } catch (error) {
-      return 'Hora no disponible';
-    }
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Fecha no disponible';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Fecha no disponible';
-    try {
-      // Add T00:00:00 to ensure proper timezone handling
-      const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) return 'Fecha no disponible';
-      return date.toLocaleDateString('es-CO', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long'
-      });
-    } catch (error) {
-      return 'Fecha no disponible';
-    }
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return 'Hora no disponible';
+    return new Date(dateString).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const getRouteData = (trip: any) => {
@@ -415,7 +398,7 @@ const Dashboard = () => {
                       {formatDate(viaje.programado_at)}
                     </p>
                     <p className="text-sm text-gray-600">
-                      {formatTime(viaje.salida_at)} - {formatTime(viaje.llegada_at)}
+                      {formatTime(viaje.programado_at)}
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
@@ -427,7 +410,7 @@ const Dashboard = () => {
                       className="text-sm text-primary hover:text-primary/80 transition-colors"
                       disabled={loadingRequesters}
                     >
-                      {viaje.cantidadReservas} reservas
+                      {viaje.pasajeros?.length || 0} reservas
                     </button>
                     <span className="px-3 py-1 text-sm bg-primary/20 text-primary rounded-full">
                       Programado
