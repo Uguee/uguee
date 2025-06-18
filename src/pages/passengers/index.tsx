@@ -180,11 +180,11 @@ const PassengerDashboard = () => {
         .from('reserva')
         .select(`
           id_viaje,
-          viaje (
+          viaje!inner (
             id_viaje,
-            fecha,
-            hora_salida,
-            hora_llegada,
+            programado_at,
+            salida_at,
+            llegada_at,
             id_ruta,
             id_conductor,
             id_vehiculo,
@@ -211,7 +211,7 @@ const PassengerDashboard = () => {
           )
         `)
         .eq('id_usuario', userData.id_usuario)
-        .order('fecha', { ascending: true });
+        .order('viaje(programado_at)', { ascending: true });
 
       if (reservasError) throw reservasError;
 
@@ -220,12 +220,12 @@ const PassengerDashboard = () => {
         ?.map(r => r.viaje)
         .filter(v => v !== null)
         .map(viaje => {
-          const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+          const fechaViaje = new Date(viaje.programado_at);
           const now = new Date();
           
           return {
             ...viaje,
-            esFuturo: fechaHoraViaje > now
+            esFuturo: fechaViaje > now
           };
         }) || [];
 
@@ -246,7 +246,11 @@ const PassengerDashboard = () => {
   const formatTime = (timeString: string | null | undefined) => {
     if (!timeString) return 'Hora no disponible';
     try {
-      return timeString.substring(0, 5); // Formato HH:mm
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch (error) {
       return 'Hora no disponible';
     }
@@ -255,9 +259,7 @@ const PassengerDashboard = () => {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'Fecha no disponible';
     try {
-      // Add T00:00:00 to ensure proper timezone handling
-      const date = new Date(dateString + 'T00:00:00');
-      if (isNaN(date.getTime())) return 'Fecha no disponible';
+      const date = new Date(dateString);
       return format(date, "EEEE d 'de' MMMM", { locale: es });
     } catch (error) {
       return 'Fecha no disponible';
@@ -468,7 +470,7 @@ const PassengerDashboard = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-medium">
-                            {formatDate(reservation.fecha)}
+                            {formatDate(reservation.programado_at)}
                           </span>
                           <span className="px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
                             {reservation.esFuturo ? 'Próximo' : 'Pasado'}
@@ -478,7 +480,8 @@ const PassengerDashboard = () => {
                           <span className="font-medium">Conductor:</span> {reservation.conductor?.nombre} {reservation.conductor?.apellido}
                         </h3>
                         <p className="text-gray-600">
-                          Salida: {formatTime(reservation.hora_salida)} | Llegada estimada: {formatTime(reservation.hora_llegada)}
+                          Salida: {formatTime(reservation.programado_at)} 
+                          {reservation.llegada_at && ` | Llegada: ${formatTime(reservation.llegada_at)}`}
                         </p>
                         <p className="text-gray-600 mt-1">
                           <span className="font-medium">Vehículo:</span> {reservation.vehiculo?.tipo?.tipo} {reservation.vehiculo?.color} {reservation.vehiculo?.modelo}
@@ -625,7 +628,7 @@ const PassengerDashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedReservation.fecha)} - {formatTime(selectedReservation.hora_salida)} a {formatTime(selectedReservation.hora_llegada)}
+                  {formatDate(selectedReservation.programado_at)} - {formatTime(selectedReservation.programado_at)}
                 </div>
               </div>
             </div>
