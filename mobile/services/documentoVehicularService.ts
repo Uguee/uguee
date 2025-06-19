@@ -14,7 +14,7 @@ export const registrarDocumentoVehicular = async (
     const { data, error } = await supabase.functions.invoke(
       "register-vehicle-document",
       {
-        body: documento,
+        body: JSON.stringify(documento),
       }
     );
 

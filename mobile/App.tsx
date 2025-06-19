@@ -18,7 +18,6 @@ import {
   ProfileScreen,
 } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
-import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
@@ -285,10 +284,8 @@ const AppNavigator = () => {
     setCurrentScreen("driver-routes");
   };
 
-  const handleShowScanQRScreen = (tripData: any) => {
-    setScanQRTripData(tripData);
-    setShowScanQRScreen(true);
-  };
+  const handleShowScanQRScreen = () => setCurrentScreen("scan-qr");
+  const handleGoBackFromScanQR = () => setCurrentScreen("user-trips");
 
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
@@ -577,6 +574,10 @@ const AppNavigator = () => {
             qrValue={qrValue || "QR-PLACEHOLDER"}
             onGoBack={() => setCurrentScreen("driver-trip-start")}
           />
+        );
+      case "scan-qr":
+        return (
+          <ScanQRScreen onGoBack={handleGoBackFromScanQR} onScan={() => {}} />
         );
       default:
         return (
