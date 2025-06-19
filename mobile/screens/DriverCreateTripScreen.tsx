@@ -8,6 +8,8 @@ import {
   FlatList,
   TextInput,
   Platform,
+  ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -160,6 +162,7 @@ export default function DriverCreateTripScreen({
       const trip = await createTrip(tripData, token);
       setSuccess("¡Viaje creado exitosamente!");
       if (onTripCreated) onTripCreated(trip);
+      if (onGoBack) onGoBack();
     } catch (err: any) {
       setError(err.message || "Error al crear el viaje");
     } finally {
@@ -212,207 +215,228 @@ export default function DriverCreateTripScreen({
   }
 
   return (
-    <View style={styles.container}>
-      {onGoBack && <ReturnButton onPress={onGoBack} />}
-      <Text style={styles.title}>Ugüee</Text>
-      <Text style={styles.subtitle}>
-        Selecciona o crea rutas{"\n"}para crear un viaje
-      </Text>
-
-      {/* Ruta para el viaje */}
-      <Text style={styles.label}>Ruta para el viaje</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowRouteModal(true)}
-        activeOpacity={0.7}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 60 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: selectedRoute ? "#222" : "#888" }}>
-          {selectedRoute
-            ? `${selectedRoute.nombre_partida} → ${selectedRoute.nombre_llegada}`
-            : "selecciona una ruta"}
-        </Text>
-      </TouchableOpacity>
-      {/* Modal de rutas */}
-      <Modal visible={showRouteModal} transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowRouteModal(false)}
-        >
-          <View style={styles.modalContent}>
-            {loadingRoutes && routes.length === 0 ? (
-              <Text
-                style={{
-                  textAlign: "center",
-                  padding: 20,
-                  color: "#A259FF",
-                  fontWeight: "bold",
-                }}
-              >
-                Cargando rutas...
-              </Text>
-            ) : (
-              <FlatList
-                data={routes}
-                keyExtractor={(item) => item.id_ruta.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => handleSelectRoute(item)}
-                  >
-                    <View style={styles.routeIcon} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.dropdownTitle}>
-                        {item.nombre_partida} → {item.nombre_llegada}
-                      </Text>
-                      <Text style={styles.dropdownSubtitle}>
-                        Salida: {item.nombre_partida}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                ListFooterComponent={
-                  <TouchableOpacity
-                    style={styles.createRouteBtn}
-                    onPress={() => {
-                      setShowRouteModal(false);
-                      onGoToRegisterRouteScreen();
+        <View style={styles.container}>
+          {onGoBack && <ReturnButton onPress={onGoBack} />}
+          <Text style={styles.title}>Ugüee</Text>
+          <Text style={styles.subtitle}>
+            Selecciona o crea rutas{"\n"}para crear un viaje
+          </Text>
+
+          {/* Ruta para el viaje */}
+          <Text style={styles.label}>Ruta para el viaje</Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowRouteModal(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: selectedRoute ? "#222" : "#888" }}>
+              {selectedRoute
+                ? `${selectedRoute.nombre_partida} → ${selectedRoute.nombre_llegada}`
+                : "selecciona una ruta"}
+            </Text>
+          </TouchableOpacity>
+          {/* Modal de rutas */}
+          <Modal visible={showRouteModal} transparent animationType="fade">
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowRouteModal(false)}
+            >
+              <View style={styles.modalContent}>
+                {loadingRoutes && routes.length === 0 ? (
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      padding: 20,
+                      color: "#A259FF",
+                      fontWeight: "bold",
                     }}
                   >
-                    <Ionicons name="add" size={22} color="#fff" />
-                    <Text style={styles.createRouteBtnText}>Crear ruta</Text>
-                  </TouchableOpacity>
-                }
-                style={{ maxHeight: 260 }}
-              />
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Vehículo */}
-      <Text style={styles.label}>Vehículo</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowVehicleModal(true)}
-        activeOpacity={0.7}
-      >
-        <Text style={{ color: selectedVehiclePlate ? "#222" : "#888" }}>
-          {selectedVehiclePlate
-            ? selectedVehiclePlate
-            : "selecciona uno de tus vehículos para el viaje"}
-        </Text>
-      </TouchableOpacity>
-      {/* Modal de vehículos */}
-      <Modal visible={showVehicleModal} transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowVehicleModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <FlatList
-              data={validVehicles}
-              keyExtractor={(item, idx) => item.placa + idx}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => handleSelectVehicle(item)}
-                >
-                  <Ionicons
-                    name="car"
-                    size={28}
-                    color="#A259FF"
-                    style={{ marginRight: 10 }}
+                    Cargando rutas...
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={routes}
+                    keyExtractor={(item) => item.id_ruta.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.dropdownItem}
+                        onPress={() => handleSelectRoute(item)}
+                      >
+                        <View style={styles.routeIcon} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.dropdownTitle}>
+                            {item.nombre_partida} → {item.nombre_llegada}
+                          </Text>
+                          <Text style={styles.dropdownSubtitle}>
+                            Salida: {item.nombre_partida}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    ListFooterComponent={
+                      <TouchableOpacity
+                        style={styles.createRouteBtn}
+                        onPress={() => {
+                          setShowRouteModal(false);
+                          onGoToRegisterRouteScreen();
+                        }}
+                      >
+                        <Ionicons name="add" size={22} color="#fff" />
+                        <Text style={styles.createRouteBtnText}>
+                          Crear ruta
+                        </Text>
+                      </TouchableOpacity>
+                    }
+                    style={{ maxHeight: 260 }}
                   />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.dropdownTitle}>
-                      {getVehicleTitle(item)}
-                    </Text>
-                    <Text style={styles.dropdownSubtitle}>
-                      {item.modelo}, {item.color}.
-                    </Text>
-                  </View>
-                  <Text style={styles.dropdownPlate}>{item.placa}</Text>
-                </TouchableOpacity>
-              )}
-              style={{ maxHeight: 220 }}
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* Vehículo */}
+          <Text style={styles.label}>Vehículo</Text>
+          <TouchableOpacity
+            style={styles.input}
+            onPress={() => setShowVehicleModal(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: selectedVehiclePlate ? "#222" : "#888" }}>
+              {selectedVehiclePlate
+                ? selectedVehiclePlate
+                : "selecciona uno de tus vehículos para el viaje"}
+            </Text>
+          </TouchableOpacity>
+          {/* Modal de vehículos */}
+          <Modal visible={showVehicleModal} transparent animationType="fade">
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowVehicleModal(false)}
+            >
+              <View style={styles.modalContent}>
+                <FlatList
+                  data={validVehicles}
+                  keyExtractor={(item, idx) => item.placa + idx}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={() => handleSelectVehicle(item)}
+                    >
+                      <Ionicons
+                        name="car"
+                        size={28}
+                        color="#A259FF"
+                        style={{ marginRight: 10 }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.dropdownTitle}>
+                          {getVehicleTitle(item)}
+                        </Text>
+                        <Text style={styles.dropdownSubtitle}>
+                          {item.modelo}, {item.color}.
+                        </Text>
+                      </View>
+                      <Text style={styles.dropdownPlate}>{item.placa}</Text>
+                    </TouchableOpacity>
+                  )}
+                  style={{ maxHeight: 220 }}
+                />
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* Fecha y hora de programación */}
+          <Text style={styles.label}>Fecha y hora de programación</Text>
+
+          {/* Fecha */}
+          <Text style={styles.label}>Fecha</Text>
+          <TouchableOpacity
+            style={[styles.input, isNow && styles.inputDisabled]}
+            onPress={() => !isNow && setShowDatePicker(true)}
+            activeOpacity={isNow ? 1 : 0.7}
+          >
+            <Text style={{ color: date ? "#222" : "#888" }}>
+              {date ? formatDate(date) : "Selecciona la fecha"}
+            </Text>
+          </TouchableOpacity>
+          {showDatePicker && !isNow && (
+            <DateTimePicker
+              value={date || new Date()}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={handleDateChange}
+              minimumDate={new Date()}
             />
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          )}
 
-      {/* Fecha y hora de programación */}
-      <Text style={styles.label}>Fecha y hora de programación</Text>
+          {/* Hora */}
+          <Text style={styles.label}>Hora</Text>
+          <TouchableOpacity
+            style={[styles.input, isNow && styles.inputDisabled]}
+            onPress={() => !isNow && setShowTimePicker(true)}
+            activeOpacity={isNow ? 1 : 0.7}
+          >
+            <Text style={{ color: time ? "#222" : "#888" }}>
+              {time ? formatTime(time) : "Selecciona la hora"}
+            </Text>
+          </TouchableOpacity>
+          {showTimePicker && !isNow && (
+            <DateTimePicker
+              value={time || new Date()}
+              mode="time"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={handleTimeChange}
+            />
+          )}
 
-      {/* Fecha */}
-      <Text style={styles.label}>Fecha</Text>
-      <TouchableOpacity
-        style={[styles.input, isNow && styles.inputDisabled]}
-        onPress={() => !isNow && setShowDatePicker(true)}
-        activeOpacity={isNow ? 1 : 0.7}
-      >
-        <Text style={{ color: date ? "#222" : "#888" }}>
-          {date ? formatDate(date) : "Selecciona la fecha"}
-        </Text>
-      </TouchableOpacity>
-      {showDatePicker && !isNow && (
-        <DateTimePicker
-          value={date || new Date()}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          minimumDate={new Date()}
-        />
-      )}
+          {/* Botón Ahora */}
+          <TouchableOpacity
+            style={[
+              styles.nowButton,
+              isNow && styles.nowButtonActive,
+              { marginTop: 10, marginBottom: 20 },
+            ]}
+            onPress={handleNowPress}
+          >
+            <Text
+              style={[
+                styles.nowButtonText,
+                isNow && styles.nowButtonTextActive,
+              ]}
+            >
+              {isNow ? "✓ Programar para ahora" : "Programar para ahora"}
+            </Text>
+          </TouchableOpacity>
 
-      {/* Hora */}
-      <Text style={styles.label}>Hora</Text>
-      <TouchableOpacity
-        style={[styles.input, isNow && styles.inputDisabled]}
-        onPress={() => !isNow && setShowTimePicker(true)}
-        activeOpacity={isNow ? 1 : 0.7}
-      >
-        <Text style={{ color: time ? "#222" : "#888" }}>
-          {time ? formatTime(time) : "Selecciona la hora"}
-        </Text>
-      </TouchableOpacity>
-      {showTimePicker && !isNow && (
-        <DateTimePicker
-          value={time || new Date()}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleTimeChange}
-        />
-      )}
-
-      {/* Botón Ahora */}
-      <TouchableOpacity
-        style={[
-          styles.nowButton,
-          isNow && styles.nowButtonActive,
-          { marginTop: 10, marginBottom: 20 },
-        ]}
-        onPress={handleNowPress}
-      >
-        <Text
-          style={[styles.nowButtonText, isNow && styles.nowButtonTextActive]}
-        >
-          {isNow ? "✓ Programar para ahora" : "Programar para ahora"}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Botón Crear viaje */}
-      <TouchableOpacity style={styles.createTripBtn} onPress={handleCreateTrip}>
-        <Ionicons
-          name="add"
-          size={28}
-          color="#fff"
-          style={{ marginRight: 8 }}
-        />
-        <Text style={styles.createTripBtnText}>Crear viaje</Text>
-      </TouchableOpacity>
-    </View>
+          {/* Botón Crear viaje */}
+          <TouchableOpacity
+            style={styles.createTripBtn}
+            onPress={handleCreateTrip}
+            disabled={loading}
+          >
+            <Ionicons
+              name="add"
+              size={28}
+              color="#fff"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.createTripBtnText}>
+              {loading ? "Creando..." : "Crear viaje"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

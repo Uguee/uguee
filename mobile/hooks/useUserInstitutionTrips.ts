@@ -23,7 +23,11 @@ export function useUserInstitutionTrips() {
         const id_institucion = await getFirstInstitutionAcceptedByUser(cedula);
         if (!id_institucion)
           throw new Error("No se encontró institución aceptada");
-        const data = await getTripsByInstitution(id_institucion, howTrips);
+        const data = await getTripsByInstitution(
+          id_institucion,
+          howTrips,
+          cedula
+        );
         setTrips(data.viajes || []);
       } catch (e: any) {
         setError(e.message || "Error al obtener viajes");

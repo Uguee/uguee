@@ -37,12 +37,16 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
     switch (trip.estado) {
       case "pendiente":
         return [styles.card, styles.pendingCard];
+      case "programado":
+        return [styles.card, styles.scheduledCard];
       case "en-curso":
         return [styles.card, styles.inProgressCard];
-      case "terminado":
+      case "completado":
         return [styles.card, styles.completedCard];
+      case "desconocido":
+        return [styles.card, styles.unknownCard];
       default:
-        return [styles.card, styles.scheduledCard];
+        return [styles.card, styles.unknownCard];
     }
   };
 
@@ -60,82 +64,58 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
     }
   };
 
-  // Función para renderizar el contenido según el estado
-  const renderContent = () => {
-    const routeName = formatRouteName();
+  // Función para obtener el color del badge de estado
+  const getEstadoBadgeColor = () => {
+    if (trip.estado === "pendiente") return "#E9D5FF";
+    if (trip.estado === "programado") return "#A855F7";
+    if (trip.estado === "en-curso") return "#7C3AED";
+    if (trip.estado === "completado") return "#F3F4F6";
+    return "#E0E0E0";
+  };
+  // Función para obtener el label del estado
+  const getEstadoLabel = () => {
+    if (trip.estado === "completado") return "Completado";
+    if (trip.estado === "en-curso") return "En curso";
+    if (trip.estado === "pendiente") return "Pendiente";
+    if (trip.estado === "programado") return "Programado";
+    return "Desconocido";
+  };
 
-    switch (trip.estado) {
-      case "pendiente":
-        return (
-          <>
-            <Text style={styles.route}>{routeName}</Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Estado:</Text> Pendiente
-            </Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Fecha programada:</Text>{" "}
-              {trip.programado_local || "No disponible"}
-            </Text>
-          </>
-        );
-
-      case "en-curso":
-        return (
-          <>
-            <Text style={styles.route}>{routeName}</Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Estado:</Text> En curso
-            </Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Fecha inicio:</Text>{" "}
-              {trip.salida_at
-                ? new Date(trip.salida_at).toLocaleString("es-CO")
-                : "No disponible"}
-            </Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Número de pasajeros:</Text> null
-            </Text>
-          </>
-        );
-
-      case "terminado":
-        return (
-          <>
-            <Text style={styles.route}>{routeName}</Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Estado:</Text> Terminado
-            </Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Número de pasajeros:</Text> null
-            </Text>
-          </>
-        );
-
-      default:
-        return (
-          <>
-            <Text style={styles.route}>{routeName}</Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Estado:</Text> Programado
-            </Text>
-            <Text style={styles.label}>
-              <Text style={styles.bold}>Fecha programada:</Text>{" "}
-              {trip.programado_local || "No disponible"}
-            </Text>
-          </>
-        );
-    }
+  // Función para obtener el color del borde según el estado
+  const getBorderColor = () => {
+    if (trip.estado === "pendiente") return "#E9D5FF";
+    if (trip.estado === "programado") return "#A855F7";
+    if (trip.estado === "en-curso") return "#7C3AED";
+    if (trip.estado === "completado") return "#F3F4F6";
+    if (trip.estado === "desconocido") return "#E0E0E0";
+    return "#E0E0E0";
   };
 
   return (
     <TouchableOpacity
-      style={getCardStyle()}
+      style={[styles.card, { borderColor: getBorderColor() }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={[styles.icon, { backgroundColor: getIconColor() }]} />
       <View style={{ flex: 1 }}>
-        {renderContent()}
+        <Text style={styles.route}>{formatRouteName()}</Text>
+        <View style={styles.timeEstadoColumn}>
+          <View style={styles.timeRow}>
+            <View style={styles.timeDot} />
+            <Text style={styles.time}>
+              {trip.programado_local || "No disponible"}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.estadoBadge,
+              { backgroundColor: getEstadoBadgeColor() },
+            ]}
+          >
+            <Text style={styles.estadoBadgeText}>{getEstadoLabel()}</Text>
+          </View>
+        </View>
         {canStartTrip && trip.estado === "pendiente" && (
           <TouchableOpacity
             style={styles.startButton}
@@ -168,16 +148,19 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   scheduledCard: {
-    borderColor: "#B84CF6", // Morado original
+    borderColor: "#A855F7",
   },
   pendingCard: {
-    borderColor: "#D8B4FE", // Morado claro
+    borderColor: "#E9D5FF",
   },
   inProgressCard: {
-    borderColor: "#7C3AED", // Morado oscuro
+    borderColor: "#7C3AED",
   },
   completedCard: {
-    borderColor: "transparent", // Sin borde
+    borderColor: "#F3F4F6",
+  },
+  unknownCard: {
+    borderColor: "#E0E0E0",
   },
   icon: {
     width: 32,
@@ -210,6 +193,47 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 13,
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  timeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#D8B4FE",
+    marginRight: 8,
+    marginTop: 0,
+  },
+  time: {
+    fontWeight: "bold",
+    fontSize: 15,
+    color: "#7C3AED",
+    backgroundColor: "#F3E8FF",
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    textAlign: "left",
+    overflow: "hidden",
+  },
+  timeEstadoColumn: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+  },
+  estadoBadge: {
+    marginLeft: 18,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  estadoBadgeText: {
+    color: "#7C3AED",
+    fontSize: 11,
+    fontWeight: "bold",
   },
 });
 

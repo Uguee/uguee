@@ -184,7 +184,9 @@ export default function UserTripsScreen({
         departureTime={
           selectedTrip?.programado_local?.split(",")[1]?.trim() || ""
         }
-        driver={selectedTrip?.conductor_nombre || "-"}
+        driver={
+          selectedTrip?.id_conductor ? String(selectedTrip?.id_conductor) : "-"
+        }
         vehicleType={selectedTrip?.vehiculo?.modelo || "-"}
         color={selectedTrip?.vehiculo?.color || "-"}
         plate={selectedTrip?.vehiculo?.placa || "-"}

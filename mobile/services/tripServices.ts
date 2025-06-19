@@ -209,14 +209,19 @@ export async function getDriverTrips(
  * Consulta los viajes de conductores de una institución específica.
  * @param id_institucion ID de la institución
  * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
+ * @param except_id_usuario (opcional) Excluir viajes de este usuario
  * @returns Respuesta de la edgefunction
  */
 export async function getTripsByInstitution(
   id_institucion: number,
-  how_trips: number = 1
+  how_trips: number = 1,
+  except_id_usuario?: number
 ) {
   const { getCurrentToken } = await import("./authService");
   const token = getCurrentToken && getCurrentToken();
+  const body: any = { id_institucion, how_trips };
+  if (except_id_usuario !== undefined)
+    body.except_id_usuario = except_id_usuario;
   const response = await fetch(
     "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-institution",
     {
@@ -225,7 +230,7 @@ export async function getTripsByInstitution(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ id_institucion, how_trips }),
+      body: JSON.stringify(body),
     }
   );
   const data = await response.json();

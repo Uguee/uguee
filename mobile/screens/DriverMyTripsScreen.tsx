@@ -182,15 +182,14 @@ const DriverMyTripsScreen = ({
         />
       );
     } else if (estado === "en-curso") {
-      // En curso - morado muy oscuro
+      // En curso
       return (
         <View
           style={{
-            backgroundColor: "#7C3AED", // Morado muy oscuro
             borderRadius: 12,
             marginBottom: 8,
             marginHorizontal: 12,
-            padding: 2, // Reducir el padding del reborde
+            padding: 2,
           }}
         >
           <TripScheduledCard
@@ -204,15 +203,14 @@ const DriverMyTripsScreen = ({
         </View>
       );
     } else if (estado === "pendiente") {
-      // Pendiente - morado más oscuro
+      // Pendiente
       return (
         <View
           style={{
-            backgroundColor: "#A855F7", // Morado más oscuro
             borderRadius: 12,
             marginBottom: 8,
             marginHorizontal: 12,
-            padding: 2, // Reducir el padding del reborde
+            padding: 2,
           }}
         >
           <TripScheduledCard
@@ -228,15 +226,14 @@ const DriverMyTripsScreen = ({
         </View>
       );
     } else {
-      // Programado - morado muy claro
+      // Programado
       return (
         <View
           style={{
-            backgroundColor: "#E9D5FF", // Morado muy claro
             borderRadius: 12,
             marginBottom: 8,
             marginHorizontal: 12,
-            padding: 2, // Reducir el padding del reborde
+            padding: 2,
           }}
         >
           <TripScheduledCard
