@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import UserTripCard from "../components/UserTripCard";
 import UserTripDetailsModal from "../components/UserTripDetailsModal";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { Ionicons } from "@expo/vector-icons";
-import { obtenerViajesUsuario } from "../services/tripsUser";
 
 interface UserTripsScreenProps {
   onGoToHomeScreen?: () => void;
@@ -21,43 +20,36 @@ interface UserTripsScreenProps {
   onGoToServices?: () => void;
 }
 
+const TRIPS = [
+  {
+    id: "1",
+    route: "Univalle ➔ Multicentro",
+    address: "Salida: Campus Meléndez Calle 13 # 100",
+    time: "2:30 PM",
+  },
+  {
+    id: "2",
+    route: "Univalle ➔ Multicentro",
+    address: "Salida: Campus Meléndez Calle 13 # 100",
+    time: "2:30 PM",
+  },
+  // ...más viajes
+];
+
 export default function UserTripsScreen({
   onGoToHomeScreen = () => {},
   onGoToProfileScreen = () => {},
   onShowScanQRScreen = () => {},
-  onGoToServices,
+  onGoToServices = () => {},
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
-  const [trips, setTrips] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLoading(true);
-    obtenerViajesUsuario()
-      .then((data) => {
-        // Unifica viajes_conductor y viajes_pasajero en un solo array
-        const allTrips = [
-          ...(data.viajes_conductor || []),
-          ...(data.viajes_pasajero || []),
-        ];
-        setTrips(allTrips);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "Error al cargar viajes");
-        setLoading(false);
-      });
-  }, []);
-
-  const filteredTrips = trips.filter(
+  const filteredTrips = TRIPS.filter(
     (trip) =>
-      trip.route?.toLowerCase?.().includes(search.toLowerCase()) ||
-      "" ||
-      trip.address?.toLowerCase?.().includes(search.toLowerCase()) ||
-      ""
+      trip.route.toLowerCase().includes(search.toLowerCase()) ||
+      trip.address.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -69,71 +61,34 @@ export default function UserTripsScreen({
         placeholder="¿A donde vas?"
       />
       <Text style={styles.title}>Viajes actuales disponibles</Text>
-      {loading ? (
-        <Text style={{ textAlign: "center", marginTop: 40 }}>
-          Cargando viajes...
-        </Text>
-      ) : error ? (
-        <Text style={{ color: "red", textAlign: "center", marginTop: 40 }}>
-          {error}
-        </Text>
-      ) : (
-        <FlatList
-          data={filteredTrips}
-          keyExtractor={(item, idx) => item.id?.toString?.() || idx.toString()}
-          renderItem={({ item }) => (
-            <UserTripCard
-              route={item.route || item.ruta || item.nombre_ruta || ""}
-              address={
-                item.address || item.direccion || item.lugar_salida || ""
-              }
-              time={item.time || item.hora_salida || item.programado_at || ""}
-              onPress={() => {
-                setSelectedTrip(item);
-                setShowDetails(true);
-              }}
-            />
-          )}
-          contentContainerStyle={{ paddingBottom: 180 }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      <FlatList
+        data={filteredTrips}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <UserTripCard
+            route={item.route}
+            address={item.address}
+            time={item.time}
+            onPress={() => {
+              setSelectedTrip(item);
+              setShowDetails(true);
+            }}
+          />
+        )}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      />
       <UserTripDetailsModal
         visible={showDetails}
         onClose={() => setShowDetails(false)}
-        pickupPlace={
-          selectedTrip?.address?.replace("Salida: ", "") ||
-          selectedTrip?.lugar_salida ||
-          ""
-        }
-        destinationPlace={
-          selectedTrip?.destinationPlace ||
-          selectedTrip?.lugar_llegada ||
-          "Cl. 13 #98-10"
-        }
-        departureDate={
-          selectedTrip?.departureDate ||
-          selectedTrip?.fecha_salida ||
-          "2025-05-31"
-        }
-        departureTime={
-          selectedTrip?.time ||
-          selectedTrip?.hora_salida ||
-          selectedTrip?.programado_at ||
-          "2:30 PM"
-        }
-        driver={
-          selectedTrip?.driver || selectedTrip?.conductor || "Roberto Rojerio"
-        }
-        vehicleType={
-          selectedTrip?.vehicleType || selectedTrip?.tipo_vehiculo || "bus"
-        }
-        color={selectedTrip?.color || "rosado"}
-        plate={selectedTrip?.plate || selectedTrip?.placa || "ABC123"}
-        onStartTrip={() => {
-          setShowDetails(false);
-          onShowScanQRScreen(null);
-        }}
+        pickupPlace={selectedTrip?.address?.replace("Salida: ", "")}
+        destinationPlace="Cl. 13 #98-10"
+        departureDate="2025-05-31"
+        departureTime={selectedTrip?.time || "2:30 PM"}
+        driver="Roberto Rojerio"
+        vehicleType="bus"
+        color="rosado"
+        plate="ABC123"
       />
       <TouchableOpacity
         style={styles.fab}
