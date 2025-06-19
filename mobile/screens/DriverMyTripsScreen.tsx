@@ -72,17 +72,19 @@ const DriverMyTripsScreen = ({
   let filteredTrips =
     filter === "all"
       ? trips
-      : trips.filter((trip: any) =>
+      : trips.filter((trip) =>
           filter === "completed"
-            ? trip.estado === "terminado"
-            : trip.estado !== "terminado"
+            ? trip.estado === "completado"
+            : trip.estado !== "completado"
         );
 
   // Filtrado por búsqueda
   filteredTrips = filteredTrips.filter((trip: any) => {
     const routeName =
       trip.ruta?.nombre_partida && trip.ruta?.nombre_llegada
-        ? `${trip.ruta.nombre_partida} ➔ ${trip.ruta.nombre_llegada}`
+        ? `${formatPlaceName(trip.ruta.nombre_partida)} ➔ ${formatPlaceName(
+            trip.ruta.nombre_llegada
+          )}`
         : `Ruta ${trip.id_ruta}`;
     return routeName.toLowerCase().includes(search.toLowerCase());
   });
@@ -163,8 +165,8 @@ const DriverMyTripsScreen = ({
     // Usar el estado que viene de la edge function
     const estado = item.estado;
 
-    if (estado === "terminado") {
-      // Terminado - sin color de reborde
+    if (estado === "completado") {
+      // Completado - sin color de reborde
       return (
         <TripCompletedCard
           route={
@@ -337,12 +339,52 @@ const DriverMyTripsScreen = ({
       <TripCompletedDetailsModal
         visible={showCompletedModal}
         onClose={() => setShowCompletedModal(false)}
-        trip={selectedTrip}
+        route={
+          selectedTrip?.ruta?.nombre_partida &&
+          selectedTrip?.ruta?.nombre_llegada
+            ? `${formatPlaceName(
+                selectedTrip.ruta.nombre_partida
+              )} ➔ ${formatPlaceName(selectedTrip.ruta.nombre_llegada)}`
+            : `Ruta ${selectedTrip?.id_ruta}`
+        }
+        address={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+        departureDate={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        departureTime={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
+        arrivalDate={
+          selectedTrip?.llegada_at
+            ? new Date(selectedTrip.llegada_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        arrivalTime={
+          selectedTrip?.llegada_at
+            ? new Date(selectedTrip.llegada_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
+        passengers={selectedTrip?.pasajeros || 0}
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}
         onClose={() => setShowScheduledModal(false)}
-        trip={selectedTrip}
+        pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+        destinationPlace={formatPlaceName(selectedTrip?.ruta?.nombre_llegada)}
+        departureDate={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        departureTime={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
         onStartTrip={() => {
           if (selectedTrip) {
             handleStartTrip(selectedTrip);

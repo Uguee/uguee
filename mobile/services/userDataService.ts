@@ -37,7 +37,6 @@ export async function getUserDataByUUID(
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-
     if (anonKey) headers["Authorization"] = `Bearer ${currentToken}`;
 
     const res = await fetch(ENDPOINT, {

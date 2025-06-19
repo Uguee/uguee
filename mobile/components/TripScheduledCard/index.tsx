@@ -8,6 +8,14 @@ interface TripScheduledCardProps {
   canStartTrip?: boolean;
 }
 
+// Función para acortar nombres de lugares
+function formatPlaceName(nombre: string | null): string {
+  if (!nombre) return "";
+  const partes = nombre.split(",").map((p) => p.trim());
+  // Tomar las primeras 3 partes y añadir "Cali"
+  return `${partes.slice(0, 3).join(", ")}, Cali`;
+}
+
 const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
   trip,
   onPress = () => {},
@@ -17,7 +25,9 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
   // Función para formatear la ruta
   const formatRouteName = () => {
     if (trip.ruta?.nombre_partida && trip.ruta?.nombre_llegada) {
-      return `${trip.ruta.nombre_partida} ➔ ${trip.ruta.nombre_llegada}`;
+      return `${formatPlaceName(trip.ruta.nombre_partida)} ➔ ${formatPlaceName(
+        trip.ruta.nombre_llegada
+      )}`;
     }
     return `Ruta ${trip.id_ruta}`;
   };

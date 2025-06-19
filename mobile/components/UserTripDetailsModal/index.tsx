@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 interface UserTripDetailsModalProps {
   visible: boolean;
   onClose: () => void;
+  onStartTrip?: () => void;
   pickupPlace?: string;
   destinationPlace?: string;
   departureDate?: string;
@@ -20,11 +21,35 @@ interface UserTripDetailsModalProps {
   vehicleType?: string;
   color?: string;
   plate?: string;
+  estado?:
+    | "programado"
+    | "pendiente"
+    | "en-curso"
+    | "completado"
+    | "desconocido";
+  pasajeros?: number;
+}
+
+function getEstadoColor(estado: string) {
+  if (estado === "completado") return "#fff";
+  if (estado === "en-curso") return "#7C3AED";
+  if (estado === "pendiente") return "#A855F7";
+  if (estado === "programado") return "#E9D5FF";
+  return "#E0E0E0";
+}
+
+function getEstadoLabel(estado: string) {
+  if (estado === "completado") return "Completado";
+  if (estado === "en-curso") return "En curso";
+  if (estado === "pendiente") return "Pendiente";
+  if (estado === "programado") return "Programado";
+  return "Desconocido";
 }
 
 const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
   visible,
   onClose,
+  onStartTrip = () => {},
   pickupPlace = "Campus Meléndez Calle 13 # 100",
   destinationPlace = "Cl. 13 #98-10",
   departureDate = "2025-05-31",
@@ -33,11 +58,21 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
   vehicleType = "bus",
   color = "rosado",
   plate = "ABC123",
+  estado = "programado",
+  pasajeros = undefined,
 }) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.modalBox}>
+          <View
+            style={[
+              styles.estadoBox,
+              { backgroundColor: getEstadoColor(estado) },
+            ]}
+          >
+            <Text style={styles.estadoText}>{getEstadoLabel(estado)}</Text>
+          </View>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Ionicons name="close" size={28} color="#222" />
           </TouchableOpacity>
@@ -82,8 +117,13 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
             <Text style={styles.label}>
               Placa: <Text style={styles.value}>{plate}</Text>
             </Text>
+            {typeof pasajeros === "number" && (
+              <Text style={styles.label}>
+                Pasajeros: <Text style={styles.value}>{pasajeros}</Text>
+              </Text>
+            )}
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.startBtn} onPress={() => {}}>
+              <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
                 <Text style={styles.startBtnText}>Iniciar viaje</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn2} onPress={onClose}>
@@ -218,6 +258,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 15,
+  },
+  estadoBox: {
+    alignSelf: "center",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  estadoText: {
+    fontWeight: "bold",
+    fontSize: 15,
+    color: "#222",
+    textAlign: "center",
   },
 });
 

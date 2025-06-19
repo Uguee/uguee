@@ -8,17 +8,16 @@ import {
   FlatList,
   TextInput,
   Platform,
-  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useUserRoutes } from "../hooks/useUserRoutes";
 import { useUserVehicles } from "../hooks/useUserVehicles";
 import ReturnButton from "../components/ReturnButton";
-import { createTrip } from "../services/tripServices";
+import { useAuth } from "../hooks/useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getCurrentToken } from "../services/authService";
-import { useAuth } from "../hooks/useAuth";
+import { createTrip } from "../services/tripServices";
 
 interface DriverCreateTripScreenProps {
   onGoToRegisterRouteScreen: () => void;
@@ -213,10 +212,7 @@ export default function DriverCreateTripScreen({
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
+    <View style={styles.container}>
       {onGoBack && <ReturnButton onPress={onGoBack} />}
       <Text style={styles.title}>Ugüee</Text>
       <Text style={styles.subtitle}>
@@ -232,9 +228,7 @@ export default function DriverCreateTripScreen({
       >
         <Text style={{ color: selectedRoute ? "#222" : "#888" }}>
           {selectedRoute
-            ? `${filtrarDireccion(
-                selectedRoute.nombre_partida ?? ""
-              )} → ${filtrarDireccion(selectedRoute.nombre_llegada ?? "")}`
+            ? `${selectedRoute.nombre_partida} → ${selectedRoute.nombre_llegada}`
             : "selecciona una ruta"}
         </Text>
       </TouchableOpacity>
@@ -269,11 +263,10 @@ export default function DriverCreateTripScreen({
                     <View style={styles.routeIcon} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.dropdownTitle}>
-                        {filtrarDireccion(item.nombre_partida ?? "")} →{" "}
-                        {filtrarDireccion(item.nombre_llegada ?? "")}
+                        {item.nombre_partida} → {item.nombre_llegada}
                       </Text>
                       <Text style={styles.dropdownSubtitle}>
-                        Salida: {filtrarDireccion(item.nombre_partida ?? "")}
+                        Salida: {item.nombre_partida}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -410,32 +403,16 @@ export default function DriverCreateTripScreen({
       </TouchableOpacity>
 
       {/* Botón Crear viaje */}
-      <TouchableOpacity
-        style={styles.createTripBtn}
-        onPress={handleCreateTrip}
-        disabled={loading}
-      >
+      <TouchableOpacity style={styles.createTripBtn} onPress={handleCreateTrip}>
         <Ionicons
           name="add"
           size={28}
           color="#fff"
           style={{ marginRight: 8 }}
         />
-        <Text style={styles.createTripBtnText}>
-          {loading ? "Creando..." : "Crear viaje"}
-        </Text>
+        <Text style={styles.createTripBtnText}>Crear viaje</Text>
       </TouchableOpacity>
-      {error && (
-        <Text style={{ color: "red", textAlign: "center", marginTop: 10 }}>
-          {error}
-        </Text>
-      )}
-      {success && (
-        <Text style={{ color: "green", textAlign: "center", marginTop: 10 }}>
-          {success}
-        </Text>
-      )}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -456,12 +433,10 @@ function getVehicleTitle(vehicle: any) {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-    justifyContent: "flex-start",
+    paddingTop: 70,
   },
   title: {
     fontSize: 32,
@@ -565,8 +540,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     justifyContent: "center",
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 40,
+    marginBottom: 24,
   },
   createTripBtnText: {
     color: "#fff",

@@ -204,3 +204,30 @@ export async function getDriverTrips(
 
   return viajesValidos;
 }
+
+/**
+ * Consulta los viajes de conductores de una institución específica.
+ * @param id_institucion ID de la institución
+ * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
+ * @returns Respuesta de la edgefunction
+ */
+export async function getTripsByInstitution(
+  id_institucion: number,
+  how_trips: number = 1
+) {
+  const { getCurrentToken } = await import("./authService");
+  const token = getCurrentToken && getCurrentToken();
+  const response = await fetch(
+    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-institution",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id_institucion, how_trips }),
+    }
+  );
+  const data = await response.json();
+  return data;
+}
