@@ -11,6 +11,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { TopMenu } from "../components/TopMenu";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
+import RatingModal from "../components/RatingModal";
+import ViewRatingModal from "../components/ViewRatingModal";
 
 interface UserServicesScreenProps {
   onGoToHome?: () => void;
@@ -27,6 +29,14 @@ const ServiciosScreen = ({
   onGoToServices = () => {},
   onGoToScanQR = () => {},
 }: UserServicesScreenProps) => {
+  const [ratingModalVisible, setRatingModalVisible] = React.useState(false);
+  const [selectedTrip, setSelectedTrip] = React.useState<any>(null);
+  const [viewRatingModalVisible, setViewRatingModalVisible] =
+    React.useState(false);
+  const [viewRatingData, setViewRatingData] = React.useState<{
+    rating: number;
+    comment: string;
+  } | null>(null);
   const historialViajes = [
     {
       id: 1,
@@ -35,6 +45,8 @@ const ServiciosScreen = ({
       desde: "Universidad del Valle",
       hasta: "Unicentro - Sur",
       estado: "Pendiente a calificar", // info fija por ahora
+      conductor: "Roberto Rojerio",
+      placa: "ABC123",
     },
     {
       id: 2,
@@ -43,6 +55,8 @@ const ServiciosScreen = ({
       desde: "Unicentro - Sur",
       hasta: "Universidad del Valle",
       estado: "Calificado", // info fija por ahora
+      conductor: "María López",
+      placa: "XYZ789",
     },
     // Puedes agregar más entradas aquí
   ];
@@ -90,8 +104,32 @@ const ServiciosScreen = ({
         <Text style={styles.fechaLabel}>Llegada:</Text>
         <Text style={styles.fechaValue}>{item.fechaLlegada}</Text>
       </View>
+      <View style={styles.fechaRow}>
+        <Text style={styles.fechaLabel}>Conductor:</Text>
+        <Text style={styles.fechaValue}>{item.conductor}</Text>
+      </View>
+      <View style={styles.fechaRow}>
+        <Text style={styles.fechaLabel}>Placa:</Text>
+        <Text style={styles.fechaValue}>{item.placa}</Text>
+      </View>
     </TouchableOpacity>
   );
+
+  const handleOpenRating = (trip: any) => {
+    setSelectedTrip(trip);
+    if (trip.estado === "Calificado") {
+      // En el futuro, estos datos vendrán de Supabase
+      setViewRatingData({ rating: 4, comment: "Muy buen viaje" });
+      setViewRatingModalVisible(true);
+    } else {
+      setRatingModalVisible(true);
+    }
+  };
+
+  const handleSubmitRating = (rating: number, comment: string) => {
+    // Aquí luego guardarás en Supabase
+    console.log("Calificación enviada:", rating, comment, selectedTrip);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -122,9 +160,23 @@ const ServiciosScreen = ({
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (
-          <TripsHistoryCard item={item} onPress={() => {}} />
+          <TripsHistoryCard
+            item={item}
+            onPress={() => handleOpenRating(item)}
+          />
         )}
         showsVerticalScrollIndicator={false}
+      />
+      <RatingModal
+        visible={ratingModalVisible}
+        onClose={() => setRatingModalVisible(false)}
+        onSubmit={handleSubmitRating}
+      />
+      <ViewRatingModal
+        visible={viewRatingModalVisible}
+        onClose={() => setViewRatingModalVisible(false)}
+        rating={viewRatingData?.rating || 0}
+        comment={viewRatingData?.comment || ""}
       />
       {/* Menú inferior */}
       <HomeBottomMenu
@@ -274,5 +326,11 @@ const styles = StyleSheet.create({
     color: "#222",
     fontSize: 13,
     flexShrink: 1,
+  },
+  infoText: {
+    color: "#444",
+    fontSize: 13,
+    marginBottom: 1,
+    width: "100%",
   },
 });
