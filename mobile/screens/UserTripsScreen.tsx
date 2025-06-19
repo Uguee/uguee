@@ -18,12 +18,14 @@ interface UserTripsScreenProps {
   onGoToHomeScreen?: () => void;
   onGoToProfileScreen?: () => void;
   onShowScanQRScreen?: (tripData: any) => void;
+  onGoToServices?: () => void;
 }
 
 export default function UserTripsScreen({
   onGoToHomeScreen = () => {},
   onGoToProfileScreen = () => {},
   onShowScanQRScreen = () => {},
+  onGoToServices,
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
@@ -150,6 +152,7 @@ export default function UserTripsScreen({
         onGoToHome={onGoToHomeScreen}
         onGoToProfile={onGoToProfileScreen}
         onGoToMyTrips={() => {}}
+        onGoToServices={onGoToServices}
         activeButton="trips"
       />
     </View>
