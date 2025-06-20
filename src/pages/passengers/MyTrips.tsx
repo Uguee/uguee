@@ -36,16 +36,16 @@ const MyTrips = () => {
     setError(null);
 
     try {
-      // Obtener las reservas del usuario
+      // Obtener las reservas del usuario (viajes confirmados)
       const { data: reservas, error: reservasError } = await supabase
         .from('reserva')
         .select(`
           id_viaje,
           viaje (
             id_viaje,
-            fecha,
-            hora_salida,
-            hora_llegada,
+            programado_at,
+            salida_at,
+            llegada_at,
             id_ruta,
             id_conductor,
             id_vehiculo,
@@ -75,23 +75,84 @@ const MyTrips = () => {
 
       if (reservasError) throw reservasError;
 
-      // Procesar los viajes
-      const viajesFiltrados = reservas
+      // Obtener las solicitudes de viaje del usuario (trip requests)
+      const { data: solicitudes, error: solicitudesError } = await supabase
+        .from('solicitud_viaje')
+        .select(`
+          id_solicitud,
+          salida_at,
+          llegada_at,
+          estado,
+          created_at,
+          ruta (
+            id_ruta,
+            longitud,
+            punto_partida,
+            punto_llegada,
+            trayecto
+          ),
+          conductor:usuario!solicitud_viaje_id_conductor_fkey (
+            nombre,
+            apellido,
+            celular
+          ),
+          vehiculo:vehiculo!solicitud_viaje_id_vehiculo_fkey (
+            placa,
+            color,
+            modelo,
+            tipo:tipo_vehiculo (
+              tipo
+            )
+          )
+        `)
+        .eq('id_pasajero', currentUserId)
+        .order('created_at', { ascending: false });
+
+      if (solicitudesError) throw solicitudesError;
+
+      // Procesar los viajes confirmados
+      const viajesConfirmados = reservas
         ?.map(r => r.viaje)
         .filter(v => v !== null)
         .map(viaje => {
-          const fechaHoraViaje = new Date(`${viaje.fecha}T${viaje.hora_salida}`);
+          const fechaHoraViaje = new Date(viaje.programado_at);
           const now = new Date();
           
           return {
             ...viaje,
-            esFuturo: fechaHoraViaje > now
+            esFuturo: fechaHoraViaje > now,
+            tipo: 'reserva' as const
           };
         }) || [];
 
+      // Procesar las solicitudes de viaje
+      const solicitudesProcesadas = (solicitudes as any || []).map((solicitud: any) => {
+        const fechaHoraViaje = new Date(solicitud.salida_at);
+        const now = new Date();
+        
+        return {
+          id_viaje: solicitud.id_solicitud, // Use id_solicitud as id_viaje for consistency
+          programado_at: solicitud.salida_at,
+          salida_at: solicitud.salida_at,
+          llegada_at: solicitud.llegada_at,
+          id_ruta: solicitud.ruta.id_ruta,
+          id_conductor: solicitud.conductor?.id_usuario,
+          id_vehiculo: solicitud.vehiculo?.placa,
+          conductor: solicitud.conductor,
+          vehiculo: solicitud.vehiculo,
+          ruta: solicitud.ruta,
+          esFuturo: fechaHoraViaje > now,
+          estado: solicitud.estado,
+          tipo: 'solicitud' as const
+        };
+      });
+
+      // Combinar ambos arrays
+      const todosLosViajes = [...viajesConfirmados, ...solicitudesProcesadas];
+
       // Separar viajes futuros y pasados
-      const viajesFuturos = viajesFiltrados.filter(viaje => viaje.esFuturo);
-      const viajesPasados = viajesFiltrados.filter(viaje => !viaje.esFuturo);
+      const viajesFuturos = todosLosViajes.filter(viaje => viaje.esFuturo);
+      const viajesPasados = todosLosViajes.filter(viaje => !viaje.esFuturo);
 
       setTrips(viajesFuturos);
     } catch (err) {
@@ -107,29 +168,39 @@ const MyTrips = () => {
     }
   };
 
-  const formatTime = (timeString: string | null | undefined) => {
-    if (!timeString) return 'Hora no disponible';
+  const formatTime = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Hora no disponible';
     try {
-      return timeString.substring(0, 5); // Formato HH:mm
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('es-CO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
     } catch (error) {
       return 'Hora no disponible';
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    const fecha = new Date(dateStr + 'T00:00:00');
-    return fecha.toLocaleDateString('es-CO', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    });
+  const formatDate = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Fecha no disponible';
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
+    } catch (error) {
+      return 'Fecha no disponible';
+    }
   };
 
   // Filtrar viajes según la pestaña activa
   const filteredTrips = trips.filter(trip => {
-    if (!trip?.fecha || !trip?.hora_salida) return false;
+    if (!trip?.programado_at) return false;
     try {
-      const fechaHoraViaje = new Date(`${trip.fecha}T${trip.hora_salida}`);
+      const fechaHoraViaje = new Date(trip.programado_at);
       if (isNaN(fechaHoraViaje.getTime())) return false;
       const now = new Date();
       
@@ -295,21 +366,43 @@ const MyTrips = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-medium">
-                          {formatDate(trip.fecha)}
+                          {formatDate(trip.programado_at)}
                         </span>
-                        <span className="px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
-                          {activeTab === 'upcoming' ? 'Próximo' : 'Pasado'}
+                        <span className={`px-2 py-1 text-sm rounded-full ${
+                          trip.tipo === 'solicitud' 
+                            ? trip.estado === 'aceptada' 
+                              ? 'bg-green-100 text-green-800'
+                              : trip.estado === 'pendiente'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                            : activeTab === 'upcoming' 
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {trip.tipo === 'solicitud' 
+                            ? trip.estado === 'aceptada' 
+                              ? 'Aceptada'
+                              : trip.estado === 'pendiente'
+                              ? 'Pendiente'
+                              : 'Rechazada'
+                            : activeTab === 'upcoming' 
+                              ? 'Próximo' 
+                              : 'Pasado'}
                         </span>
                       </div>
                       <h3 className="text-xl mt-2">
-                        <span className="font-medium">Conductor:</span> {trip.conductor?.nombre} {trip.conductor?.apellido}
+                        <span className="font-medium">
+                          {trip.tipo === 'solicitud' ? 'Solicitud de viaje' : 'Conductor:'}
+                        </span> {trip.conductor?.nombre} {trip.conductor?.apellido}
                       </h3>
                       <p className="text-gray-600">
-                        Salida: {formatTime(trip.hora_salida)} | Llegada estimada: {formatTime(trip.hora_llegada)}
+                        Salida: {formatTime(trip.salida_at || trip.programado_at)} | Llegada estimada: {formatTime(trip.llegada_at)}
                       </p>
-                      <p className="text-gray-600 mt-1">
-                        <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo?.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
-                      </p>
+                      {trip.vehiculo && (
+                        <p className="text-gray-600 mt-1">
+                          <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo?.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <button
@@ -363,6 +456,13 @@ const MyTrips = () => {
                     );
                   }
                 })()}
+              </div>
+              <div className="mt-4">
+                <h3 className="font-medium">Horario</h3>
+                <div className="text-gray-600">
+                  {formatDate(selectedTrip.programado_at)} - {formatTime(selectedTrip.salida_at || selectedTrip.programado_at)}
+                  {selectedTrip.llegada_at && ` | Llegada: ${formatTime(selectedTrip.llegada_at)}`}
+                </div>
               </div>
             </div>
           )}

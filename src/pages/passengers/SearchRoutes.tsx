@@ -166,10 +166,10 @@ const SearchRoutes = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (timestamp: string) => {
     try {
-      const date = new Date(dateString);
-      return format(date, "EEEE d 'de' MMMM 'a las' h:mm a", { locale: es });
+      const date = new Date(timestamp);
+      return format(date, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es });
     } catch (error) {
       console.error('Error formatting date:', error);
       return 'Fecha no disponible';

@@ -16,9 +16,8 @@ import { RouteMap } from '@/components/map/RouteMap';
 
 interface AcceptedRequest {
   id_solicitud: number;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string | null;
+  salida_at: string;
+  llegada_at: string | null;
   estado: 'aceptada';
   created_at: string;
   ruta: {
@@ -94,8 +93,13 @@ const Dashboard = () => {
                 tipo
               )
             ),
-            pasajeros (
-              id_usuario
+            pasajeros:reserva (
+              id_usuario,
+              usuario:usuario (
+                nombre,
+                apellido,
+                celular
+              )
             )
           `)
           .eq('id_conductor', parseInt(user?.id || '0'))
@@ -126,9 +130,8 @@ const Dashboard = () => {
           .from('solicitud_viaje')
           .select(`
             id_solicitud,
-            fecha,
-            hora_salida,
-            hora_llegada,
+            salida_at,
+            llegada_at,
             estado,
             created_at,
             ruta!inner (
@@ -145,7 +148,7 @@ const Dashboard = () => {
           `)
           .eq('id_conductor', parseInt(user?.id || '0'))
           .eq('estado', 'aceptada')
-          .order('fecha', { ascending: true });
+          .order('salida_at', { ascending: true });
 
         if (acceptedRequestsError) throw acceptedRequestsError;
         setAcceptedRequests(acceptedRequestsData as unknown as AcceptedRequest[]);
@@ -168,22 +171,40 @@ const Dashboard = () => {
   const handleViewRequesters = async (tripId: number) => {
     setLoadingRequesters(true);
     try {
-      const { data: reservas, error } = await supabase
-        .from('reserva')
-        .select(`
-          id_usuario,
-          usuario:usuario (
-            nombre,
-            apellido,
-            celular
-          )
-        `)
-        .eq('id_viaje', tripId);
+      // Find the trip in the already loaded data
+      const selectedTripData = proximasRutas.find(viaje => viaje.id_viaje === tripId);
+      
+      if (selectedTripData && selectedTripData.pasajeros) {
+        // Extract user data from the pasajeros array
+        const validRequesters = selectedTripData.pasajeros
+          .filter((reserva: any) => reserva.usuario && reserva.usuario.nombre && reserva.usuario.apellido)
+          .map((reserva: any) => reserva.usuario);
+        
+        setRequesters(validRequesters);
+        setIsDialogOpen(true);
+      } else {
+        // Fallback to query if data not found
+        const { data: reservas, error } = await supabase
+          .from('reserva')
+          .select(`
+            id_usuario,
+            usuario:usuario (
+              nombre,
+              apellido,
+              celular
+            )
+          `)
+          .eq('id_viaje', tripId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setRequesters(reservas?.map(r => r.usuario) || []);
-      setIsDialogOpen(true);
+        const validRequesters = reservas
+          ?.filter(r => r.usuario && r.usuario.nombre && r.usuario.apellido)
+          .map(r => r.usuario) || [];
+
+        setRequesters(validRequesters);
+        setIsDialogOpen(true);
+      }
     } catch (error) {
       console.error('Error fetching requesters:', error);
     } finally {
@@ -318,6 +339,99 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Next Routes Section */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-text">Próximas Rutas</h2>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : proximasRutas.length === 0 ? (
+            <div className="text-center py-8 bg-white rounded-lg shadow">
+              <p className="text-gray-500">No tienes rutas próximas programadas</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {proximasRutas.map((viaje) => (
+                <div 
+                  key={viaje.id_viaje}
+                  className="bg-white rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={async () => {
+                    setSelectedTrip(viaje);
+                    setIsDialogOpen(true);
+                    
+                    // Automatically load passengers for this trip
+                    try {
+                      setLoadingRequesters(true);
+                      // Find the trip in the already loaded data
+                      const selectedTripData = proximasRutas.find(v => v.id_viaje === viaje.id_viaje);
+                      
+                      if (selectedTripData && selectedTripData.pasajeros) {
+                        // Extract user data from the pasajeros array
+                        const validRequesters = selectedTripData.pasajeros
+                          .filter((reserva: any) => reserva.usuario && reserva.usuario.nombre && reserva.usuario.apellido)
+                          .map((reserva: any) => reserva.usuario);
+                        
+                        setRequesters(validRequesters);
+                      } else {
+                        // Fallback to query if data not found
+                        const { data: reservas, error } = await supabase
+                          .from('reserva')
+                          .select(`
+                            id_usuario,
+                            usuario:usuario (
+                              nombre,
+                              apellido,
+                              celular
+                            )
+                          `)
+                          .eq('id_viaje', viaje.id_viaje);
+
+                        if (error) throw error;
+
+                        const validRequesters = reservas
+                          ?.filter(r => r.usuario && r.usuario.nombre && r.usuario.apellido)
+                          .map(r => r.usuario) || [];
+
+                        setRequesters(validRequesters);
+                      }
+                    } catch (error) {
+                      console.error('Error loading passengers:', error);
+                    } finally {
+                      setLoadingRequesters(false);
+                    }
+                  }}
+                >
+                  <div className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-medium">
+                            {formatDate(viaje.programado_at)}
+                          </span>
+                          <span className="px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
+                            Programado
+                          </span>
+                        </div>
+                        <h3 className="text-xl mt-2">
+                          <span className="font-medium">Viaje #{viaje.id_viaje}</span>
+                        </h3>
+                        <p className="text-gray-600">
+                          <Clock className="w-4 h-4 inline mr-1" />
+                          {formatTime(viaje.programado_at)}
+                        </p>
+                        <p className="text-gray-600 mt-1">
+                          <span className="font-medium">Pasajeros:</span> {viaje.pasajeros?.length || 0} reservas
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Accepted Requests Section */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-text">Solicitudes Aceptadas</h2>
@@ -345,7 +459,7 @@ const Dashboard = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-medium">
-                            {formatDate(request.fecha)}
+                            {formatDate(request.salida_at)}
                           </span>
                           <span className="px-2 py-1 text-sm bg-green-100 text-green-800 rounded-full">
                             Aceptada
@@ -356,72 +470,13 @@ const Dashboard = () => {
                         </h3>
                         <p className="text-gray-600">
                           <Clock className="w-4 h-4 inline mr-1" />
-                          {formatTime(request.hora_salida)} - {formatTime(request.hora_llegada)}
+                          {formatTime(request.salida_at)} - {formatTime(request.llegada_at)}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Next Routes Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Próximas Rutas</h2>
-            <Link
-              to="/driver/history"
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Ver historial completo →
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-4">Cargando rutas...</div>
-          ) : proximasRutas.length > 0 ? (
-            <div className="space-y-4">
-              {proximasRutas.map((viaje) => (
-                <div 
-                  key={viaje.id_viaje} 
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => {
-                    setSelectedTrip(viaje);
-                    setIsDialogOpen(true);
-                  }}
-                >
-                  <div>
-                    <h3 className="font-medium">Viaje #{viaje.id_viaje}</h3>
-                    <p className="text-sm text-gray-600">
-                      {formatDate(viaje.programado_at)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {formatTime(viaje.programado_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewRequesters(viaje.id_viaje);
-                      }}
-                      className="text-sm text-primary hover:text-primary/80 transition-colors"
-                      disabled={loadingRequesters}
-                    >
-                      {viaje.pasajeros?.length || 0} reservas
-                    </button>
-                    <span className="px-3 py-1 text-sm bg-primary/20 text-primary rounded-full">
-                      Programado
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              No hay rutas próximas programadas
             </div>
           )}
         </div>
@@ -462,7 +517,7 @@ const Dashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedTrip.programado_at)} - {formatTime(selectedTrip.salida_at)} a {formatTime(selectedTrip.llegada_at)}
+                  {formatDate(selectedTrip.programado_at)} - {formatTime(selectedTrip.programado_at)}
                 </div>
               </div>
               <div>
@@ -535,7 +590,7 @@ const Dashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedRequest.fecha)} - {formatTime(selectedRequest.hora_salida)} a {formatTime(selectedRequest.hora_llegada)}
+                  {formatDate(selectedRequest.salida_at)} - {formatTime(selectedRequest.salida_at)} a {formatTime(selectedRequest.llegada_at)}
                 </div>
               </div>
             </div>

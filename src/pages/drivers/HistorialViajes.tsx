@@ -59,6 +59,11 @@ interface ViajeDetalle {
   };
   pasajeros: {
     id_usuario: number;
+    usuario?: {
+      nombre: string;
+      apellido: string;
+      celular: string | number;
+    };
   }[];
 }
 
@@ -128,8 +133,13 @@ const HistorialViajes = () => {
                 tipo
               )
             ),
-            pasajeros (
-              id_usuario
+            pasajeros:reserva (
+              id_usuario,
+              usuario:usuario (
+                nombre,
+                apellido,
+                celular
+              )
             )
           `)
           .eq('id_conductor', id_usuario)
@@ -137,11 +147,47 @@ const HistorialViajes = () => {
 
         if (viajesError) throw viajesError;
 
-        if (viajesData) {
+        // Also fetch accepted trip requests for this driver
+        const { data: solicitudesData, error: solicitudesError } = await supabase
+          .from('solicitud_viaje')
+          .select(`
+            id_solicitud,
+            salida_at,
+            llegada_at,
+            estado,
+            created_at,
+            ruta (
+              id_ruta,
+              punto_partida,
+              punto_llegada,
+              longitud,
+              trayecto
+            ),
+            pasajero:usuario!solicitud_viaje_id_pasajero_fkey (
+              nombre,
+              apellido,
+              celular
+            ),
+            vehiculo:vehiculo!solicitud_viaje_id_vehiculo_fkey (
+              placa,
+              tipo,
+              tipo_vehiculo (
+                tipo
+              )
+            )
+          `)
+          .eq('id_conductor', id_usuario)
+          .eq('estado', 'aceptada')
+          .order('salida_at', { ascending: true });
+
+        if (solicitudesError) throw solicitudesError;
+
+        if (viajesData || solicitudesData) {
           console.log('Viajes data:', viajesData);
-          console.log('Ejemplo de ruta:', viajesData[0]?.ruta);
+          console.log('Solicitudes data:', solicitudesData);
           
-          setViajes(viajesData.map(viaje => ({
+          // Process regular trips
+          const viajesProcesados = (viajesData || []).map(viaje => ({
             ...viaje,
             pasajeros: Array.isArray(viaje.pasajeros) ? viaje.pasajeros : [],
             ruta: viaje.ruta ? {
@@ -158,8 +204,50 @@ const HistorialViajes = () => {
                 type: 'LineString',
                 coordinates: ((viaje.ruta as RutaSupabase).trayecto as { coordinates: number[][] }).coordinates || []
               }
-            } : undefined
-          })));
+            } : undefined,
+            tipo: 'viaje' as const
+          }));
+
+          // Process trip requests (convert to same format as trips)
+          const solicitudesProcesadas = ((solicitudesData as any) || []).map((solicitud: any) => ({
+            id_viaje: solicitud.id_solicitud, // Use id_solicitud as id_viaje for consistency
+            id_ruta: solicitud.ruta.id_ruta,
+            id_conductor: id_usuario,
+            id_vehiculo: solicitud.vehiculo?.placa || null,
+            programado_at: solicitud.salida_at, // Use salida_at as programado_at
+            salida_at: solicitud.salida_at,
+            llegada_at: solicitud.llegada_at,
+            ruta: solicitud.ruta ? {
+              ...solicitud.ruta,
+              punto_partida: {
+                type: 'Point',
+                coordinates: ((solicitud.ruta as RutaSupabase).punto_partida as { coordinates: number[] }).coordinates || [0, 0]
+              },
+              punto_llegada: {
+                type: 'Point',
+                coordinates: ((solicitud.ruta as RutaSupabase).punto_llegada as { coordinates: number[] }).coordinates || [0, 0]
+              },
+              trayecto: {
+                type: 'LineString',
+                coordinates: ((solicitud.ruta as RutaSupabase).trayecto as { coordinates: number[][] }).coordinates || []
+              }
+            } : undefined,
+            vehiculo: solicitud.vehiculo ? {
+              placa: solicitud.vehiculo.placa,
+              tipo: solicitud.vehiculo.tipo,
+              tipo_vehiculo: solicitud.vehiculo.tipo_vehiculo
+            } : null,
+            pasajeros: [{
+              id_usuario: solicitud.pasajero?.id_usuario || 0,
+              usuario: solicitud.pasajero
+            }],
+            tipo: 'solicitud' as const
+          }));
+
+          // Combine both arrays
+          const todosLosViajes = [...viajesProcesados, ...solicitudesProcesadas];
+          
+          setViajes(todosLosViajes as ViajeDetalle[]);
         }
       } catch (err) {
         console.error('Error cargando viajes:', err);

@@ -249,51 +249,22 @@ const StartTrip = () => {
 
       // Transform the trips into the format expected by the UI
       const formattedRoutes = similarTrips.map(trip => {
-        // Log the raw time values
-        console.log('Raw departure time:', trip.hora_salida);
-        console.log('Raw arrival time:', trip.hora_llegada);
-
-        // Parse the time strings into Date objects
-        const today = new Date();
-        let departureTime;
-        let arrivalTime;
-
-        try {
-          // Parse times in HH:mm:ss format
-          if (trip.hora_salida) {
-            const [hours, minutes] = trip.hora_salida.split(':').map(Number);
-            departureTime = new Date(today);
-            departureTime.setHours(hours, minutes, 0, 0);
-          }
-
-          if (trip.hora_llegada) {
-            const [hours, minutes] = trip.hora_llegada.split(':').map(Number);
-            arrivalTime = new Date(today);
-            arrivalTime.setHours(hours, minutes, 0, 0);
-          }
-
-          console.log('Parsed departure time:', departureTime);
-          console.log('Parsed arrival time:', arrivalTime);
-        } catch (error) {
-          console.error('Error parsing times:', error);
-          // Fallback to current time if parsing fails
-          departureTime = new Date();
-          arrivalTime = null;
-        }
-
+        // Use the new timestampz fields
+        const departureTime = trip.programado_at ? new Date(trip.programado_at) : null;
+        const arrivalTime = trip.llegada_at ? new Date(trip.llegada_at) : null;
         return {
           id_viaje: trip.id_viaje,
           id_ruta: trip.id_ruta,
-        driver: {
-          name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
-          phone: trip.conductor?.celular
-        },
+          driver: {
+            name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
+            phone: trip.conductor?.celular
+          },
           departureTime,
           estimatedArrival: arrivalTime,
-        price: 0, // You might want to add price to your trip model
-        availableSeats: 4, // You might want to add capacity to your trip model
-        transportType: trip.vehiculo?.tipo?.tipo,
-        distance: 0 // You might want to calculate this based on the route
+          price: 0, // You might want to add price to your trip model
+          availableSeats: 4, // You might want to add capacity to your trip model
+          transportType: trip.vehiculo?.tipo?.tipo,
+          distance: 0 // You might want to calculate this based on the route
         };
       });
 
@@ -388,14 +359,14 @@ const StartTrip = () => {
 
       // Format the date and time for the trip
       const today = new Date();
-      const formattedDate = today.toISOString().split('T')[0];
       const [hours, minutes] = departureTime.split(':');
-      const formattedTime = `${hours}:${minutes}:00`;
+      const programadoAt = new Date(today);
+      programadoAt.setHours(Number(hours), Number(minutes), 0, 0);
+      const programadoAtISO = programadoAt.toISOString();
 
       console.log('🕒 Creando solicitud de viaje con datos:', {
         id_ruta: routeData[0].id_ruta_nuevo,
-        fecha: formattedDate,
-        hora_salida: formattedTime
+        programado_at: programadoAtISO
       });
 
       // Create the trip request using crearSolicitudViaje
@@ -403,7 +374,7 @@ const StartTrip = () => {
         id_ruta: routeData[0].id_ruta_nuevo,
         id_conductor: currentUserId, // This will be used as id_pasajero
         id_vehiculo: null,
-        programado_at: `${formattedDate}T${formattedTime}:00`,
+        programado_at: programadoAtISO,
         salida_at: null,
         llegada_at: null
       });

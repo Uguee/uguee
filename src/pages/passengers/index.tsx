@@ -21,9 +21,8 @@ import { RouteMap } from '@/components/map/RouteMap';
 
 interface TripRequest {
   id_solicitud: number;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string | null;
+  salida_at: string;
+  llegada_at: string | null;
   estado: 'pendiente' | 'aceptada' | 'rechazada';
   created_at: string;
   ruta?: {
@@ -97,9 +96,8 @@ const PassengerDashboard = () => {
         .from('solicitud_viaje')
         .select(`
           id_solicitud,
-          fecha,
-          hora_salida,
-          hora_llegada,
+          salida_at,
+          llegada_at,
           estado,
           created_at,
           ruta!inner (
@@ -129,9 +127,8 @@ const PassengerDashboard = () => {
 
       const formattedSolicitudes = solicitudes.map(s => ({
         id_solicitud: s.id_solicitud,
-        fecha: s.fecha,
-        hora_salida: s.hora_salida,
-        hora_llegada: s.hora_llegada,
+        salida_at: s.salida_at,
+        llegada_at: s.llegada_at,
         estado: s.estado as 'pendiente' | 'aceptada' | 'rechazada',
         created_at: s.created_at,
         ruta: s.ruta ? {
@@ -243,10 +240,10 @@ const PassengerDashboard = () => {
     }
   };
 
-  const formatTime = (timeString: string | null | undefined) => {
-    if (!timeString) return 'Hora no disponible';
+  const formatTime = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Hora no disponible';
     try {
-      const date = new Date(timeString);
+      const date = new Date(timestamp);
       return date.toLocaleTimeString('es-ES', {
         hour: '2-digit',
         minute: '2-digit'
@@ -256,10 +253,10 @@ const PassengerDashboard = () => {
     }
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Fecha no disponible';
+  const formatDate = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Fecha no disponible';
     try {
-      const date = new Date(dateString);
+      const date = new Date(timestamp);
       return format(date, "EEEE d 'de' MMMM", { locale: es });
     } catch (error) {
       return 'Fecha no disponible';
@@ -400,7 +397,7 @@ const PassengerDashboard = () => {
                       <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-primary" />
                         <span className="text-lg font-medium">
-                          {formatDate(request.fecha)}
+                          {formatDate(request.salida_at)}
                         </span>
                         <span className={`px-2 py-1 text-sm rounded-full ${
                           request.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
@@ -426,7 +423,7 @@ const PassengerDashboard = () => {
                         )}
                         <p className="text-gray-600">
                           <Clock className="w-4 h-4 inline mr-1" />
-                          {formatTime(request.hora_salida)} - {formatTime(request.hora_llegada)}
+                          {formatTime(request.salida_at)} - {formatTime(request.llegada_at)}
                         </p>
                       </div>
                     </div>
@@ -480,7 +477,7 @@ const PassengerDashboard = () => {
                           <span className="font-medium">Conductor:</span> {reservation.conductor?.nombre} {reservation.conductor?.apellido}
                         </h3>
                         <p className="text-gray-600">
-                          Salida: {formatTime(reservation.programado_at)} 
+                          Salida: {formatTime(reservation.salida_at || reservation.programado_at)} 
                           {reservation.llegada_at && ` | Llegada: ${formatTime(reservation.llegada_at)}`}
                         </p>
                         <p className="text-gray-600 mt-1">
@@ -550,7 +547,7 @@ const PassengerDashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedRequest.fecha)} - {formatTime(selectedRequest.hora_salida)} a {formatTime(selectedRequest.hora_llegada)}
+                  {formatDate(selectedRequest.salida_at)} - {formatTime(selectedRequest.salida_at)} a {formatTime(selectedRequest.llegada_at)}
                 </div>
               </div>
             </div>
@@ -628,7 +625,7 @@ const PassengerDashboard = () => {
               <div>
                 <h3 className="font-medium">Horario</h3>
                 <div className="text-gray-600">
-                  {formatDate(selectedReservation.programado_at)} - {formatTime(selectedReservation.programado_at)}
+                  {formatDate(selectedReservation.programado_at)} - {formatTime(selectedReservation.salida_at || selectedReservation.programado_at)}
                 </div>
               </div>
             </div>

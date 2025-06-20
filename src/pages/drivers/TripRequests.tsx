@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import DashboardLayout from "@/components/layout/DashboardLayout"
-import { TripRequest, TripRequestService } from "@/services/tripRequestService"
+import { TripRequestService } from "@/services/tripRequestService"
 import { useToast } from "@/hooks/use-toast"
 import { RouteMap } from "@/components/map/RouteMap"
 import { supabase } from "@/integrations/supabase/client"
@@ -15,6 +15,42 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+
+interface SolicitudViaje {
+  id_solicitud: number;
+  salida_at: string;
+  llegada_at: string | null;
+  estado: 'pendiente' | 'aceptada' | 'rechazada';
+  created_at: string;
+  ruta?: {
+    id_ruta: number;
+    punto_partida: any;
+    punto_llegada: any;
+    trayecto: any;
+  };
+  viaje?: {
+    conductor?: {
+      nombre: string;
+      apellido: string;
+      celular: string;
+    };
+    vehiculo?: {
+      placa: string;
+      color: string;
+      modelo: number;
+      tipo_vehiculo?: {
+        tipo: string;
+      };
+    };
+  };
+  pasajero: {
+    nombre: string;
+    apellido: string;
+    celular: string;
+    calificacion_promedio: number;
+    total_resenas: number;
+  };
+}
 
 // Helper function to extract coordinates from GeoJSON point
 const extractCoordinates = (point: any): { lat: number; lng: number } | null => {
@@ -35,9 +71,9 @@ const extractCoordinates = (point: any): { lat: number; lng: number } | null => 
 type RequestAction = 'aceptada' | 'rechazada';
 
 export default function TripRequests() {
-  const [requests, setRequests] = useState<TripRequest[]>([]);
+  const [requests, setRequests] = useState<SolicitudViaje[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState<TripRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<SolicitudViaje | null>(null);
   const [routeDetails, setRouteDetails] = useState<any>(null);
   const [showVehicleDialog, setShowVehicleDialog] = useState(false);
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -51,8 +87,37 @@ export default function TripRequests() {
   const fetchRequests = async () => {
     try {
       setIsLoading(true);
-      const data = await TripRequestService.getPendingRequests();
-      setRequests(data);
+      const { data: requests, error } = await supabase
+        .from('solicitud_viaje')
+        .select(`
+          id_solicitud,
+          id_ruta,
+          id_pasajero,
+          salida_at,
+          llegada_at,
+          estado,
+          pasajero:usuario!solicitud_viaje_id_pasajero_fkey (
+            nombre,
+            apellido,
+            celular
+          ),
+          ruta:ruta (
+            id_ruta,
+            punto_partida,
+            punto_llegada,
+            trayecto
+          )
+        `)
+        .eq('estado', 'pendiente')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching requests:', error);
+        throw error;
+      }
+      
+      // Cast the data like in drivers index
+      setRequests(requests as unknown as SolicitudViaje[]);
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast({
@@ -176,12 +241,12 @@ export default function TripRequests() {
     }
   };
 
-  const handleViewRoute = async (request: TripRequest) => {
+  const handleViewRoute = async (request: SolicitudViaje) => {
     try {
       setSelectedRequest(request);
       const { data, error } = await supabase
         .rpc('obtener_ruta_con_coordenadas', {
-          p_id_ruta: request.ruta.id_ruta
+          p_id_ruta: request.ruta?.id_ruta
         });
 
       if (error) {
@@ -205,6 +270,23 @@ export default function TripRequests() {
         variant: "destructive",
       });
     }
+  };
+
+  const formatDate = (timestamp: string | null) => {
+    if (!timestamp) return 'Fecha no disponible';
+    return new Date(timestamp).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timestamp: string | null) => {
+    if (!timestamp) return 'Hora no disponible';
+    return new Date(timestamp).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -251,8 +333,8 @@ export default function TripRequests() {
               ) : (
                 <div className="grid gap-4">
                   {requests.map((request) => {
-                    const startCoords = extractCoordinates(request.punto_partida);
-                    const endCoords = extractCoordinates(request.punto_llegada);
+                    const startCoords = extractCoordinates(request.ruta?.punto_partida);
+                    const endCoords = extractCoordinates(request.ruta?.punto_llegada);
                     
                     return (
                       <Card 
@@ -268,10 +350,17 @@ export default function TripRequests() {
                           <div className="flex justify-between items-start">
                             <div>
                               <CardTitle>
-                                {request.pasajero_nombre} {request.pasajero_apellido}
+                                {request.pasajero.nombre} {request.pasajero.apellido}
                               </CardTitle>
                               <CardDescription>
-                                {request.fecha} - {request.hora_salida}
+                                <div className="text-gray-600">
+                                  <p className="font-medium capitalize">
+                                    {formatDate(request.salida_at)}
+                                  </p>
+                                  <p>
+                                    {formatTime(request.salida_at)}
+                                  </p>
+                                </div>
                               </CardDescription>
                             </div>
                             <Badge variant="outline" className="capitalize">
@@ -283,21 +372,9 @@ export default function TripRequests() {
                           <div className="grid gap-4">
                             <div className="flex justify-between items-center">
                               <div className="space-y-1">
-                                <p className="text-sm font-medium">Origen</p>
+                                <p className="text-sm font-medium">Teléfono</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {startCoords ? `${startCoords.lat.toFixed(6)}, ${startCoords.lng.toFixed(6)}` : 'No disponible'}
-                                </p>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm font-medium">Destino</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {endCoords ? `${endCoords.lat.toFixed(6)}, ${endCoords.lng.toFixed(6)}` : 'No disponible'}
-                                </p>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm font-medium">Distancia</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {request.longitud ? `${(request.longitud / 1000).toFixed(1)} km` : 'No disponible'}
+                                  {request.pasajero.celular || 'No disponible'}
                                 </p>
                               </div>
                             </div>
