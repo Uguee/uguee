@@ -340,38 +340,35 @@ export type Database = {
         Row: {
           created_at: string | null
           estado: string
-          fecha: string
-          hora_llegada: string | null
-          hora_salida: string
           id_conductor: number | null
           id_pasajero: number
           id_ruta: number
           id_solicitud: number
           id_vehiculo: string | null
+          llegada_at: string | null
+          salida_at: string | null
         }
         Insert: {
           created_at?: string | null
           estado: string
-          fecha: string
-          hora_llegada?: string | null
-          hora_salida: string
           id_conductor?: number | null
           id_pasajero: number
           id_ruta: number
           id_solicitud?: number
           id_vehiculo?: string | null
+          llegada_at?: string | null
+          salida_at?: string | null
         }
         Update: {
           created_at?: string | null
           estado?: string
-          fecha?: string
-          hora_llegada?: string | null
-          hora_salida?: string
           id_conductor?: number | null
           id_pasajero?: number
           id_ruta?: number
           id_solicitud?: number
           id_vehiculo?: string | null
+          llegada_at?: string | null
+          salida_at?: string | null
         }
         Relationships: [
           {
@@ -530,6 +527,7 @@ export type Database = {
       }
       vehiculo: {
         Row: {
+          categoria: string | null
           color: string
           fecha_tecnicomecanica: string | null
           id_usuario: number
@@ -540,6 +538,7 @@ export type Database = {
           vigencia_soat: string | null
         }
         Insert: {
+          categoria?: string | null
           color: string
           fecha_tecnicomecanica?: string | null
           id_usuario: number
@@ -550,6 +549,7 @@ export type Database = {
           vigencia_soat?: string | null
         }
         Update: {
+          categoria?: string | null
           color?: string
           fecha_tecnicomecanica?: string | null
           id_usuario?: number
