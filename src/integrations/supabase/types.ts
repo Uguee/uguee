@@ -125,7 +125,9 @@ export type Database = {
         Row: {
           coordenada: unknown
           descripcion: string | null
+          estado: string | null
           fecha: string | null
+          fecha_expiracion: string | null
           id_incidente: number
           id_usuario: number | null
           tipo: Database["public"]["Enums"]["tipo_incidente"]
@@ -133,7 +135,9 @@ export type Database = {
         Insert: {
           coordenada: unknown
           descripcion?: string | null
+          estado?: string | null
           fecha?: string | null
+          fecha_expiracion?: string | null
           id_incidente?: number
           id_usuario?: number | null
           tipo: Database["public"]["Enums"]["tipo_incidente"]
@@ -141,7 +145,9 @@ export type Database = {
         Update: {
           coordenada?: unknown
           descripcion?: string | null
+          estado?: string | null
           fecha?: string | null
+          fecha_expiracion?: string | null
           id_incidente?: number
           id_usuario?: number | null
           tipo?: Database["public"]["Enums"]["tipo_incidente"]
@@ -1230,6 +1236,19 @@ export type Database = {
       gidx_out: {
         Args: { "": unknown }
         Returns: unknown
+      }
+      incidentes_actualizados: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          coordenada: unknown
+          descripcion: string | null
+          estado: string | null
+          fecha: string | null
+          fecha_expiracion: string | null
+          id_incidente: number
+          id_usuario: number | null
+          tipo: Database["public"]["Enums"]["tipo_incidente"]
+        }[]
       }
       insertar_ruta: {
         Args: {

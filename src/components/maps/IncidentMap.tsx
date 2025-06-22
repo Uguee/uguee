@@ -3,67 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaf
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { TipoIncidente } from '@/pages/passengers/ReportIncident';
-
-// Importar los íconos
-import accidenteIcon from '@/assets/icons/accidente.png';
-import roboIcon from '@/assets/icons/robo.png';
-import viaCerradaIcon from '@/assets/icons/via-cerrada.png';
-import huecoIcon from '@/assets/icons/hueco.png';
-import policiaIcon from '@/assets/icons/policia.png';
-import emergenciaIcon from '@/assets/icons/emergencia.png';
-import obstaculoIcon from '@/assets/icons/obstaculo.png';
-import otroIcon from '@/assets/icons/otro.png';
-
-const iconosIncidente = {
-  'accidente': L.icon({
-    iconUrl: accidenteIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'robo': L.icon({
-    iconUrl: roboIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'vía cerrada': L.icon({
-    iconUrl: viaCerradaIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'hueco en la vía': L.icon({
-    iconUrl: huecoIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'presencia policial': L.icon({
-    iconUrl: policiaIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'emergencia': L.icon({
-    iconUrl: emergenciaIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'obstáculo en la vía': L.icon({
-    iconUrl: obstaculoIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  }),
-  'otro': L.icon({
-    iconUrl: otroIcon,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-  })
-} as const;
+import { useIncidents } from '@/hooks/useIncidents';
+import { iconosIncidente } from './incidentIcons';
 
 // Coordenadas de Cali
 const CALI_CENTER: [number, number] = [3.4516, -76.5320];
@@ -90,6 +31,16 @@ const MapClickHandler: React.FC<{
 
 const IncidentMap: React.FC<IncidentMapProps> = ({ onLocationSelect, selectedType }) => {
   const [markerPosition, setMarkerPosition] = useState<[number, number] | null>(null);
+  const { incidents, loading, error } = useIncidents();
+
+  console.log('🗺️ IncidentMap renderizado:', {
+    selectedType,
+    markerPosition,
+    loading,
+    error,
+    incidentsCount: incidents?.length,
+    incidents
+  });
 
   return (
     <div className="relative w-full h-full">
@@ -115,6 +66,7 @@ const IncidentMap: React.FC<IncidentMapProps> = ({ onLocationSelect, selectedTyp
           setMarker={setMarkerPosition} 
         />
         
+        {/* Marcador del nuevo incidente */}
         {markerPosition && selectedType && (
           <Marker 
             position={markerPosition}
@@ -131,6 +83,36 @@ const IncidentMap: React.FC<IncidentMapProps> = ({ onLocationSelect, selectedTyp
             </Popup>
           </Marker>
         )}
+
+        {/* Marcadores de incidentes existentes */}
+        {incidents?.map((incident) => {
+          console.log('📍 Renderizando incidente existente:', {
+            id: incident.id_incidente,
+            tipo: incident.tipo,
+            coordenadas: incident.coordenada?.coordinates
+          });
+
+          return (
+            <Marker
+              key={incident.id_incidente}
+              position={[
+                incident.coordenada.coordinates[1],
+                incident.coordenada.coordinates[0]
+              ]}
+              icon={iconosIncidente[incident.tipo as keyof typeof iconosIncidente]}
+            >
+              <Popup>
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium capitalize">{incident.tipo}</span>
+                  <p className="text-sm">{incident.descripcion}</p>
+                  <span className="text-xs text-gray-500">
+                    {new Date(incident.fecha).toLocaleString()}
+                  </span>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       <style>{`
