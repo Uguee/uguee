@@ -11,6 +11,8 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useIncidents } from '@/hooks/useIncidents';
+import { iconosIncidente } from '../maps/incidentIcons';
 
 // Fix para los iconos de Leaflet
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
@@ -39,6 +41,7 @@ interface RouteMapProps {
   onRouteGenerated?: (origin: Location, destination: Location, route: [number, number][]) => void;
   onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
   allowClickToSetPoints?: boolean;
+  showIncidents?: boolean;
 }
 
 // Componente para manejar la ubicación actual
@@ -173,9 +176,10 @@ export function RouteMap({
   onCurrentLocationChange,
   onRouteGenerated,
   onMapClick,
-  allowClickToSetPoints = false 
+  allowClickToSetPoints = false,
+  showIncidents = true
 }: RouteMapProps) {
-  const [isMapReady, setIsMapReady] = useState(false);
+  const { incidents } = useIncidents();
 
   // Definir iconos personalizados para origen y destino
   const originIcon = new L.Icon({
@@ -292,6 +296,28 @@ export function RouteMap({
             />
           </>
         )}
+
+        {/* Marcadores de incidentes */}
+        {showIncidents && incidents?.map((incident) => (
+          <Marker
+            key={incident.id_incidente}
+            position={[
+              incident.coordenada.coordinates[1],
+              incident.coordenada.coordinates[0]
+            ]}
+            icon={iconosIncidente[incident.tipo as keyof typeof iconosIncidente]}
+          >
+            <Popup>
+              <div className="flex flex-col gap-1">
+                <span className="font-medium capitalize">{incident.tipo}</span>
+                <p className="text-sm">{incident.descripcion}</p>
+                <span className="text-xs text-gray-500">
+                  {new Date(incident.fecha).toLocaleString()}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );
