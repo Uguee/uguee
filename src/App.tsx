@@ -40,6 +40,7 @@ import InstitutionPendingValidation from './pages/institution/InstitutionPending
 import InstitutionRequests from './pages/admin/InstitutionRequests';
 import DriverRegister from "./pages/drivers/DriverRegister";
 import TripRequests from "./pages/drivers/TripRequests";
+import ReportIncident from '@/pages/passengers/ReportIncident';
 
 const queryClient = new QueryClient();
 
@@ -323,6 +324,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['usuario']}>
             <DriverRegister />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Report Incident route */}
+      <Route 
+        path="/report-incident" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario']}>
+            <ReportIncident />
           </ProtectedRoute>
         } 
       />

@@ -6,7 +6,8 @@ import {
   Heart, 
   Car,
   Plus,
-  Play
+  Play,
+  AlertTriangle
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
@@ -108,6 +109,11 @@ export const AppSidebar = () => {
       title: "Rutas favoritas",
       url: "/favorite-routes",
       icon: Heart,
+    },
+    {
+      title: "Reportar Incidente",
+      url: "/report-incident",
+      icon: AlertTriangle,
     },
   ];
 

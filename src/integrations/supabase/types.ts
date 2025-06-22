@@ -121,6 +121,41 @@ export type Database = {
         }
         Relationships: []
       }
+      incidente: {
+        Row: {
+          coordenada: unknown
+          descripcion: string | null
+          fecha: string | null
+          id_incidente: number
+          id_usuario: number | null
+          tipo: Database["public"]["Enums"]["tipo_incidente"]
+        }
+        Insert: {
+          coordenada: unknown
+          descripcion?: string | null
+          fecha?: string | null
+          id_incidente?: number
+          id_usuario?: number | null
+          tipo: Database["public"]["Enums"]["tipo_incidente"]
+        }
+        Update: {
+          coordenada?: unknown
+          descripcion?: string | null
+          fecha?: string | null
+          id_incidente?: number
+          id_usuario?: number | null
+          tipo?: Database["public"]["Enums"]["tipo_incidente"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidente_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id_usuario"]
+          },
+        ]
+      }
       institucion: {
         Row: {
           admin_institucional: string | null
@@ -2528,7 +2563,15 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      tipo_incidente:
+        | "accidente"
+        | "obstáculo en la vía"
+        | "vía cerrada"
+        | "presencia policial"
+        | "hueco en la vía"
+        | "robo"
+        | "emergencia"
+        | "otro"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2651,6 +2694,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      tipo_incidente: [
+        "accidente",
+        "obstáculo en la vía",
+        "vía cerrada",
+        "presencia policial",
+        "hueco en la vía",
+        "robo",
+        "emergencia",
+        "otro",
+      ],
+    },
   },
 } as const
