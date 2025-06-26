@@ -7,7 +7,6 @@ import {
   VerifyIdentityScreen,
   CameraPermissionsScreen,
   StartVerificationScreen,
-  HomeScreen,
   DocumentVerificationScreen,
   RegisterToInstScreen,
   DriverRegisterScreen,
@@ -17,6 +16,7 @@ import {
   InstProfileScreen,
   ProfileScreen,
 } from "./screens";
+import { HomeScreen } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
@@ -33,6 +33,7 @@ import DriverTripStartScreen from "./screens/DriverTripStartScreen";
 import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
 import { joinTripAsPassenger } from "./services/tripServices";
+import UserServicesScreen from "./screens/userServicesScreen";
 
 type Screen =
   | "welcome"
@@ -62,7 +63,8 @@ type Screen =
   | "user-trips"
   | "driver-trip-start"
   | "driver-qr"
-  | "scan-qr";
+  | "scan-qr"
+  | "user-services";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -294,6 +296,9 @@ const AppNavigator = () => {
     setCurrentScreen("driver-routes");
   };
 
+  const handleGoToServices = () => setCurrentScreen("user-services");
+  const handleGoBackFromScanQR = () => setCurrentScreen("user-trips");
+
   const handleShowScanQRScreen = (tripData: any) => {
     setScanQRTripData(tripData);
     setShowScanQRScreen(true);
@@ -399,6 +404,7 @@ const AppNavigator = () => {
           onGoToProfile={handleGoToProfile}
           onGoToInstitutionProfile={handleGoToInstProfile}
           onGoToMyTripsScreen={handleGoToUserTripsScreen}
+          onGoToServices={handleGoToServices}
         />
       </ProtectedRoute>
     );
@@ -504,7 +510,18 @@ const AppNavigator = () => {
           />
         );
       case "dashboard":
-        return <DashboardScreen />;
+        return (
+          <HomeScreen
+            onGoToInstitutions={handleGoToInstitutions}
+            onGoToBecomeDriver={handleGoToDriverRegister}
+            onGoToDriverView={handleGoToDriverView}
+            onGoToMyInstitution={() => {}}
+            onGoToProfile={handleGoToProfile}
+            onGoToInstitutionProfile={handleGoToInstProfile}
+            onGoToMyTripsScreen={handleGoToUserTripsScreen}
+            onGoToServices={handleGoToServices}
+          />
+        );
       case "institutions":
         return (
           <InstitutionListScreen
@@ -513,6 +530,7 @@ const AppNavigator = () => {
               setSelectedInstitution(institution);
               setCurrentScreen("selected-institution");
             }}
+            onGoToServices={handleGoToServices}
           />
         );
       case "selected-institution":
@@ -524,6 +542,7 @@ const AppNavigator = () => {
               setSelectedInstitution(institution);
               setCurrentScreen("register-to-inst");
             }}
+            onGoToServices={handleGoToServices}
           />
         );
       case "register-to-inst":
@@ -645,6 +664,7 @@ const AppNavigator = () => {
             onGoToHomeScreen={handleGoToHomeScreen}
             onGoToProfileScreen={handleGoToProfile}
             onShowScanQRScreen={handleShowScanQRScreen}
+            onGoToServices={handleGoToServices}
           />
         );
       case "driver-trip-start":
@@ -663,6 +683,20 @@ const AppNavigator = () => {
           <DriveQRScreen
             qrValue={qrValue || "QR-PLACEHOLDER"}
             onGoBack={() => setCurrentScreen("driver-trip-start")}
+          />
+        );
+      case "scan-qr":
+        return (
+          <ScanQRScreen onGoBack={handleGoBackFromScanQR} onScan={() => {}} />
+        );
+      case "user-services":
+        return (
+          <UserServicesScreen
+            onGoToHome={() => setCurrentScreen("dashboard")}
+            onGoToProfile={handleGoToProfile}
+            onGoToMyTrips={() => setCurrentScreen("user-trips")}
+            onGoToServices={() => setCurrentScreen("user-services")}
+            onGoToScanQR={() => setCurrentScreen("scan-qr")}
           />
         );
       default:

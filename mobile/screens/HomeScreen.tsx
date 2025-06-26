@@ -22,6 +22,7 @@ interface HomeScreenProps {
   onGoToInstitutionProfile?: () => void;
   onGoToHome?: () => void;
   onGoToMyTripsScreen?: () => void;
+  onGoToServices?: () => void;
 }
 
 export default function HomeScreen({
@@ -33,6 +34,7 @@ export default function HomeScreen({
   onGoToInstitutionProfile,
   onGoToHome,
   onGoToMyTripsScreen,
+  onGoToServices,
 }: HomeScreenProps) {
   const [search, setSearch] = useState("");
 
@@ -230,6 +232,7 @@ export default function HomeScreen({
         onGoToProfile={onGoToProfile ?? (() => alert("Perfil"))}
         onGoToHome={() => {}}
         onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
+        onGoToServices={onGoToServices}
         activeButton="home"
       />
     </View>

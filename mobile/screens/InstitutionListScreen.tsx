@@ -17,12 +17,14 @@ interface InstitutionListScreenProps {
   onGoHome: () => void;
   onSelectInstitution: (institution: any) => void;
   onGoToMyTripsScreen?: () => void;
+  onGoToServices?: () => void;
 }
 
 export default function InstitutionListScreen({
   onGoHome,
   onSelectInstitution,
   onGoToMyTripsScreen,
+  onGoToServices,
 }: InstitutionListScreenProps) {
   const [search, setSearch] = useState("");
   const { institutions, loading, error } = useInstitutions();
@@ -76,6 +78,7 @@ export default function InstitutionListScreen({
         onGoToProfile={() => {}}
         onGoToHome={onGoHome}
         onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
+        onGoToServices={onGoToServices}
         activeButton="home"
       />
     </View>

@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
-  ActivityIndicator,
 } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
@@ -226,7 +225,6 @@ const DriverMyTripsScreen = ({
         </View>
       );
     } else {
-      // Programado
       return (
         <View
           style={{
@@ -307,27 +305,13 @@ const DriverMyTripsScreen = ({
       </Modal>
       {/* Lista de viajes */}
       <Text style={styles.sectionTitle}>Viajes creados</Text>
-      {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color="#A259FF" />
-          <Text style={{ textAlign: "center", color: "#A259FF", marginTop: 8 }}>
-            Cargando viajes...
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredTrips}
-          keyExtractor={(item) => item.id_viaje.toString()}
-          renderItem={renderTrip}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-      {error && (
-        <Text style={{ textAlign: "center", color: "red" }}>{error}</Text>
-      )}
+      <FlatList
+        data={filteredTrips}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTrip}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      />
       {/* Botón de crear viaje */}
       <View style={styles.createButtonContainer} pointerEvents="box-none">
         <DriverTripButton onPress={onGoToCreateTripScreen} />

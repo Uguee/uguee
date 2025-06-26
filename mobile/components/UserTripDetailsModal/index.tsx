@@ -61,6 +61,17 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
   estado = "programado",
   pasajeros = undefined,
 }) => {
+  // Extrae los datos del trip
+  const pickupPlace =
+    trip?.startingPoint || "Punto de recogida no especificado";
+  const destinationPlace = trip?.destination || "Destino no especificado";
+  const departureDate = trip?.departureDate || "";
+  const departureTime = trip?.time || "";
+  const driver = trip?.driver || "";
+  const vehicleType = trip?.vehicleType || "";
+  const color = trip?.color || "";
+  const plate = trip?.plate || "";
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -123,6 +134,7 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
               </Text>
             )}
             <View style={styles.buttonRow}>
+              <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
               <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
                 <Text style={styles.startBtnText}>Iniciar viaje</Text>
               </TouchableOpacity>

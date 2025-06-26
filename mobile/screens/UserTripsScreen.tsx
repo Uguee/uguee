@@ -36,6 +36,9 @@ export default function UserTripsScreen({
   onGoToHomeScreen = () => {},
   onGoToProfileScreen = () => {},
   onShowScanQRScreen = () => {},
+  onGoToServices = () => {},
+}: UserTripsScreenProps) {
+  onShowScanQRScreen = () => {},
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
@@ -201,6 +204,7 @@ export default function UserTripsScreen({
         onGoToHome={onGoToHomeScreen}
         onGoToProfile={onGoToProfileScreen}
         onGoToMyTrips={() => {}}
+        onGoToServices={onGoToServices}
         activeButton="trips"
       />
     </View>
@@ -214,5 +218,28 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     marginLeft: 16,
     color: "#222",
+  },
+  fab: {
+    position: "absolute",
+    right: 24,
+    bottom: 90,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#A259FF",
+    borderRadius: 28,
+    paddingVertical: 20,
+    paddingHorizontal: 28,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    zIndex: 20,
+  },
+  fabText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 17,
+    letterSpacing: 0.5,
   },
 });

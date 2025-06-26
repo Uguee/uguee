@@ -458,8 +458,10 @@ function getVehicleTitle(vehicle: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 24,
+    paddingTop: 70,
     paddingTop: 70,
   },
   title: {
@@ -564,6 +566,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     justifyContent: "center",
+    marginTop: 40,
+    marginBottom: 24,
     marginTop: 40,
     marginBottom: 24,
   },
