@@ -1,3 +1,5 @@
+import { supabase } from "../lib/supabase";
+
 const TRIP_FUNCTION_URL =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/create-trip";
 
@@ -236,3 +238,57 @@ export async function getTripsByInstitution(
   const data = await response.json();
   return data;
 }
+
+/**
+ * Une un pasajero a un viaje usando la edge function join-a-trip-as-passenger
+ * @param id_pasajero ID del pasajero (cédula)
+ * @param id_conductor ID del conductor (cédula)
+ * @param id_viaje ID del viaje
+ * @returns Respuesta de la edge function
+ */
+export const joinTripAsPassenger = async (
+  id_pasajero: number,
+  id_conductor: number,
+  id_viaje: number
+) => {
+  try {
+    const token = supabase.auth.session()?.access_token;
+    if (!token) {
+      throw new Error("No se encontró un token de sesión válido");
+    }
+
+    console.log("[joinTripAsPassenger] Enviando datos:", {
+      id_pasajero,
+      id_conductor,
+      id_viaje,
+    });
+
+    const response = await fetch(
+      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/join-a-trip-as-passenger",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id_pasajero,
+          id_conductor,
+          id_viaje,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    console.log("[joinTripAsPassenger] Respuesta:", data);
+
+    if (!response.ok) {
+      throw new Error(data.error || "Error al unirse al viaje");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("[joinTripAsPassenger] Error:", error);
+    throw error;
+  }
+};

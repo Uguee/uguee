@@ -15,6 +15,7 @@ import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { getRouteById } from "../services/routeService";
+import { getCedulaByUUID } from "../services/userDataService";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
@@ -249,16 +250,34 @@ export default function DriverTripStartScreen({
   const getInitial = (name?: string) =>
     name && name.length > 0 ? name[0].toUpperCase() : "U";
 
-  const generateQRData = () => {
+  const generateQRData = async () => {
     if (!trip?.id_viaje) {
       console.error("[DriverTripStartScreen] No hay id_viaje disponible");
       return;
     }
 
-    // Solo incluimos el id_viaje en el QR
-    const qrData = `TRIP:${trip.id_viaje}`;
-    setQRData(qrData);
-    setShowQRModal(true);
+    if (!user?.id) {
+      console.error("[DriverTripStartScreen] No hay usuario disponible");
+      return;
+    }
+
+    try {
+      // Obtener la cédula del conductor
+      const cedula = await getCedulaByUUID(user.id);
+      if (!cedula) {
+        console.error(
+          "[DriverTripStartScreen] No se pudo obtener la cédula del conductor"
+        );
+        return;
+      }
+
+      // Crear el formato del QR con viaje:id_viaje, conductor:cedula
+      const qrData = `viaje:${trip.id_viaje},conductor:${cedula}`;
+      setQRData(qrData);
+      setShowQRModal(true);
+    } catch (error) {
+      console.error("[DriverTripStartScreen] Error al generar QR:", error);
+    }
   };
 
   if (

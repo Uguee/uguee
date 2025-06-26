@@ -18,7 +18,6 @@ import {
   ProfileScreen,
 } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
-import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
@@ -26,13 +25,14 @@ import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
-import { View, Text } from "react-native";
+import { View, Text, Alert } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
 import DriverTripStartScreen from "./screens/DriverTripStartScreen";
 import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
+import { joinTripAsPassenger } from "./services/tripServices";
 
 type Screen =
   | "welcome"
@@ -299,6 +299,89 @@ const AppNavigator = () => {
     setShowScanQRScreen(true);
   };
 
+  const handleQRScan = async (qrData?: string) => {
+    if (!qrData) {
+      Alert.alert("Error", "No se pudo leer el código QR");
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
+    if (!user?.id || !cedula) {
+      Alert.alert("Error", "No se pudo obtener la información del usuario");
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
+    try {
+      console.log("[App] Procesando QR escaneado:", qrData);
+
+      // Parsear los datos del QR
+      const qrParts = qrData.split(",");
+      const viajePart = qrParts.find((part) => part.startsWith("viaje:"));
+      const conductorPart = qrParts.find((part) =>
+        part.startsWith("conductor:")
+      );
+
+      if (!viajePart || !conductorPart) {
+        throw new Error("Formato de QR inválido");
+      }
+
+      const id_viaje = parseInt(viajePart.split(":")[1]);
+      const id_conductor = parseInt(conductorPart.split(":")[1]);
+
+      if (!id_viaje || !id_conductor) {
+        throw new Error("Datos del QR incompletos");
+      }
+
+      console.log("[App] Datos extraídos del QR:", {
+        id_viaje,
+        id_conductor,
+        id_pasajero: cedula,
+      });
+
+      // Unir al pasajero al viaje
+      const result = await joinTripAsPassenger(cedula, id_conductor, id_viaje);
+
+      console.log("[App] Unión exitosa:", result);
+
+      Alert.alert(
+        "¡Te has unido al viaje!",
+        "Has sido agregado exitosamente al viaje. El conductor ha sido notificado.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowScanQRScreen(false);
+              setScanQRTripData(null);
+              setCurrentScreen("user-trips");
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error("[App] Error al procesar QR:", error);
+
+      Alert.alert(
+        "Error",
+        error.message || "No se pudo unir al viaje. Inténtalo de nuevo.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowScanQRScreen(false);
+              setScanQRTripData(null);
+              setCurrentScreen("user-trips");
+            },
+          },
+        ]
+      );
+    }
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -336,11 +419,7 @@ const AppNavigator = () => {
     if (showScanQRScreen) {
       return (
         <ScanQRScreen
-          onScan={(qrData) => {
-            setShowScanQRScreen(false);
-            setScanQRTripData(null);
-            setCurrentScreen("user-trips");
-          }}
+          onScan={handleQRScan}
           onGoBack={() => {
             setShowScanQRScreen(false);
             setScanQRTripData(null);
