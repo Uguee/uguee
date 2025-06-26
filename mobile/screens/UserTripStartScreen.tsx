@@ -6,31 +6,32 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  Modal,
 } from "react-native";
 import ReturnButton from "../components/ReturnButton";
-import { useAuth } from "../hooks/useAuth";
 import MapView, { Marker } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import * as Location from "expo-location";
-import { GeocodingService } from "../services/geocodingService";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../hooks/useAuth";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-interface DriverTripStartScreenProps {
-  pickupPlace: string;
-  destinationPlace: string;
-  onGoBack?: () => void;
-  onGoToQRScreen?: (qrValue: string) => void;
+interface Passenger {
+  id: number;
+  name: string;
 }
 
-export default function DriverTripStartScreen({
-  pickupPlace,
-  destinationPlace,
-  onGoBack = () => {},
-  onGoToQRScreen = () => {},
-}: DriverTripStartScreenProps) {
+interface UserTripStartProps {
+  trip: any;
+  onGoBack: () => void;
+  onScanQR: () => void;
+}
+
+export default function UserTripStartScreen({
+  trip,
+  onGoBack,
+  onScanQR,
+}: UserTripStartProps) {
   const { user } = useAuth();
   const [pickupCoords, setPickupCoords] = useState<{
     latitude: number;
@@ -47,13 +48,25 @@ export default function DriverTripStartScreen({
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<MapView>(null);
 
-  // Geocodifica los lugares
+  // Usa los datos de trip
+  const pickupPlace =
+    trip?.startingPoint || "Punto de recogida no especificado";
+  const destinationPlace = trip?.destination || "Destino no especificado";
+  const driverName = trip?.driver || "Conductor";
+  const driverRole = "Conductor";
+  const passengers = [
+    { id: 1, name: "Patricia Gómez" },
+    { id: 2, name: "Pedro" },
+  ];
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     Promise.all([
-      GeocodingService.searchAddress(pickupPlace),
-      GeocodingService.searchAddress(destinationPlace),
+      // Aquí deberías usar tu servicio real de geocoding
+      // Simulación:
+      Promise.resolve([{ lat: 3.375, lng: -76.535 }]),
+      Promise.resolve([{ lat: 3.39, lng: -76.54 }]),
     ]).then(([pickupArr, destArr]) => {
       if (isMounted) {
         const pickup = pickupArr[0];
@@ -72,7 +85,6 @@ export default function DriverTripStartScreen({
     };
   }, [pickupPlace, destinationPlace]);
 
-  // Obtiene la ubicación en tiempo real
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
     (async () => {
@@ -93,7 +105,6 @@ export default function DriverTripStartScreen({
     };
   }, []);
 
-  // Centra el mapa en la ubicación actual al inicio
   useEffect(() => {
     if (mapRef.current && location) {
       mapRef.current.animateToRegion({
@@ -105,45 +116,8 @@ export default function DriverTripStartScreen({
     }
   }, [location]);
 
-  // Avatar con inicial (igual que ProfileScreen)
   const getInitial = (name?: string) =>
     name && name.length > 0 ? name[0].toUpperCase() : "U";
-
-  // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
-  const [passengers, setPassengers] = useState([
-    { id: 1, name: "Patricia Gómez" },
-    { id: 2, name: "Pedro" },
-  ]);
-
-  // Estado para el modal de confirmación de eliminación
-  const [modalVisible, setModalVisible] = useState(false);
-  const [passengerToRemove, setPassengerToRemove] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
-
-  const handleAskRemovePassenger = (passenger: {
-    id: number;
-    name: string;
-  }) => {
-    setPassengerToRemove(passenger);
-    setModalVisible(true);
-  };
-
-  const handleRemovePassenger = () => {
-    if (passengerToRemove) {
-      setPassengers((prev) =>
-        prev.filter((p) => p.id !== passengerToRemove.id)
-      );
-      setModalVisible(false);
-      setPassengerToRemove(null);
-    }
-  };
-
-  const handleCancelRemove = () => {
-    setModalVisible(false);
-    setPassengerToRemove(null);
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -174,7 +148,6 @@ export default function DriverTripStartScreen({
             showsUserLocation={true}
             followsUserLocation={true}
           >
-            {/* Marcadores de inicio y destino */}
             <Marker
               coordinate={pickupCoords}
               title="Recogida"
@@ -185,11 +158,9 @@ export default function DriverTripStartScreen({
               title="Destino"
               pinColor="#FF4D4D"
             />
-            {/* Marcador del "carrito" en la ubicación actual */}
             {location && (
               <Marker coordinate={location} title="Tú" pinColor="#222" />
             )}
-            {/* Ruta */}
             <MapViewDirections
               origin={pickupCoords}
               destination={destCoords}
@@ -207,15 +178,11 @@ export default function DriverTripStartScreen({
         <View style={styles.cardContent}>
           <View style={styles.rowTop}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>
-                {getInitial(user?.firstName)}
-              </Text>
+              <Text style={styles.avatarInitial}>{getInitial(driverName)}</Text>
             </View>
             <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={styles.nameText}>
-                {user?.firstName} {user?.lastName}
-              </Text>
-              <Text style={styles.roleText}>{user?.role || "Conductor"}</Text>
+              <Text style={styles.nameText}>{driverName}</Text>
+              <Text style={styles.roleText}>{driverRole}</Text>
             </View>
           </View>
           <View style={styles.rowMeeting}>
@@ -231,9 +198,8 @@ export default function DriverTripStartScreen({
             </View>
           </View>
           <Text style={styles.infoText}>
-            Antes de iniciar, invita a los pasajeros a escanear el QR
+            Antes de iniciar, escanea el qr proporcionado por el conductor
           </Text>
-          {/* Pasajeros */}
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
             <ScrollView
@@ -243,60 +209,17 @@ export default function DriverTripStartScreen({
               {passengers.map((p) => (
                 <View key={p.id} style={styles.passengerRow}>
                   <Text style={styles.passengerName}>{p.name}</Text>
-                  <TouchableOpacity
-                    style={styles.removePassengerBtn}
-                    onPress={() => handleAskRemovePassenger(p)}
-                  >
-                    <Ionicons name="close-circle" size={22} color="#FF4D4D" />
-                  </TouchableOpacity>
                 </View>
               ))}
             </ScrollView>
           </View>
         </View>
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.qrButton}
-            onPress={() => onGoToQRScreen("TRIP-QR-PLACEHOLDER")}
-          >
-            <Text style={styles.buttonText}>Generar QR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.startButton}>
-            <Text style={styles.buttonText}>Iniciar viaje</Text>
+          <TouchableOpacity style={styles.qrButton} onPress={onScanQR}>
+            <Text style={styles.buttonText}>Escanear QR</Text>
           </TouchableOpacity>
         </View>
       </View>
-      {/* Modal de confirmación de eliminación (fuera del card, al final del return) */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelRemove}
-      >
-        <View style={styles.modalOverlayConfirm}>
-          <View style={styles.modalContentConfirm}>
-            <Text style={styles.confirmTitle}>
-              ¿Seguro que quieres eliminar a
-            </Text>
-            <Text style={styles.confirmName}>{passengerToRemove?.name}</Text>
-            <Text style={styles.confirmTitle}>del viaje?</Text>
-            <View style={styles.confirmButtonsRow}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={handleCancelRemove}
-              >
-                <Text style={styles.cancelBtnText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={handleRemovePassenger}
-              >
-                <Text style={styles.deleteBtnText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -337,7 +260,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     alignItems: "stretch",
-    height: 390,
+    height: 350,
     flexDirection: "column",
   },
   cardContent: {
@@ -348,32 +271,30 @@ const styles = StyleSheet.create({
   rowTop: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
   avatarCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#A259FF",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#B84CF6",
     justifyContent: "center",
     alignItems: "center",
   },
   avatarInitial: {
     color: "#fff",
-    fontSize: 28,
     fontWeight: "bold",
+    fontSize: 18,
   },
   nameText: {
-    fontSize: 18,
-    fontWeight: "bold",
     color: "#222",
-    marginBottom: 2,
+    fontWeight: "bold",
+    fontSize: 16,
   },
   roleText: {
-    color: "#B84CF6",
-    fontWeight: "bold",
-    fontSize: 15,
-    marginBottom: 2,
+    color: "#444",
+    fontSize: 14,
   },
   rowMeeting: {
     flexDirection: "row",
@@ -386,6 +307,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     marginBottom: 0,
+    marginTop: 0,
   },
   meetingPlace: {
     color: "#B84CF6",
@@ -414,14 +336,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  removePassengerBtn: {
-    marginLeft: 12,
-    padding: 2,
-  },
   passengerListContainer: {
     flex: 1,
     minHeight: 0,
-    marginTop: 4,
+    marginTop: 2,
     marginBottom: 0,
   },
   passengerScroll: {
@@ -430,7 +348,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "100%",
     marginTop: 8,
     gap: 16,
@@ -441,80 +359,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
-    marginRight: 8,
-  },
-  startButton: {
-    flex: 1,
-    backgroundColor: "#8B5CF6",
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginLeft: 8,
+    marginHorizontal: 8,
   },
   buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  // Modal confirmación
-  modalOverlayConfirm: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContentConfirm: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 24,
-    minWidth: 260,
-    maxWidth: 320,
-    elevation: 8,
-    alignItems: "center",
-  },
-  confirmTitle: {
-    fontSize: 16,
-    color: "#222",
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 2,
-  },
-  confirmName: {
-    fontSize: 18,
-    color: "#B84CF6",
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  confirmButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 18,
-    width: "100%",
-    gap: 16,
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginRight: 8,
-  },
-  cancelBtnText: {
-    color: "#222",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  deleteBtn: {
-    flex: 1,
-    backgroundColor: "#FF4D4D",
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  deleteBtnText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,

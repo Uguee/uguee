@@ -12,6 +12,7 @@ import UserTripCard from "../components/UserTripCard";
 import UserTripDetailsModal from "../components/UserTripDetailsModal";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { Ionicons } from "@expo/vector-icons";
+import UserTripStartScreen from "./UserTripStartScreen";
 
 interface UserTripsScreenProps {
   onGoToHomeScreen?: () => void;
@@ -23,15 +24,27 @@ interface UserTripsScreenProps {
 const TRIPS = [
   {
     id: "1",
+    driver: "Roberto Rojerio",
+    plate: "ABC123",
+    vehicleType: "bus",
+    color: "rosado",
+    startingPoint: "Campus Meléndez Calle 13 # 100",
+    destination: "Cl. 13 #98-10",
     route: "Univalle ➔ Multicentro",
-    address: "Salida: Campus Meléndez Calle 13 # 100",
     time: "2:30 PM",
+    departureDate: "2025-05-31",
   },
   {
     id: "2",
+    driver: "Roberto Rojerio",
+    plate: "ABC123",
+    vehicleType: "bus",
+    color: "rosado",
+    startingPoint: "Campus Meléndez Calle 13 # 100",
+    destination: "Cl. 13 #98-10",
     route: "Univalle ➔ Multicentro",
-    address: "Salida: Campus Meléndez Calle 13 # 100",
     time: "2:30 PM",
+    departureDate: "2025-05-31",
   },
   // ...más viajes
 ];
@@ -45,12 +58,36 @@ export default function UserTripsScreen({
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [showTripStart, setShowTripStart] = useState(false);
+
+  // Simulación de pasajeros para el viaje seleccionado
+  const passengers = [
+    { id: 1, name: "Patricia Gómez" },
+    { id: 2, name: "Pedro" },
+  ];
+
+  // Datos del conductor y rol (simulados igual que en el modal)
+  const driverName = "Roberto Rojerio";
+  const driverRole = "Conductor";
 
   const filteredTrips = TRIPS.filter(
     (trip) =>
       trip.route.toLowerCase().includes(search.toLowerCase()) ||
-      trip.address.toLowerCase().includes(search.toLowerCase())
+      trip.startingPoint.toLowerCase().includes(search.toLowerCase()) ||
+      trip.destination.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (showTripStart && selectedTrip) {
+    return (
+      <UserTripStartScreen
+        trip={selectedTrip}
+        onGoBack={() => setShowTripStart(false)}
+        onScanQR={() => {
+          /* ... */
+        }}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -67,7 +104,7 @@ export default function UserTripsScreen({
         renderItem={({ item }) => (
           <UserTripCard
             route={item.route}
-            address={item.address}
+            address={`Salida: ${item.startingPoint}`}
             time={item.time}
             onPress={() => {
               setSelectedTrip(item);
@@ -81,14 +118,11 @@ export default function UserTripsScreen({
       <UserTripDetailsModal
         visible={showDetails}
         onClose={() => setShowDetails(false)}
-        pickupPlace={selectedTrip?.address?.replace("Salida: ", "")}
-        destinationPlace="Cl. 13 #98-10"
-        departureDate="2025-05-31"
-        departureTime={selectedTrip?.time || "2:30 PM"}
-        driver="Roberto Rojerio"
-        vehicleType="bus"
-        color="rosado"
-        plate="ABC123"
+        trip={selectedTrip}
+        onStartTrip={() => {
+          setShowDetails(false);
+          setShowTripStart(true);
+        }}
       />
       <TouchableOpacity
         style={styles.fab}

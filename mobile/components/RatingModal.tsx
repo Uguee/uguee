@@ -48,8 +48,8 @@ const RatingModal: React.FC<RatingModalProps> = ({
           </TouchableOpacity>
           <Text style={styles.title}>¿Cómo fue tu experiencia?</Text>
           <Text style={styles.subtitle}>
-            Toca las estrellas para calificar tu viaje (5 es la mejor
-            calificación)
+            Toca las estrellas para calificar tu viaje {"\n"}
+            (5 es la mejor calificación)
           </Text>
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((i) => (

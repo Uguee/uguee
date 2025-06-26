@@ -13,29 +13,26 @@ interface UserTripDetailsModalProps {
   visible: boolean;
   onClose: () => void;
   onStartTrip?: () => void;
-  pickupPlace?: string;
-  destinationPlace?: string;
-  departureDate?: string;
-  departureTime?: string;
-  driver?: string;
-  vehicleType?: string;
-  color?: string;
-  plate?: string;
+  trip: any;
 }
 
 const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
   visible,
   onClose,
   onStartTrip = () => {},
-  pickupPlace = "Campus Meléndez Calle 13 # 100",
-  destinationPlace = "Cl. 13 #98-10",
-  departureDate = "2025-05-31",
-  departureTime = "02:30 PM",
-  driver = "Roberto Rojerio",
-  vehicleType = "bus",
-  color = "rosado",
-  plate = "ABC123",
+  trip,
 }) => {
+  // Extrae los datos del trip
+  const pickupPlace =
+    trip?.startingPoint || "Punto de recogida no especificado";
+  const destinationPlace = trip?.destination || "Destino no especificado";
+  const departureDate = trip?.departureDate || "";
+  const departureTime = trip?.time || "";
+  const driver = trip?.driver || "";
+  const vehicleType = trip?.vehicleType || "";
+  const color = trip?.color || "";
+  const plate = trip?.plate || "";
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>

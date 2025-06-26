@@ -45,7 +45,7 @@ const ServiciosScreen = ({
       desde: "Universidad del Valle",
       hasta: "Unicentro - Sur",
       estado: "Pendiente a calificar", // info fija por ahora
-      conductor: "Roberto Rojerio",
+      conductor: "Roberto Rojerrio",
       placa: "ABC123",
     },
     {
