@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  Modal,
 } from "react-native";
 import ReturnButton from "../components/ReturnButton";
 import { useAuth } from "../hooks/useAuth";
@@ -42,6 +44,19 @@ export default function DriverTripStartScreen({
   const mapRef = useRef<MapView>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQRData] = useState("");
+
+  // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
+  const [passengers, setPassengers] = useState([
+    { id: 1, name: "Patricia Gómez" },
+    { id: 2, name: "Pedro" },
+  ]);
+
+  // Estado para el modal de confirmación de eliminación
+  const [modalVisible, setModalVisible] = useState(false);
+  const [passengerToRemove, setPassengerToRemove] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   // Logs útiles para depuración
   console.log("[DriverTripStartScreen] Props trip:", trip);
@@ -301,19 +316,6 @@ export default function DriverTripStartScreen({
   // Extraer coordenadas para usar en el mapa
   const [startLon, startLat] = routeData.punto_partida.coordinates;
   const [endLon, endLat] = routeData.punto_llegada.coordinates;
-
-  // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
-  const [passengers, setPassengers] = useState([
-    { id: 1, name: "Patricia Gómez" },
-    { id: 2, name: "Pedro" },
-  ]);
-
-  // Estado para el modal de confirmación de eliminación
-  const [modalVisible, setModalVisible] = useState(false);
-  const [passengerToRemove, setPassengerToRemove] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
 
   const handleAskRemovePassenger = (passenger: {
     id: number;

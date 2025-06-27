@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
@@ -305,13 +306,48 @@ const DriverMyTripsScreen = ({
       </Modal>
       {/* Lista de viajes */}
       <Text style={styles.sectionTitle}>Viajes creados</Text>
-      <FlatList
-        data={filteredTrips}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTrip}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color="#A259FF" />
+          <Text style={{ marginTop: 12, color: "#666" }}>
+            Cargando viajes...
+          </Text>
+        </View>
+      ) : error ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text
+            style={{
+              color: "#FF4D4D",
+              textAlign: "center",
+              marginHorizontal: 20,
+            }}
+          >
+            Error al cargar los viajes: {error}
+          </Text>
+        </View>
+      ) : filteredTrips.length === 0 ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: "#666", fontSize: 16 }}>
+            No hay viajes disponibles
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTrips}
+          keyExtractor={(item) =>
+            item.id_viaje?.toString() || String(item.id_viaje)
+          }
+          renderItem={renderTrip}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       {/* Botón de crear viaje */}
       <View style={styles.createButtonContainer} pointerEvents="box-none">
         <DriverTripButton onPress={onGoToCreateTripScreen} />

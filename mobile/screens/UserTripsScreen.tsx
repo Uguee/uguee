@@ -30,6 +30,7 @@ interface UserTripsScreenProps {
   onGoToHomeScreen?: () => void;
   onGoToProfileScreen?: () => void;
   onShowScanQRScreen?: (tripData: any) => void;
+  onGoToServices?: () => void;
 }
 
 export default function UserTripsScreen({
@@ -37,8 +38,6 @@ export default function UserTripsScreen({
   onGoToProfileScreen = () => {},
   onShowScanQRScreen = () => {},
   onGoToServices = () => {},
-}: UserTripsScreenProps) {
-  onShowScanQRScreen = () => {},
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
