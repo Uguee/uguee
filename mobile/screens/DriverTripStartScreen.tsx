@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
+import { getPassengersByTripId } from "../services/tripServices";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
@@ -46,10 +47,9 @@ export default function DriverTripStartScreen({
   const [qrData, setQRData] = useState("");
 
   // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
-  const [passengers, setPassengers] = useState([
-    { id: 1, name: "Patricia Gómez" },
-    { id: 2, name: "Pedro" },
-  ]);
+  const [passengers, setPassengers] = useState<any[]>([]);
+  const [loadingPassengers, setLoadingPassengers] = useState(true);
+  const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
 
   // Estado para el modal de confirmación de eliminación
   const [modalVisible, setModalVisible] = useState(false);
@@ -294,6 +294,43 @@ export default function DriverTripStartScreen({
     }
   };
 
+  // Obtener pasajeros reales del viaje
+  useEffect(() => {
+    const fetchPassengers = async () => {
+      console.log(
+        "LLAMANDO getPassengersByTripId",
+        trip?.id_viaje,
+        typeof getPassengersByTripId
+      );
+      setLoadingPassengers(true);
+      setErrorPassengers(null);
+      try {
+        if (trip?.id_viaje) {
+          const data = await getPassengersByTripId(Number(trip.id_viaje));
+          console.log("RESULTADO getPassengersByTripId", data);
+          // Formatear a { id, name }
+          const formatted = (data || []).map((p: any) => ({
+            id: p.id_usuario,
+            name: `${p.usuario?.nombre || ""} ${
+              p.usuario?.apellido || ""
+            }`.trim(),
+            rol: p.registro?.rol_institucional || "",
+          }));
+          setPassengers(formatted);
+        } else {
+          setPassengers([]);
+        }
+      } catch (e: any) {
+        console.log("ERROR getPassengersByTripId", e);
+        setErrorPassengers(e.message || "Error al cargar pasajeros");
+        setPassengers([]);
+      } finally {
+        setLoadingPassengers(false);
+      }
+    };
+    fetchPassengers();
+  }, [trip?.id_viaje]);
+
   if (
     !routeData?.punto_partida?.coordinates ||
     !routeData?.punto_llegada?.coordinates
@@ -438,22 +475,33 @@ export default function DriverTripStartScreen({
           {/* Pasajeros */}
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
-            <ScrollView
-              style={styles.passengerScroll}
-              showsVerticalScrollIndicator={true}
-            >
-              {passengers.map((p) => (
-                <View key={p.id} style={styles.passengerRow}>
-                  <Text style={styles.passengerName}>{p.name}</Text>
-                  <TouchableOpacity
-                    style={styles.removePassengerBtn}
-                    onPress={() => handleAskRemovePassenger(p)}
-                  >
-                    <Ionicons name="close-circle" size={22} color="#FF4D4D" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
+            {loadingPassengers ? (
+              <ActivityIndicator
+                size="small"
+                color="#A259FF"
+                style={{ marginTop: 8 }}
+              />
+            ) : errorPassengers ? (
+              <Text style={{ color: "#FF4D4D", marginTop: 8 }}>
+                {errorPassengers}
+              </Text>
+            ) : passengers.length === 0 ? (
+              <Text style={{ color: "#666", marginTop: 8 }}>
+                No hay pasajeros registrados
+              </Text>
+            ) : (
+              <ScrollView
+                style={styles.passengerScroll}
+                showsVerticalScrollIndicator={true}
+              >
+                {passengers.map((p) => (
+                  <View key={p.id} style={styles.passengerRow}>
+                    <Text style={styles.passengerName}>{p.name}</Text>
+                    {/* Si quieres mostrar el rol: <Text>{p.rol}</Text> */}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
         <View style={styles.buttonRow}>

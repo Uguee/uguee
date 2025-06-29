@@ -16,6 +16,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { getRouteById } from "../services/routeService";
 import { getUserDataByIdUsuario } from "../services/userDataService";
+import ScanQRScreen from "./ScanQRScreen";
+import { joinTrip } from "../services/passengerService";
+import { getCedulaByUUID } from "../services/userDataService";
 
 interface Passenger {
   id: number;
@@ -49,6 +52,8 @@ export default function UserTripStartScreen({
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [conductorName, setConductorName] = useState<string>("Conductor");
   const mapRef = useRef<MapView>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [isJoiningTrip, setIsJoiningTrip] = useState(false);
 
   // Solicitar permiso de ubicación antes de mostrar el mapa
   useEffect(() => {
@@ -201,6 +206,53 @@ export default function UserTripStartScreen({
       });
     }
     return poly;
+  };
+
+  // Handler para escaneo QR y unión al viaje
+  const handleScanQR = async (qrData?: string) => {
+    if (!qrData) {
+      Alert.alert("Error", "No se pudo leer el código QR");
+      setShowQRModal(false);
+      return;
+    }
+    setIsJoiningTrip(true);
+    try {
+      // Obtener cédula del usuario autenticado
+      let cedula = null;
+      if (user?.id) {
+        cedula = await getCedulaByUUID(user.id);
+      }
+      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
+      // Parsear QR (espera viaje:ID)
+      const qrParts = qrData.split(",");
+      const viajePart = qrParts.find((part) => part.startsWith("viaje:"));
+      const id_viaje = viajePart ? parseInt(viajePart.split(":")[1]) : null;
+      if (!id_viaje) throw new Error("QR inválido");
+      // Unir al viaje
+      await joinTrip(id_viaje, cedula);
+      Alert.alert(
+        "¡Te has unido al viaje!",
+        "Has sido agregado exitosamente al viaje.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowQRModal(false);
+              // Aquí puedes refrescar datos si lo necesitas
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo unir al viaje.", [
+        {
+          text: "OK",
+          onPress: () => setShowQRModal(false),
+        },
+      ]);
+    } finally {
+      setIsJoiningTrip(false);
+    }
   };
 
   if (locationPermission === null || loadingRouteData) {
@@ -377,8 +429,42 @@ export default function UserTripStartScreen({
           <TouchableOpacity style={styles.startButton} onPress={onStartTrip}>
             <Text style={styles.buttonText}>Iniciar viaje</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.startButton, { backgroundColor: "#A259FF" }]}
+            onPress={() => setShowQRModal(true)}
+          >
+            <Text style={styles.buttonText}>Escanear QR</Text>
+          </TouchableOpacity>
         </View>
       </View>
+      {/* Modal de escaneo QR */}
+      {showQRModal && (
+        <ScanQRScreen
+          onScan={handleScanQR}
+          onGoBack={() => setShowQRModal(false)}
+        />
+      )}
+      {/* Loading al unirse */}
+      {isJoiningTrip && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(255,255,255,0.7)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 100,
+          }}
+        >
+          <ActivityIndicator size="large" color="#A259FF" />
+          <Text style={{ marginTop: 12, color: "#666" }}>
+            Uniéndote al viaje...
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

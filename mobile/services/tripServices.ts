@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+//implementa la edge function get-passengers-by-trip-id
 import { getCurrentToken } from "./authService";
 
 const TRIP_FUNCTION_URL =
@@ -293,3 +294,39 @@ export const joinTripAsPassenger = async (
     throw error;
   }
 };
+
+/**
+ * Obtiene los pasajeros de un viaje usando la edge function protegida por JWT.
+ * @param id_viaje ID del viaje
+ * @returns Array de pasajeros con nombre y apellido
+ */
+export async function getPassengersByTripId(id_viaje: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  console.log("[getPassengersByTripId] id_viaje:", id_viaje);
+  const response = await fetch(
+    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-passengers-by-trip-id",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id_viaje }),
+    }
+  );
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    console.log("[getPassengersByTripId] Error parseando JSON:", e);
+    data = null;
+  }
+  console.log("[getPassengersByTripId] status:", response.status);
+  console.log("[getPassengersByTripId] data:", data);
+  if (!response.ok || !data?.success) {
+    console.log("[getPassengersByTripId] Lanzando error:", data?.error);
+    throw new Error(data?.error || "Error al obtener pasajeros del viaje");
+  }
+  return data.data;
+}

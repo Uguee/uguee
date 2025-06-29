@@ -25,14 +25,14 @@ import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
-import { View, Text, Alert } from "react-native";
+import { View, Text, Alert, ActivityIndicator } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
 import DriverTripStartScreen from "./screens/DriverTripStartScreen";
 import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
-import { joinTripAsPassenger } from "./services/tripServices";
+import { joinTrip } from "./services/passengerService";
 import UserServicesScreen from "./screens/userServicesScreen";
 import UserTripStartScreen from "./screens/UserTripStartScreen";
 
@@ -92,6 +92,7 @@ const AppNavigator = () => {
   const [showScanQRScreen, setShowScanQRScreen] = useState(false);
   const [scanQRTripData, setScanQRTripData] = useState<any>(null);
   const [userTripStartData, setUserTripStartData] = useState<any>(null);
+  const [isJoiningTrip, setIsJoiningTrip] = useState(false);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -324,37 +325,36 @@ const AppNavigator = () => {
       return;
     }
 
+    setIsJoiningTrip(true);
     try {
       console.log("[App] Procesando QR escaneado:", qrData);
 
       // Parsear los datos del QR
       const qrParts = qrData.split(",");
       const viajePart = qrParts.find((part) => part.startsWith("viaje:"));
-      const conductorPart = qrParts.find((part) =>
-        part.startsWith("conductor:")
-      );
+      // const conductorPart = qrParts.find((part) => part.startsWith("conductor:"));
 
-      if (!viajePart || !conductorPart) {
+      if (!viajePart) {
         throw new Error("Formato de QR inválido");
       }
 
       const id_viaje = parseInt(viajePart.split(":")[1]);
-      const id_conductor = parseInt(conductorPart.split(":")[1]);
-
-      if (!id_viaje || !id_conductor) {
+      if (!id_viaje) {
         throw new Error("Datos del QR incompletos");
       }
 
       console.log("[App] Datos extraídos del QR:", {
         id_viaje,
-        id_conductor,
         id_pasajero: cedula,
       });
 
-      // Unir al pasajero al viaje
-      const result = await joinTripAsPassenger(cedula, id_conductor, id_viaje);
+      // Unir al pasajero al viaje usando el service antiguo
+      const result = await joinTrip(id_viaje, cedula);
+      console.log("[App] Unión resultado:", result);
 
-      console.log("[App] Unión exitosa:", result);
+      if (result.success === false || result.error) {
+        throw new Error(result.error || "No se pudo unir al viaje");
+      }
 
       Alert.alert(
         "¡Te has unido al viaje!",
@@ -370,23 +370,26 @@ const AppNavigator = () => {
           },
         ]
       );
+      // Opcional: refrescar lista de viajes aquí si tienes función
     } catch (error: any) {
       console.error("[App] Error al procesar QR:", error);
-
-      Alert.alert(
-        "Error",
-        error.message || "No se pudo unir al viaje. Inténtalo de nuevo.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setShowScanQRScreen(false);
-              setScanQRTripData(null);
-              setCurrentScreen("user-trips");
-            },
+      let msg =
+        error.message || "No se pudo unir al viaje. Inténtalo de nuevo.";
+      if (msg.includes("token") || msg.includes("autenticación")) {
+        msg = "Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.";
+      }
+      Alert.alert("Error", msg, [
+        {
+          text: "OK",
+          onPress: () => {
+            setShowScanQRScreen(false);
+            setScanQRTripData(null);
+            setCurrentScreen("user-trips");
           },
-        ]
-      );
+        },
+      ]);
+    } finally {
+      setIsJoiningTrip(false);
     }
   };
 
@@ -419,13 +422,16 @@ const AppNavigator = () => {
   };
 
   const renderCurrentScreen = () => {
-    // Mostrar loading si está cargando
-    if (isLoading) {
+    // Mostrar loading si está cargando o uniendo pasajero
+    if (isLoading || isJoiningTrip) {
       return (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
-          <Text>Cargando...</Text>
+          <ActivityIndicator size="large" color="#A259FF" />
+          <Text style={{ marginTop: 12, color: "#666" }}>
+            {isJoiningTrip ? "Uniéndote al viaje..." : "Cargando..."}
+          </Text>
         </View>
       );
     }
