@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { getCurrentToken } from "./authService";
 
 const TRIP_FUNCTION_URL =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/create-trip";
@@ -252,7 +253,7 @@ export const joinTripAsPassenger = async (
   id_viaje: number
 ) => {
   try {
-    const token = supabase.auth.session()?.access_token;
+    const token = await getCurrentToken();
     if (!token) {
       throw new Error("No se encontró un token de sesión válido");
     }

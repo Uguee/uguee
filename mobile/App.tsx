@@ -34,6 +34,7 @@ import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
 import { joinTripAsPassenger } from "./services/tripServices";
 import UserServicesScreen from "./screens/userServicesScreen";
+import UserTripStartScreen from "./screens/UserTripStartScreen";
 
 type Screen =
   | "welcome"
@@ -64,7 +65,8 @@ type Screen =
   | "driver-trip-start"
   | "driver-qr"
   | "scan-qr"
-  | "user-services";
+  | "user-services"
+  | "user-trip-start";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -89,6 +91,7 @@ const AppNavigator = () => {
   const [qrValue, setQRValue] = useState<string | null>(null);
   const [showScanQRScreen, setShowScanQRScreen] = useState(false);
   const [scanQRTripData, setScanQRTripData] = useState<any>(null);
+  const [userTripStartData, setUserTripStartData] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -387,6 +390,11 @@ const AppNavigator = () => {
     }
   };
 
+  const handleStartUserTrip = (trip: any) => {
+    setUserTripStartData(trip);
+    setCurrentScreen("user-trip-start");
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -665,6 +673,7 @@ const AppNavigator = () => {
             onGoToProfileScreen={handleGoToProfile}
             onShowScanQRScreen={handleShowScanQRScreen}
             onGoToServices={handleGoToServices}
+            onStartTrip={handleStartUserTrip}
           />
         );
       case "driver-trip-start":
@@ -697,6 +706,16 @@ const AppNavigator = () => {
             onGoToMyTrips={() => setCurrentScreen("user-trips")}
             onGoToServices={() => setCurrentScreen("user-services")}
             onGoToScanQR={() => setCurrentScreen("scan-qr")}
+          />
+        );
+      case "user-trip-start":
+        return (
+          <UserTripStartScreen
+            trip={userTripStartData}
+            onGoBack={() => setCurrentScreen("user-trips")}
+            onStartTrip={() => {
+              setCurrentScreen("scan-qr");
+            }}
           />
         );
       default:

@@ -78,3 +78,44 @@ export async function getCedulaByUUID(uuid: string): Promise<number | null> {
 
   return cedula ? Number(cedula) : null;
 }
+
+/**
+ * Obtiene los datos del usuario por id_usuario (número).
+ * @param id_usuario ID numérico del usuario
+ * @returns Objeto con los datos o null si no existe / falla
+ */
+export async function getUserDataByIdUsuario(
+  id_usuario: number
+): Promise<GetUserDataResponse["data"] | null> {
+  try {
+    const currentToken = await getCurrentToken();
+    const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (anonKey) headers["Authorization"] = `Bearer ${currentToken}`;
+
+    const res = await fetch(`${SUPABASE_FUNCTIONS_BASE}/get-user-data-by-id`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ id_usuario }),
+    });
+
+    if (!res.ok) {
+      console.warn("[getUserDataByIdUsuario] HTTP error", res.status);
+      return null;
+    }
+
+    const json: GetUserDataResponse = await res.json();
+
+    if (!json.success || json.error) {
+      console.warn("[getUserDataByIdUsuario] API error", json.error);
+      return null;
+    }
+
+    return json.data || null;
+  } catch (err) {
+    console.error("[getUserDataByIdUsuario] Network/parse error", err);
+    return null;
+  }
+}
