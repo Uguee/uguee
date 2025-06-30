@@ -18,6 +18,7 @@ import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
 import { useDriverTrips } from "../hooks/useDriverTrips";
 import { getRouteById } from "../services/routeService";
+import { getPassengersByTripId } from "../services/tripServices";
 
 function formatPlaceName(nombre: string | null): string {
   if (!nombre) return "";
@@ -45,6 +46,9 @@ const DriverMyTripsScreen = ({
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [completedTripPassengers, setCompletedTripPassengers] = useState<
+    number | null
+  >(null);
 
   // Elimina el array TRIPS y usa los viajes reales
   const { trips, loading, error } = useDriverTrips();
@@ -157,16 +161,35 @@ const DriverMyTripsScreen = ({
       typeof onStartTripScreen
     );
 
-    // Pasa el objeto trip completo
-    onStartTripScreen(trip);
+    // Si el viaje está en curso, navega a DriverTripActiveScreen
+    if (trip.estado === "en-curso") {
+      if (typeof onStartTripScreen === "function") {
+        onStartTripScreen({ ...trip, _forceActive: true });
+      }
+    } else {
+      // Pasa el objeto trip completo
+      onStartTripScreen(trip);
+    }
+  };
+
+  const handleShowCompletedModal = async (trip: any) => {
+    setSelectedTrip(trip);
+    setShowCompletedModal(true);
+    // Trae el número real de pasajeros
+    try {
+      const passengers = await getPassengersByTripId(Number(trip.id_viaje));
+      setCompletedTripPassengers(passengers ? passengers.length : 0);
+    } catch (e) {
+      setCompletedTripPassengers(null);
+    }
   };
 
   const renderTrip = ({ item }: { item: any }) => {
     // Usar el estado que viene de la edge function
     const estado = item.estado;
 
-    if (estado === "completado") {
-      // Completado - sin color de reborde
+    if (estado === "completado" || estado === "terminado") {
+      // Completado o Terminado - sin color de reborde
       return (
         <TripCompletedCard
           route={
@@ -174,11 +197,13 @@ const DriverMyTripsScreen = ({
               " ➔ " +
               formatPlaceName(item.ruta?.nombre_llegada) || `${item.id_ruta}`
           }
-          passengers={item.pasajeros || 0}
-          onPress={() => {
-            setSelectedTrip(item);
-            setShowCompletedModal(true);
-          }}
+          passengers={
+            completedTripPassengers !== null &&
+            selectedTrip?.id_viaje === item.id_viaje
+              ? completedTripPassengers
+              : item.pasajeros || 0
+          }
+          onPress={() => handleShowCompletedModal(item)}
         />
       );
     } else if (estado === "en-curso") {
@@ -354,7 +379,11 @@ const DriverMyTripsScreen = ({
       </View>
       {/* Modales de detalles */}
       <TripCompletedDetailsModal
-        visible={showCompletedModal}
+        visible={
+          showCompletedModal &&
+          (selectedTrip?.estado === "completado" ||
+            selectedTrip?.estado === "terminado")
+        }
         onClose={() => setShowCompletedModal(false)}
         route={
           selectedTrip?.ruta?.nombre_partida &&
@@ -385,7 +414,11 @@ const DriverMyTripsScreen = ({
             ? new Date(selectedTrip.llegada_at).toLocaleTimeString("es-CO")
             : "No disponible"
         }
-        passengers={selectedTrip?.pasajeros || 0}
+        passengers={
+          completedTripPassengers !== null
+            ? completedTripPassengers
+            : selectedTrip?.pasajeros || 0
+        }
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}

@@ -199,7 +199,14 @@ export default function UserTripsScreen({
         onStartTrip={() => {
           setShowDetails(false);
           if (typeof onGoToUserTripStartScreen === "function") {
-            onGoToUserTripStartScreen(selectedTrip);
+            const tripToPass = {
+              ...selectedTrip,
+              id_conductor:
+                selectedTrip.id_conductor ||
+                (selectedTrip.conductor && selectedTrip.conductor.id_usuario) ||
+                null,
+            };
+            onGoToUserTripStartScreen(tripToPass);
           }
         }}
       />

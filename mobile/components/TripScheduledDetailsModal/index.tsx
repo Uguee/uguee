@@ -17,6 +17,7 @@ interface TripScheduledDetailsModalProps {
   destinationPlace?: string;
   departureDate?: string;
   departureTime?: string;
+  trip?: any;
 }
 
 const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
@@ -27,7 +28,14 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
   destinationPlace = "Cl. 13 #98-10",
   departureDate = "2025-05-31",
   departureTime = "07:00:00 p.m",
+  trip,
 }) => {
+  // Determina la fecha y hora a mostrar
+  let fechaMostrar = trip?.programado_at;
+  if (trip?.estado === "en-curso" && trip?.salida_at) {
+    fechaMostrar = trip.salida_at;
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -71,6 +79,14 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
                 <Text style={styles.closeBtn2Text}>cerrar</Text>
               </TouchableOpacity>
             </View>
+            {/* Fecha y hora */}
+            {fechaMostrar && (
+              <Text style={styles.fechaText}>
+                {new Date(fechaMostrar).toLocaleDateString("es-CO") +
+                  " " +
+                  new Date(fechaMostrar).toLocaleTimeString("es-CO")}
+              </Text>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -183,6 +199,10 @@ const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: "bold",
+  },
+  fechaText: {
+    fontSize: 14,
+    color: "#222",
   },
 });
 

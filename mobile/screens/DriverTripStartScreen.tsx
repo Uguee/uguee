@@ -18,19 +18,21 @@ import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
-import { getPassengersByTripId } from "../services/tripServices";
+import { getPassengersByTripId, startTrip } from "../services/tripServices";
 import { leaveTrip } from "../services/passengerService";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
   onGoBack?: () => void;
   onGoToQRScreen?: (qrValue: string) => void;
+  onStartTrip?: (trip: any) => void;
 }
 
 export default function DriverTripStartScreen({
   trip,
   onGoBack = () => {},
   onGoToQRScreen = () => {},
+  onStartTrip,
 }: DriverTripStartScreenProps) {
   const { user } = useAuth();
   const [location, setLocation] = useState<{
@@ -358,6 +360,20 @@ export default function DriverTripStartScreen({
     }
   };
 
+  const handleStartTrip = async () => {
+    try {
+      if (!trip?.id_viaje || !user?.id)
+        throw new Error("Faltan datos del viaje o usuario");
+      const id_conductor = await getCedulaByUUID(user.id);
+      if (!id_conductor)
+        throw new Error("No se pudo obtener el id del conductor");
+      await startTrip(Number(trip.id_viaje), Number(id_conductor));
+      if (onStartTrip) onStartTrip(trip);
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "No se pudo iniciar el viaje");
+    }
+  };
+
   if (
     !routeData?.punto_partida?.coordinates ||
     !routeData?.punto_llegada?.coordinates
@@ -562,7 +578,10 @@ export default function DriverTripStartScreen({
             <Ionicons name="qr-code-outline" size={24} color="#A259FF" />
             <Text style={styles.qrButtonText}>Generar QR</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={handleStartTrip}
+          >
             <Text style={styles.buttonText}>Iniciar viaje</Text>
           </TouchableOpacity>
         </View>

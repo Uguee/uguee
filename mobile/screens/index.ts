@@ -22,3 +22,4 @@ export { default as DriverTripStartScreen } from "./DriverTripStartScreen";
 export { default as ScanQRScreen } from "./ScanQRScreen";
 export { default as UserServicesScreen } from "./userServicesScreen";
 export { default as UserTripStartScreen } from "./UserTripStartScreen";
+export { default as DriverTripActiveScreen } from "./DriverTripActiveScreen";

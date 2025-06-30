@@ -8,6 +8,12 @@ const TRIP_FUNCTION_URL =
 const GET_DRIVER_TRIPS_URL =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-driver-id";
 
+const START_TRIP_URL =
+  "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/start-trip";
+
+const END_TRIP_URL =
+  "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/end-trip";
+
 export interface Trip {
   id_viaje: string;
   estado:
@@ -330,4 +336,54 @@ export async function getPassengersByTripId(id_viaje: number) {
   }
   console.log("[getPassengersByTripId] data:", data.data);
   return data.data;
+}
+
+/**
+ * Marca el inicio de un viaje (salida_at = now()) validando el conductor.
+ * @param id_viaje ID del viaje
+ * @param id_conductor ID del conductor (usuario.id_usuario)
+ * @returns {Promise<any>} Respuesta de la edge function
+ */
+export async function startTrip(id_viaje: number, id_conductor: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  const body = { id_viaje, id_conductor };
+  const response = await fetch(START_TRIP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || "Error al iniciar el viaje");
+  }
+  return data;
+}
+
+/**
+ * Marca el final de un viaje (llegada_at = now()) validando el conductor.
+ * @param id_viaje ID del viaje
+ * @param id_conductor ID del conductor (usuario.id_usuario)
+ * @returns {Promise<any>} Respuesta de la edge function
+ */
+export async function endTrip(id_viaje: number, id_conductor: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  const body = { id_viaje, id_conductor };
+  const response = await fetch(END_TRIP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || "Error al finalizar el viaje");
+  }
+  return data;
 }

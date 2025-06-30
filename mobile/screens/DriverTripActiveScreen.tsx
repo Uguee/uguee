@@ -11,42 +11,24 @@ import {
 import ReturnButton from "../components/ReturnButton";
 import MapView, { Marker } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
-import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { getPassengersByTripId, endTrip } from "../services/tripServices";
 import { useAuth } from "../hooks/useAuth";
 import { getRouteById } from "../services/routeService";
-import { getUserDataByIdUsuario } from "../services/userDataService";
-import ScanQRScreen from "./ScanQRScreen";
-import { joinTrip, leaveTrip } from "../services/passengerService";
 import { getCedulaByUUID } from "../services/userDataService";
-import { getPassengersByTripId } from "../services/tripServices";
 
-interface Passenger {
-  id: number;
-  name: string;
-}
-
-interface UserTripStartProps {
+interface DriverTripActiveScreenProps {
   trip: any;
-  onGoBack: () => void;
-  onStartTrip: () => void;
-  onShowScanQRScreen: (trip: any) => void;
+  onGoBack?: () => void;
+  onEndTrip?: (trip: any) => void;
 }
 
-export default function UserTripStartScreen({
+export default function DriverTripActiveScreen({
   trip,
-  onGoBack,
-  onStartTrip,
-  onShowScanQRScreen,
-}: UserTripStartProps) {
+  onGoBack = () => {},
+  onEndTrip = () => {},
+}: DriverTripActiveScreenProps) {
   const { user } = useAuth();
-  const [location, setLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [locationPermission, setLocationPermission] = useState<null | boolean>(
-    null
-  );
   const [routeData, setRouteData] = useState<any>(null);
   const [loadingRouteData, setLoadingRouteData] = useState(true);
   const [routeCoordinates, setRouteCoordinates] = useState<
@@ -55,96 +37,13 @@ export default function UserTripStartScreen({
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [conductorName, setConductorName] = useState<string>("Conductor");
   const mapRef = useRef<MapView>(null);
-  const [passengers, setPassengers] = useState<Passenger[]>([]);
+  const [location, setLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [passengers, setPassengers] = useState<any[]>([]);
   const [loadingPassengers, setLoadingPassengers] = useState(true);
   const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
-  const [myCedula, setMyCedula] = useState<number | null>(null);
-
-  // Solicitar permiso de ubicación antes de mostrar el mapa
-  useEffect(() => {
-    setLocationPermission(null);
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setLocationPermission(false);
-        Alert.alert(
-          "Permiso de ubicación requerido",
-          "Debes conceder permiso de ubicación para ver el mapa y tu posición.",
-          [
-            {
-              text: "OK",
-              onPress: () => {},
-            },
-          ]
-        );
-        return;
-      }
-      setLocationPermission(true);
-    })();
-  }, []);
-
-  // Solo iniciar seguimiento de ubicación si el permiso fue concedido
-  useEffect(() => {
-    if (locationPermission !== true) return;
-    let subscription: Location.LocationSubscription | null = null;
-    (async () => {
-      subscription = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 2 },
-        (loc) => {
-          setLocation({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
-        }
-      );
-    })();
-    return () => {
-      if (subscription) subscription.remove();
-    };
-  }, [locationPermission]);
-
-  // Obtener nombre del conductor al montar
-  useEffect(() => {
-    console.log("TRIP RECIBIDO EN UserTripStartScreen:", trip);
-    const fetchConductorName = async () => {
-      // Si el usuario autenticado es el conductor, usa su nombre
-      if (user && trip?.id_conductor && user.id) {
-        const myCedula = await getCedulaByUUID(user.id);
-        if (myCedula && Number(trip.id_conductor) === Number(myCedula)) {
-          setConductorName(
-            `${user.firstName || ""} ${user.lastName || ""}`.trim()
-          );
-          return;
-        }
-      }
-      // Si viene el nombre directamente, úsalo
-      if (trip?.conductor_nombre) {
-        setConductorName(trip.conductor_nombre);
-        return;
-      }
-      // Si viene un objeto conductor con nombre y apellido
-      if (trip?.conductor && trip.conductor.nombre && trip.conductor.apellido) {
-        setConductorName(`${trip.conductor.nombre} ${trip.conductor.apellido}`);
-        return;
-      }
-      // Si solo viene el id, consulta a la base de datos
-      if (trip?.id_conductor) {
-        try {
-          const data = await getUserDataByIdUsuario(Number(trip.id_conductor));
-          if (data && data.nombre && data.apellido) {
-            setConductorName(`${data.nombre} ${data.apellido}`);
-          } else {
-            setConductorName("Nombre no disponible");
-          }
-        } catch (e) {
-          setConductorName("Nombre no disponible");
-        }
-      } else {
-        setConductorName("Nombre no disponible");
-      }
-    };
-    fetchConductorName();
-  }, [trip, user]);
 
   // Obtener datos completos de la ruta al montar
   useEffect(() => {
@@ -192,12 +91,15 @@ export default function UserTripStartScreen({
           setRouteCoordinates(coords);
         } else {
           console.error(
-            "[UserTripStartScreen] No route found in response:",
+            "[DriverTripActiveScreen] No route found in response:",
             data
           );
         }
       } catch (error) {
-        console.error("[UserTripStartScreen] Error al obtener la ruta:", error);
+        console.error(
+          "[DriverTripActiveScreen] Error al obtener la ruta:",
+          error
+        );
       } finally {
         setIsLoadingRoute(false);
       }
@@ -213,7 +115,6 @@ export default function UserTripStartScreen({
       try {
         if (trip?.id_viaje) {
           const data = await getPassengersByTripId(Number(trip.id_viaje));
-          // Formatear a { id, name }
           const formatted = (data || []).map((p: any) => ({
             id: p.id_usuario,
             name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
@@ -232,16 +133,18 @@ export default function UserTripStartScreen({
     fetchPassengers();
   }, [trip?.id_viaje]);
 
-  // Obtener la cédula del usuario autenticado
+  // Obtener nombre del conductor al montar
   useEffect(() => {
-    const fetchCedula = async () => {
-      if (user?.id) {
-        const cedula = await getCedulaByUUID(user.id);
-        setMyCedula(cedula);
-      }
-    };
-    fetchCedula();
-  }, [user?.id]);
+    if (trip?.conductor_nombre) {
+      setConductorName(trip.conductor_nombre);
+    } else if (user?.firstName || user?.lastName) {
+      setConductorName(
+        `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+      );
+    } else {
+      setConductorName("Conductor");
+    }
+  }, [trip?.conductor_nombre, user?.firstName, user?.lastName]);
 
   // Función para decodificar la polyline de Google Maps
   const decodePolyline = (encoded: string) => {
@@ -277,56 +180,23 @@ export default function UserTripStartScreen({
     return poly;
   };
 
-  // handle para eliminarse del viaje
-  const handleLeaveTrip = async () => {
+  const handleEndTrip = async () => {
     try {
-      if (!trip?.id_viaje || !myCedula)
-        throw new Error(
-          "No se pudo obtener los datos necesarios para salir del viaje"
-        );
-      await leaveTrip(Number(trip.id_viaje), Number(myCedula));
-      Alert.alert(
-        "Has salido del viaje",
-        "Te has eliminado exitosamente del viaje."
-      );
-      onGoBack();
+      if (!trip?.id_viaje || !user?.id)
+        throw new Error("Faltan datos del viaje o usuario");
+      const id_conductor = await getCedulaByUUID(user.id);
+      if (!id_conductor)
+        throw new Error("No se pudo obtener el id del conductor");
+      await endTrip(Number(trip.id_viaje), Number(id_conductor));
+      // Solo navega a la lista de viajes, sin mostrar modal ni lógica extra
+      if (onEndTrip) onEndTrip(trip);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "No se pudo salir del viaje");
+      Alert.alert("Error", e.message || "No se pudo finalizar el viaje");
     }
   };
 
-  if (locationPermission === null || loadingRouteData) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#fff",
-        }}
-      >
-        <ActivityIndicator size="large" color="#A259FF" />
-        <Text style={{ marginTop: 12, color: "#666" }}>Cargando mapa...</Text>
-      </View>
-    );
-  }
-  if (locationPermission === false) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#fff",
-        }}
-      >
-        <Text style={{ color: "#A259FF", fontSize: 18, textAlign: "center" }}>
-          Debes conceder permiso de ubicación para ver el mapa y tu posición.
-        </Text>
-      </View>
-    );
-  }
   if (
+    loadingRouteData ||
     !routeData?.punto_partida?.coordinates ||
     !routeData?.punto_llegada?.coordinates
   ) {
@@ -340,9 +210,7 @@ export default function UserTripStartScreen({
         }}
       >
         <ActivityIndicator size="large" color="#A259FF" />
-        <Text style={{ marginTop: 12, color: "#666" }}>
-          Cargando datos de la ruta...
-        </Text>
+        <Text style={{ marginTop: 12, color: "#666" }}>Cargando mapa...</Text>
       </View>
     );
   }
@@ -350,11 +218,8 @@ export default function UserTripStartScreen({
   // Extraer coordenadas para usar en el mapa
   const [startLon, startLat] = routeData.punto_partida.coordinates;
   const [endLon, endLat] = routeData.punto_llegada.coordinates;
-  const pickupPlace = routeData.nombre_partida || "Punto de recogida";
-  const destinationPlace = routeData.nombre_llegada || "Destino";
   const driverName = conductorName;
   const driverRole = "Conductor";
-
   const getInitial = (name?: string) =>
     name && name.length > 0 ? name[0].toUpperCase() : "U";
 
@@ -363,8 +228,8 @@ export default function UserTripStartScreen({
       <ReturnButton onPress={onGoBack} />
       {/* Lugares */}
       <View style={styles.placesContainer}>
-        <Text style={styles.placeBox}>{pickupPlace}</Text>
-        <Text style={styles.placeBox}>{destinationPlace}</Text>
+        <Text style={styles.placeBox}>{routeData.nombre_partida}</Text>
+        <Text style={styles.placeBox}>{routeData.nombre_llegada}</Text>
       </View>
       {/* Mapa */}
       <View style={styles.mapContainer}>
@@ -402,15 +267,6 @@ export default function UserTripStartScreen({
             apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
             strokeWidth={4}
             strokeColor="#A259FF"
-            onStart={() => setIsLoadingRoute(true)}
-            onReady={() => setIsLoadingRoute(false)}
-            onError={(error) => {
-              console.error(
-                "[UserTripStartScreen] Error al dibujar la ruta:",
-                error
-              );
-              setIsLoadingRoute(false);
-            }}
           />
         </MapView>
         {isLoadingRoute && (
@@ -428,7 +284,7 @@ export default function UserTripStartScreen({
               <Text style={styles.avatarInitial}>{getInitial(driverName)}</Text>
             </View>
             <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={styles.nameText}>{conductorName}</Text>
+              <Text style={styles.nameText}>{driverName}</Text>
               <Text style={styles.roleText}>{driverRole}</Text>
             </View>
           </View>
@@ -440,12 +296,15 @@ export default function UserTripStartScreen({
               style={{ marginRight: 10 }}
             />
             <View>
-              <Text style={styles.meetingLabel}>Punto de encuentro:</Text>
-              <Text style={styles.meetingPlace}>{pickupPlace}</Text>
+              <Text style={styles.meetingLabel}>Destino:</Text>
+              <Text style={styles.meetingPlace}>
+                {routeData.nombre_llegada}
+              </Text>
             </View>
           </View>
           <Text style={styles.infoText}>
-            Antes de iniciar, escanea el qr proporcionado por el conductor
+            Al finalizar el viaje recuerda a tus pasajeros no dejar sus
+            pertenencias
           </Text>
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
@@ -468,59 +327,18 @@ export default function UserTripStartScreen({
                 style={styles.passengerScroll}
                 showsVerticalScrollIndicator={true}
               >
-                {passengers.map((p) => {
-                  if (myCedula) {
-                  }
-                  return (
-                    <View key={p.id} style={styles.passengerRow}>
-                      <Text style={styles.passengerName}>
-                        {p.name}
-                        {myCedula && Number(p.id) === Number(myCedula)
-                          ? " (tú)"
-                          : ""}
-                      </Text>
-                      {myCedula && Number(p.id) === Number(myCedula) && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            Alert.alert(
-                              "¿Salir del viaje?",
-                              "¿Estás seguro que deseas salirte de este viaje?",
-                              [
-                                { text: "Cancelar", style: "cancel" },
-                                {
-                                  text: "Salir del viaje",
-                                  style: "destructive",
-                                  onPress: handleLeaveTrip,
-                                },
-                              ]
-                            );
-                          }}
-                          style={{ marginLeft: 8 }}
-                          accessibilityLabel="Salir del viaje"
-                        >
-                          <Ionicons
-                            name="exit-outline"
-                            size={22}
-                            color="#FF4D4D"
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  );
-                })}
+                {passengers.map((p) => (
+                  <View key={p.id} style={styles.passengerRow}>
+                    <Text style={styles.passengerName}>{p.name}</Text>
+                  </View>
+                ))}
               </ScrollView>
             )}
           </View>
         </View>
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[
-              styles.startButton,
-              { backgroundColor: "#A259FF", width: "100%" },
-            ]}
-            onPress={() => onShowScanQRScreen(trip)}
-          >
-            <Text style={styles.buttonText}>Escanear QR</Text>
+          <TouchableOpacity style={styles.startButton} onPress={handleEndTrip}>
+            <Text style={styles.buttonText}>Terminar viaje</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -566,7 +384,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     alignItems: "stretch",
-    height: 420,
+    height: 390,
     flexDirection: "column",
   },
   cardContent: {
@@ -655,7 +473,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     width: "100%",
     marginTop: 8,
     gap: 16,

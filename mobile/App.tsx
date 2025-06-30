@@ -15,6 +15,7 @@ import {
   AddVehicleScreen,
   InstProfileScreen,
   ProfileScreen,
+  DriverTripActiveScreen,
 } from "./screens";
 import { HomeScreen } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
@@ -25,7 +26,14 @@ import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
-import { View, Text, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Alert,
+  Image,
+  Modal,
+  TouchableOpacity,
+} from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
@@ -35,6 +43,7 @@ import ScanQRScreen from "./screens/ScanQRScreen";
 import { joinTripAsPassenger } from "./services/tripServices";
 import UserServicesScreen from "./screens/userServicesScreen";
 import UserTripStartScreen from "./screens/UserTripStartScreen";
+import TripCompletedDetailsModal from "./components/TripCompletedDetailsModal";
 
 type Screen =
   | "welcome"
@@ -66,7 +75,8 @@ type Screen =
   | "driver-qr"
   | "scan-qr"
   | "user-services"
-  | "user-trip-start";
+  | "user-trip-start"
+  | "driver-trip-active";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -93,6 +103,10 @@ const AppNavigator = () => {
   const [scanQRTripData, setScanQRTripData] = useState<any>(null);
   const [showUserTripStartScreen, setShowUserTripStartScreen] = useState(false);
   const [userTripStartData, setUserTripStartData] = useState<any>(null);
+  const [activeTripData, setActiveTripData] = useState<any>(null);
+  const [completedTrip, setCompletedTrip] = useState<any>(null);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showEndTripModal, setShowEndTripModal] = useState(false);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -392,7 +406,15 @@ const AppNavigator = () => {
   };
 
   const handleGoToUserTripStartScreen = (tripData: any) => {
-    setUserTripStartData(tripData);
+    // Asegura que el id_conductor sea el id_usuario real
+    const tripToPass = {
+      ...tripData,
+      id_conductor:
+        tripData.id_conductor ||
+        (tripData.conductor && tripData.conductor.id_usuario) ||
+        null,
+    };
+    setUserTripStartData(tripToPass);
     setShowUserTripStartScreen(true);
     setCurrentScreen("user-trip-start");
   };
@@ -401,6 +423,22 @@ const AppNavigator = () => {
   const handleShowScanQRScreenFromTripStart = (tripData: any) => {
     setScanQRTripData(tripData);
     setCurrentScreen("scan-qr");
+  };
+
+  const handleGoToDriverTripScreen = (trip: any) => {
+    if (trip._forceActive || trip.estado === "en-curso") {
+      setActiveTripData(trip);
+      setCurrentScreen("driver-trip-active");
+    } else {
+      setTripStartData(trip);
+      setCurrentScreen("driver-trip-start");
+    }
+  };
+
+  const handleEndTrip = (trip: any) => {
+    setShowEndTripModal(true);
+    setCompletedTrip(null);
+    setShowCompletedModal(false);
   };
 
   // Componente de Dashboard basado en rol
@@ -661,10 +699,7 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToCreateTripScreen={handleGoToCreateTripScreen}
-            onStartTripScreen={(trip: any) => {
-              setTripStartData(trip);
-              setCurrentScreen("driver-trip-start");
-            }}
+            onStartTripScreen={handleGoToDriverTripScreen}
           />
         );
       case "driver-create-trip":
@@ -692,6 +727,10 @@ const AppNavigator = () => {
             onGoToQRScreen={(qr) => {
               setQRValue(qr);
               setCurrentScreen("driver-qr");
+            }}
+            onStartTrip={(trip) => {
+              setActiveTripData(trip);
+              setCurrentScreen("driver-trip-active");
             }}
           />
         );
@@ -782,6 +821,91 @@ const AppNavigator = () => {
             onShowScanQRScreen={handleShowScanQRScreenFromTripStart}
           />
         );
+      case "driver-trip-active":
+        return (
+          <>
+            <DriverTripActiveScreen
+              trip={activeTripData}
+              onGoBack={() => setCurrentScreen("driver-my-trips")}
+              onEndTrip={handleEndTrip}
+            />
+            {/* Modal personalizado de fin de viaje */}
+            <Modal
+              visible={showEndTripModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowEndTripModal(false)}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: "#fff",
+                    borderRadius: 18,
+                    padding: 28,
+                    alignItems: "center",
+                    width: 320,
+                  }}
+                >
+                  <Image
+                    source={require("./assets/good-rating.png")}
+                    style={{ width: 90, height: 90, marginBottom: 18 }}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "bold",
+                      color: "#7C3AED",
+                      marginBottom: 10,
+                      textAlign: "center",
+                    }}
+                  >
+                    ¡Gracias por ser conductor!
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: "#444",
+                      marginBottom: 24,
+                      textAlign: "center",
+                    }}
+                  >
+                    Recuerda invitar a tus pasajeros a calificar la experiencia.
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#7C3AED",
+                      borderRadius: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 36,
+                    }}
+                    onPress={() => {
+                      setShowEndTripModal(false);
+                      setCurrentScreen("driver-my-trips");
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 17,
+                      }}
+                    >
+                      Aceptar
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </>
+        );
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />
@@ -793,6 +917,32 @@ const AppNavigator = () => {
     <>
       <StatusBar style="auto" />
       {renderCurrentScreen()}
+      {/* Modal de viaje completado */}
+      <TripCompletedDetailsModal
+        visible={showCompletedModal}
+        onClose={() => setShowCompletedModal(false)}
+        route={
+          completedTrip?.ruta
+            ? `${completedTrip.ruta.nombre_partida} ➔ ${completedTrip.ruta.nombre_llegada}`
+            : ""
+        }
+        address={completedTrip?.ruta?.nombre_partida || ""}
+        departureDate={completedTrip?.programado_local?.split(",")[0] || ""}
+        departureTime={
+          completedTrip?.programado_local?.split(",")[1]?.trim() || ""
+        }
+        arrivalDate={
+          completedTrip?.llegada_at
+            ? new Date(completedTrip.llegada_at).toLocaleDateString("es-CO")
+            : ""
+        }
+        arrivalTime={
+          completedTrip?.llegada_at
+            ? new Date(completedTrip.llegada_at).toLocaleTimeString("es-CO")
+            : ""
+        }
+        passengers={completedTrip?.pasajeros || 0}
+      />
     </>
   );
 };
