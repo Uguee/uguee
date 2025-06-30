@@ -34,6 +34,7 @@ import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
 import { joinTripAsPassenger } from "./services/tripServices";
 import UserServicesScreen from "./screens/userServicesScreen";
+import UserTripStartScreen from "./screens/UserTripStartScreen";
 
 type Screen =
   | "welcome"
@@ -64,7 +65,8 @@ type Screen =
   | "driver-trip-start"
   | "driver-qr"
   | "scan-qr"
-  | "user-services";
+  | "user-services"
+  | "user-trip-start";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -89,6 +91,8 @@ const AppNavigator = () => {
   const [qrValue, setQRValue] = useState<string | null>(null);
   const [showScanQRScreen, setShowScanQRScreen] = useState(false);
   const [scanQRTripData, setScanQRTripData] = useState<any>(null);
+  const [showUserTripStartScreen, setShowUserTripStartScreen] = useState(false);
+  const [userTripStartData, setUserTripStartData] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -387,6 +391,18 @@ const AppNavigator = () => {
     }
   };
 
+  const handleGoToUserTripStartScreen = (tripData: any) => {
+    setUserTripStartData(tripData);
+    setShowUserTripStartScreen(true);
+    setCurrentScreen("user-trip-start");
+  };
+
+  // Handler para mostrar la pantalla de escaneo QR desde UserTripStartScreen
+  const handleShowScanQRScreenFromTripStart = (tripData: any) => {
+    setScanQRTripData(tripData);
+    setCurrentScreen("scan-qr");
+  };
+
   // Componente de Dashboard basado en rol
   const DashboardScreen = () => {
     if (!user) return null;
@@ -665,6 +681,7 @@ const AppNavigator = () => {
             onGoToProfileScreen={handleGoToProfile}
             onShowScanQRScreen={handleShowScanQRScreen}
             onGoToServices={handleGoToServices}
+            onGoToUserTripStartScreen={handleGoToUserTripStartScreen}
           />
         );
       case "driver-trip-start":
@@ -687,7 +704,64 @@ const AppNavigator = () => {
         );
       case "scan-qr":
         return (
-          <ScanQRScreen onGoBack={handleGoBackFromScanQR} onScan={() => {}} />
+          <ScanQRScreen
+            onScan={async (qrData?: string) => {
+              if (!qrData) {
+                setCurrentScreen("user-trip-start");
+                return;
+              }
+              try {
+                // Lógica original: unir al pasajero al viaje usando joinTripAsPassenger
+                let cedula = null;
+                if (user?.id) {
+                  cedula = await getCedulaByUUID(user.id);
+                }
+                if (!cedula)
+                  throw new Error("No se pudo obtener la cédula del usuario");
+                // Parsear QR (espera viaje:ID, conductor:ID)
+                const qrParts = qrData.split(",");
+                const viajePart = qrParts.find((part) =>
+                  part.startsWith("viaje:")
+                );
+                const conductorPart = qrParts.find((part) =>
+                  part.startsWith("conductor:")
+                );
+                const id_viaje = viajePart
+                  ? parseInt(viajePart.split(":")[1])
+                  : null;
+                const id_conductor = conductorPart
+                  ? parseInt(conductorPart.split(":")[1])
+                  : null;
+                if (!id_viaje || !id_conductor) throw new Error("QR inválido");
+                // Unir al viaje usando joinTripAsPassenger
+                await joinTripAsPassenger(cedula, id_conductor, id_viaje);
+                Alert.alert(
+                  "¡Te has unido al viaje!",
+                  "Has sido agregado exitosamente al viaje.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        setCurrentScreen("user-trip-start");
+                      },
+                    },
+                  ]
+                );
+              } catch (error: any) {
+                Alert.alert(
+                  "Error",
+                  error.message || "No se pudo unir al viaje.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => setCurrentScreen("user-trip-start"),
+                    },
+                  ]
+                );
+              }
+            }}
+            onGoBack={() => setCurrentScreen("user-trip-start")}
+          />
         );
       case "user-services":
         return (
@@ -697,6 +771,15 @@ const AppNavigator = () => {
             onGoToMyTrips={() => setCurrentScreen("user-trips")}
             onGoToServices={() => setCurrentScreen("user-services")}
             onGoToScanQR={() => setCurrentScreen("scan-qr")}
+          />
+        );
+      case "user-trip-start":
+        return (
+          <UserTripStartScreen
+            trip={userTripStartData}
+            onGoBack={() => setCurrentScreen("user-trips")}
+            onStartTrip={() => {}}
+            onShowScanQRScreen={handleShowScanQRScreenFromTripStart}
           />
         );
       default:

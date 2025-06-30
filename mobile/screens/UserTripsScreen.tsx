@@ -31,6 +31,7 @@ interface UserTripsScreenProps {
   onGoToProfileScreen?: () => void;
   onShowScanQRScreen?: (tripData: any) => void;
   onGoToServices?: () => void;
+  onGoToUserTripStartScreen?: (tripData: any) => void;
 }
 
 export default function UserTripsScreen({
@@ -38,6 +39,7 @@ export default function UserTripsScreen({
   onGoToProfileScreen = () => {},
   onShowScanQRScreen = () => {},
   onGoToServices = () => {},
+  onGoToUserTripStartScreen = () => {},
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
@@ -196,7 +198,9 @@ export default function UserTripsScreen({
         pasajeros={selectedTrip?.pasajeros}
         onStartTrip={() => {
           setShowDetails(false);
-          onShowScanQRScreen(selectedTrip);
+          if (typeof onGoToUserTripStartScreen === "function") {
+            onGoToUserTripStartScreen(selectedTrip);
+          }
         }}
       />
       <HomeBottomMenu

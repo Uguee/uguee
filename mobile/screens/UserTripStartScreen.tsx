@@ -19,6 +19,7 @@ import { getUserDataByIdUsuario } from "../services/userDataService";
 import ScanQRScreen from "./ScanQRScreen";
 import { joinTrip } from "../services/passengerService";
 import { getCedulaByUUID } from "../services/userDataService";
+import { getPassengersByTripId } from "../services/tripServices";
 
 interface Passenger {
   id: number;
@@ -29,12 +30,14 @@ interface UserTripStartProps {
   trip: any;
   onGoBack: () => void;
   onStartTrip: () => void;
+  onShowScanQRScreen: (trip: any) => void;
 }
 
 export default function UserTripStartScreen({
   trip,
   onGoBack,
   onStartTrip,
+  onShowScanQRScreen,
 }: UserTripStartProps) {
   const { user } = useAuth();
   const [location, setLocation] = useState<{
@@ -52,8 +55,10 @@ export default function UserTripStartScreen({
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [conductorName, setConductorName] = useState<string>("Conductor");
   const mapRef = useRef<MapView>(null);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [isJoiningTrip, setIsJoiningTrip] = useState(false);
+  const [passengers, setPassengers] = useState<Passenger[]>([]);
+  const [loadingPassengers, setLoadingPassengers] = useState(true);
+  const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
+  const [myCedula, setMyCedula] = useState<number | null>(null);
 
   // Solicitar permiso de ubicación antes de mostrar el mapa
   useEffect(() => {
@@ -174,6 +179,44 @@ export default function UserTripStartScreen({
     getRouteCoordinates();
   }, [routeData]);
 
+  // Obtener pasajeros reales del viaje
+  useEffect(() => {
+    const fetchPassengers = async () => {
+      setLoadingPassengers(true);
+      setErrorPassengers(null);
+      try {
+        if (trip?.id_viaje) {
+          const data = await getPassengersByTripId(Number(trip.id_viaje));
+          // Formatear a { id, name }
+          const formatted = (data || []).map((p: any) => ({
+            id: p.id_usuario,
+            name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+          }));
+          setPassengers(formatted);
+        } else {
+          setPassengers([]);
+        }
+      } catch (e: any) {
+        setErrorPassengers(e.message || "Error al cargar pasajeros");
+        setPassengers([]);
+      } finally {
+        setLoadingPassengers(false);
+      }
+    };
+    fetchPassengers();
+  }, [trip?.id_viaje]);
+
+  // Obtener la cédula del usuario autenticado
+  useEffect(() => {
+    const fetchCedula = async () => {
+      if (user?.id) {
+        const cedula = await getCedulaByUUID(user.id);
+        setMyCedula(cedula);
+      }
+    };
+    fetchCedula();
+  }, [user?.id]);
+
   // Función para decodificar la polyline de Google Maps
   const decodePolyline = (encoded: string) => {
     const poly = [];
@@ -206,53 +249,6 @@ export default function UserTripStartScreen({
       });
     }
     return poly;
-  };
-
-  // Handler para escaneo QR y unión al viaje
-  const handleScanQR = async (qrData?: string) => {
-    if (!qrData) {
-      Alert.alert("Error", "No se pudo leer el código QR");
-      setShowQRModal(false);
-      return;
-    }
-    setIsJoiningTrip(true);
-    try {
-      // Obtener cédula del usuario autenticado
-      let cedula = null;
-      if (user?.id) {
-        cedula = await getCedulaByUUID(user.id);
-      }
-      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
-      // Parsear QR (espera viaje:ID)
-      const qrParts = qrData.split(",");
-      const viajePart = qrParts.find((part) => part.startsWith("viaje:"));
-      const id_viaje = viajePart ? parseInt(viajePart.split(":")[1]) : null;
-      if (!id_viaje) throw new Error("QR inválido");
-      // Unir al viaje
-      await joinTrip(id_viaje, cedula);
-      Alert.alert(
-        "¡Te has unido al viaje!",
-        "Has sido agregado exitosamente al viaje.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setShowQRModal(false);
-              // Aquí puedes refrescar datos si lo necesitas
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "No se pudo unir al viaje.", [
-        {
-          text: "OK",
-          onPress: () => setShowQRModal(false),
-        },
-      ]);
-    } finally {
-      setIsJoiningTrip(false);
-    }
   };
 
   if (locationPermission === null || loadingRouteData) {
@@ -314,10 +310,6 @@ export default function UserTripStartScreen({
   const destinationPlace = routeData.nombre_llegada || "Destino";
   const driverName = conductorName;
   const driverRole = "Conductor";
-  const passengers = [
-    { id: 1, name: "Patricia Gómez" },
-    { id: 2, name: "Pedro" },
-  ];
 
   const getInitial = (name?: string) =>
     name && name.length > 0 ? name[0].toUpperCase() : "U";
@@ -413,58 +405,49 @@ export default function UserTripStartScreen({
           </Text>
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
-            <ScrollView
-              style={styles.passengerScroll}
-              showsVerticalScrollIndicator={true}
-            >
-              {passengers.map((p) => (
-                <View key={p.id} style={styles.passengerRow}>
-                  <Text style={styles.passengerName}>{p.name}</Text>
-                </View>
-              ))}
-            </ScrollView>
+            {loadingPassengers ? (
+              <ActivityIndicator
+                size="small"
+                color="#A259FF"
+                style={{ marginTop: 8 }}
+              />
+            ) : errorPassengers ? (
+              <Text style={{ color: "#FF4D4D", marginTop: 8 }}>
+                {errorPassengers}
+              </Text>
+            ) : passengers.length === 0 ? (
+              <Text style={{ color: "#666", marginTop: 8 }}>
+                No hay pasajeros registrados
+              </Text>
+            ) : (
+              <ScrollView
+                style={styles.passengerScroll}
+                showsVerticalScrollIndicator={true}
+              >
+                {passengers.map((p) => (
+                  <View key={p.id} style={styles.passengerRow}>
+                    <Text style={styles.passengerName}>
+                      {p.name}
+                      {myCedula && p.id === myCedula ? " (tú)" : ""}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.startButton} onPress={onStartTrip}>
-            <Text style={styles.buttonText}>Iniciar viaje</Text>
-          </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.startButton, { backgroundColor: "#A259FF" }]}
-            onPress={() => setShowQRModal(true)}
+            style={[
+              styles.startButton,
+              { backgroundColor: "#A259FF", width: "100%" },
+            ]}
+            onPress={() => onShowScanQRScreen(trip)}
           >
             <Text style={styles.buttonText}>Escanear QR</Text>
           </TouchableOpacity>
         </View>
       </View>
-      {/* Modal de escaneo QR */}
-      {showQRModal && (
-        <ScanQRScreen
-          onScan={handleScanQR}
-          onGoBack={() => setShowQRModal(false)}
-        />
-      )}
-      {/* Loading al unirse */}
-      {isJoiningTrip && (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(255,255,255,0.7)",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 100,
-          }}
-        >
-          <ActivityIndicator size="large" color="#A259FF" />
-          <Text style={{ marginTop: 12, color: "#666" }}>
-            Uniéndote al viaje...
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -507,7 +490,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     alignItems: "stretch",
-    height: 390,
+    height: 420,
     flexDirection: "column",
   },
   cardContent: {
