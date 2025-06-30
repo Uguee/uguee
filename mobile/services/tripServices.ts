@@ -323,10 +323,11 @@ export async function getPassengersByTripId(id_viaje: number) {
     data = null;
   }
   console.log("[getPassengersByTripId] status:", response.status);
-  console.log("[getPassengersByTripId] data:", data);
+  console.log("[getPassengersByTripId] respuesta completa:", data);
   if (!response.ok || !data?.success) {
-    console.log("[getPassengersByTripId] Lanzando error:", data?.error);
+    console.log("[getPassengersByTripId] Lanzando error:", data?.error, data);
     throw new Error(data?.error || "Error al obtener pasajeros del viaje");
   }
+  console.log("[getPassengersByTripId] data:", data.data);
   return data.data;
 }

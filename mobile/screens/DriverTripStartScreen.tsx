@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Alert,
 } from "react-native";
 import ReturnButton from "../components/ReturnButton";
 import { useAuth } from "../hooks/useAuth";
@@ -18,6 +19,7 @@ import QRCode from "react-native-qrcode-svg";
 import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getPassengersByTripId } from "../services/tripServices";
+import { leaveTrip } from "../services/passengerService";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
@@ -57,6 +59,9 @@ export default function DriverTripStartScreen({
     id: number;
     name: string;
   } | null>(null);
+
+  // Estado para el proceso de eliminación
+  const [removingPassenger, setRemovingPassenger] = useState(false);
 
   // Logs útiles para depuración
   console.log("[DriverTripStartScreen] Props trip:", trip);
@@ -308,13 +313,11 @@ export default function DriverTripStartScreen({
         if (trip?.id_viaje) {
           const data = await getPassengersByTripId(Number(trip.id_viaje));
           console.log("RESULTADO getPassengersByTripId", data);
-          // Formatear a { id, name }
+          // Formatear a { id, name, rol }
           const formatted = (data || []).map((p: any) => ({
             id: p.id_usuario,
-            name: `${p.usuario?.nombre || ""} ${
-              p.usuario?.apellido || ""
-            }`.trim(),
-            rol: p.registro?.rol_institucional || "",
+            name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+            rol: p.rol_institucional || "",
           }));
           setPassengers(formatted);
         } else {
@@ -330,6 +333,30 @@ export default function DriverTripStartScreen({
     };
     fetchPassengers();
   }, [trip?.id_viaje]);
+
+  // Refrescar pasajeros tras cerrar el QR
+  const refreshPassengers = async () => {
+    setLoadingPassengers(true);
+    setErrorPassengers(null);
+    try {
+      if (trip?.id_viaje) {
+        const data = await getPassengersByTripId(Number(trip.id_viaje));
+        const formatted = (data || []).map((p: any) => ({
+          id: p.id_usuario,
+          name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+          rol: p.rol_institucional || "",
+        }));
+        setPassengers(formatted);
+      } else {
+        setPassengers([]);
+      }
+    } catch (e: any) {
+      setErrorPassengers(e.message || "Error al cargar pasajeros");
+      setPassengers([]);
+    } finally {
+      setLoadingPassengers(false);
+    }
+  };
 
   if (
     !routeData?.punto_partida?.coordinates ||
@@ -362,13 +389,25 @@ export default function DriverTripStartScreen({
     setModalVisible(true);
   };
 
-  const handleRemovePassenger = () => {
+  const handleRemovePassenger = async () => {
     if (passengerToRemove) {
-      setPassengers((prev) =>
-        prev.filter((p) => p.id !== passengerToRemove.id)
-      );
-      setModalVisible(false);
-      setPassengerToRemove(null);
+      setRemovingPassenger(true);
+      try {
+        await leaveTrip(Number(trip.id_viaje), Number(passengerToRemove.id));
+        setPassengers((prev) =>
+          prev.filter((p) => p.id !== passengerToRemove.id)
+        );
+        setModalVisible(false);
+        setPassengerToRemove(null);
+        Alert.alert("Éxito", "Pasajero eliminado del viaje");
+      } catch (error: any) {
+        Alert.alert(
+          "Error",
+          error.message || "No se pudo eliminar al pasajero"
+        );
+      } finally {
+        setRemovingPassenger(false);
+      }
     }
   };
 
@@ -497,7 +536,21 @@ export default function DriverTripStartScreen({
                 {passengers.map((p) => (
                   <View key={p.id} style={styles.passengerRow}>
                     <Text style={styles.passengerName}>{p.name}</Text>
-                    {/* Si quieres mostrar el rol: <Text>{p.rol}</Text> */}
+                    {<Text>{p.rol}</Text>}
+                    <TouchableOpacity
+                      style={styles.removePassengerBtn}
+                      onPress={() => handleAskRemovePassenger(p)}
+                    >
+                      <Text
+                        style={{
+                          color: "#FF4D4D",
+                          fontWeight: "bold",
+                          fontSize: 16,
+                        }}
+                      >
+                        Eliminar
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>
@@ -520,7 +573,10 @@ export default function DriverTripStartScreen({
         visible={showQRModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowQRModal(false)}
+        onRequestClose={async () => {
+          setShowQRModal(false);
+          await refreshPassengers();
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.qrModalContent}>
@@ -538,7 +594,10 @@ export default function DriverTripStartScreen({
             </Text>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setShowQRModal(false)}
+              onPress={async () => {
+                setShowQRModal(false);
+                await refreshPassengers();
+              }}
             >
               <Text style={styles.closeButtonText}>Cerrar</Text>
             </TouchableOpacity>
@@ -569,8 +628,11 @@ export default function DriverTripStartScreen({
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={handleRemovePassenger}
+                disabled={removingPassenger}
               >
-                <Text style={styles.deleteBtnText}>Eliminar</Text>
+                <Text style={styles.deleteBtnText}>
+                  {removingPassenger ? "Eliminando..." : "Eliminar"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
