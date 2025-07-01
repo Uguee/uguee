@@ -45,6 +45,82 @@ export interface Trip {
 }
 
 /**
+ * Consulta los viajes de conductores de una institución específica.
+ * @param id_institucion ID de la institución
+ * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
+ * @param except_id_usuario (opcional) Excluir viajes de este conductor
+ * @returns {Promise<{ viajes: TripByInstitution[] }>} Donde cada viaje incluye todos los campos enriquecidos (ver interfaz TripByInstitution)
+ */
+export interface TripByInstitution {
+  id_viaje: number;
+  id_conductor: number;
+  id_vehiculo: string;
+  id_ruta: number;
+  salida_at: string | null;
+  llegada_at: string | null;
+  programado_at: string;
+  programado_local: string; // Fecha local formateada
+  estado:
+    | "programado"
+    | "pendiente"
+    | "en-curso"
+    | "completado"
+    | "desconocido";
+  conductor: {
+    id_usuario: number;
+    nombre: string;
+    apellido: string;
+  };
+  vehiculo: {
+    placa: string;
+    modelo: number;
+    color: string;
+    tipo?: number;
+  };
+  ruta: {
+    id_ruta: number;
+    nombre_partida: string;
+    nombre_llegada: string;
+  };
+  // ...otros campos que pueda retornar la edge function
+}
+
+export async function getTripsByInstitution(
+  id_institucion: number,
+  how_trips: number = 1,
+  except_id_usuario?: number
+): Promise<{ viajes: TripByInstitution[] }> {
+  const { getCurrentToken } = await import("./authService");
+  const token = getCurrentToken && getCurrentToken();
+  const body: any = { id_institucion, how_trips };
+  if (except_id_usuario !== undefined)
+    body.except_id_usuario = except_id_usuario;
+  const response = await fetch(
+    `${
+      process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    }/functions/v1/get-trips-by-institution`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await response.json();
+  console.log("[getTripsByInstitution] Respuesta completa:", data);
+  if (!response.ok) {
+    throw new Error(data.error || "Error al consultar viajes por institución");
+  }
+  if (data.viajes && data.viajes.length > 0) {
+    console.log("[getTripsByInstitution] Primer viaje:", data.viajes[0]);
+  }
+  // La edge function ya retorna los viajes enriquecidos, solo devolvemos tal cual
+  return data;
+}
+
+/**
  * Crea un nuevo viaje usando la edge function protegida por JWT.
  * @param {Object} params - Parámetros del viaje.
  * @param {number} params.id_conductor - ID del conductor (requerido).
@@ -223,48 +299,6 @@ export async function getDriverTrips(
 }
 
 /**
- * Consulta los viajes de conductores de una institución específica.
- * @param id_institucion ID de la institución
- * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
- * @param except_id_usuario (opcional) Excluir viajes de este conductor
- * @returns {Promise<{ viajes: Array<{ id_viaje: string, estado: string, programado_local: string, ruta: { id_ruta: string, nombre_partida: string, nombre_llegada: string }, vehiculo: { placa: string, modelo: string, color: string, tipo?: string }, conductor: { id_usuario: number, nombre: string, apellido: string }, ...rest }> }>
- */
-export async function getTripsByInstitution(
-  id_institucion: number,
-  how_trips: number = 1,
-  except_id_usuario?: number
-) {
-  const { getCurrentToken } = await import("./authService");
-  const token = getCurrentToken && getCurrentToken();
-  const body: any = { id_institucion, how_trips };
-  if (except_id_usuario !== undefined)
-    body.except_id_usuario = except_id_usuario;
-  const response = await fetch(
-    `${
-      process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-    }/functions/v1/get-trips-by-institution`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    }
-  );
-  const data = await response.json();
-  console.log("[getTripsByInstitution] Respuesta completa:", data);
-  if (!response.ok) {
-    throw new Error(data.error || "Error al consultar viajes por institución");
-  }
-  if (data.viajes && data.viajes.length > 0) {
-    console.log("[getTripsByInstitution] Primer viaje:", data.viajes[0]);
-  }
-  // data.viajes es un array de objetos con los nuevos campos conductor y vehiculo
-  return data;
-}
-
-/**
  * Une un pasajero a un viaje usando la edge function join-a-trip-as-passenger
  * @param id_pasajero ID del pasajero (cédula)
  * @param id_conductor ID del conductor (cédula)
@@ -403,50 +437,6 @@ export async function endTrip(id_viaje: number, id_conductor: number) {
     throw new Error(data.error || "Error al finalizar el viaje");
   }
   return data;
-}
-
-/**
- * Consulta la reseña de un usuario para un viaje específico usando la edge function 'obtener-resena-viaje'.
- * @param {number} id_usuario - ID del usuario
- * @param {number} id_viaje - ID del viaje
- * @param {string} jwt - Token JWT para autenticación
- * @returns {Promise<{ success: boolean; resena: { id_reseña: number; calificacion: number; descripcion: string } | null; error?: string }>}
- */
-export async function getTripReview(
-  id_usuario: number,
-  id_viaje: number,
-  jwt: string
-) {
-  try {
-    const response = await fetch(
-      `${
-        process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-      }/functions/v1/get-trip-review`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ id_usuario, id_viaje }),
-      }
-    );
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        resena: null,
-        error: data.error || "Error al consultar reseña",
-      };
-    }
-    return { success: true, resena: data.resena };
-  } catch (error: any) {
-    return {
-      success: false,
-      resena: null,
-      error: error.message || "Error inesperado",
-    };
-  }
 }
 
 /**

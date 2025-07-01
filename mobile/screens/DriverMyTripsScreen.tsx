@@ -18,7 +18,8 @@ import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
 import { useDriverTrips } from "../hooks/useDriverTrips";
 import { getRouteById } from "../services/routeService";
-import { getPassengersByTripId, getTripReview } from "../services/tripServices";
+import { getPassengersByTripId } from "../services/tripServices";
+import { getTripReview } from "../services/reviewService";
 import { usePassengerCounts } from "../hooks/usePassengerCounts";
 import { getCurrentToken } from "../services/authService";
 

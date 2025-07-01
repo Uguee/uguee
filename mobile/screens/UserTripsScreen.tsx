@@ -31,6 +31,23 @@ const FILTERS = [
   { label: "Viajes posteriores", value: 2 },
 ];
 
+// Copiamos el mapeo de tipos del formulario para usarlo aquí
+const tiposVehiculo = [
+  { label: "Automóvil", value: 1 },
+  { label: "Motocicleta", value: 2 },
+  { label: "Bicicleta", value: 3 },
+  { label: "Camioneta", value: 4 },
+  { label: "Van", value: 5 },
+  { label: "Monopatín", value: 6 },
+  { label: "Bus", value: 7 },
+];
+
+function getTipoVehiculoLabel(tipo: number | string | undefined): string {
+  if (!tipo) return "-";
+  const tipoNum = Number(tipo);
+  return tiposVehiculo.find((t) => t.value === tipoNum)?.label || "-";
+}
+
 interface UserTripsScreenProps {
   onGoToHomeScreen?: () => void;
   onGoToProfileScreen?: () => void;
@@ -167,9 +184,7 @@ export default function UserTripsScreen({
       ) : (
         <FlatList
           data={filteredTrips}
-          keyExtractor={(item) =>
-            item.id_viaje?.toString() || item.id?.toString()
-          }
+          keyExtractor={(item) => item.id_viaje?.toString()}
           renderItem={({ item }) => (
             <UserTripCard
               route={
@@ -211,7 +226,7 @@ export default function UserTripsScreen({
                 ? `${selectedTrip.conductor.nombre} ${selectedTrip.conductor.apellido}`
                 : "-"
             }
-            vehicleType={selectedTrip?.vehiculo?.tipo || "-"}
+            vehicleType={getTipoVehiculoLabel(selectedTrip?.vehiculo?.tipo)}
             color={selectedTrip?.vehiculo?.color || "-"}
             plate={selectedTrip?.vehiculo?.placa || "-"}
             estado={selectedTrip?.estado}
