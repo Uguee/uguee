@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   estadoBadgeText: {
-    color: "#7C3AED",
+    color: "#fff",
     fontSize: 11,
     fontWeight: "bold",
   },

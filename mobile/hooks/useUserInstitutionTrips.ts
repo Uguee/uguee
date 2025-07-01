@@ -29,6 +29,12 @@ export function useUserInstitutionTrips() {
           cedula
         );
         setTrips(data.viajes || []);
+        if (data.viajes && data.viajes.length > 0) {
+          console.log(
+            "[useUserInstitutionTrips] Primer viaje recibido:",
+            data.viajes[0]
+          );
+        }
       } catch (e: any) {
         setError(e.message || "Error al obtener viajes");
         setTrips([]);

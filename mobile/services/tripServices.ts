@@ -31,6 +31,13 @@ export interface Trip {
   vehiculo: {
     placa: string;
     modelo: string;
+    tipo?: string;
+    color?: string;
+  };
+  conductor?: {
+    id_usuario: number;
+    nombre: string;
+    apellido: string;
   };
   programado_at: string;
   salida_at: string | null;
@@ -219,8 +226,8 @@ export async function getDriverTrips(
  * Consulta los viajes de conductores de una institución específica.
  * @param id_institucion ID de la institución
  * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
- * @param except_id_usuario (opcional) Excluir viajes de este usuario
- * @returns Respuesta de la edgefunction
+ * @param except_id_usuario (opcional) Excluir viajes de este conductor
+ * @returns {Promise<{ viajes: Array<{ id_viaje: string, estado: string, programado_local: string, ruta: { id_ruta: string, nombre_partida: string, nombre_llegada: string }, vehiculo: { placa: string, modelo: string, color: string, tipo?: string }, conductor: { id_usuario: number, nombre: string, apellido: string }, ...rest }> }>
  */
 export async function getTripsByInstitution(
   id_institucion: number,
@@ -233,7 +240,9 @@ export async function getTripsByInstitution(
   if (except_id_usuario !== undefined)
     body.except_id_usuario = except_id_usuario;
   const response = await fetch(
-    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-institution",
+    `${
+      process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    }/functions/v1/get-trips-by-institution`,
     {
       method: "POST",
       headers: {
@@ -244,6 +253,14 @@ export async function getTripsByInstitution(
     }
   );
   const data = await response.json();
+  console.log("[getTripsByInstitution] Respuesta completa:", data);
+  if (!response.ok) {
+    throw new Error(data.error || "Error al consultar viajes por institución");
+  }
+  if (data.viajes && data.viajes.length > 0) {
+    console.log("[getTripsByInstitution] Primer viaje:", data.viajes[0]);
+  }
+  // data.viajes es un array de objetos con los nuevos campos conductor y vehiculo
   return data;
 }
 
@@ -427,6 +444,46 @@ export async function getTripReview(
     return {
       success: false,
       resena: null,
+      error: error.message || "Error inesperado",
+    };
+  }
+}
+
+/**
+ * Consulta el viaje más relevante en el que el usuario participa como pasajero.
+ * Usa la edge function 'get-active-passenger-trip'.
+ * @param {number} id_usuario - ID del usuario
+ * @param {string} jwt - Token JWT para autenticación
+ * @returns {Promise<{ success: boolean; viajes: any[]; error?: string }>}
+ */
+export async function getActivePassengerTrip(id_usuario: number, jwt: string) {
+  try {
+    const response = await fetch(
+      `${
+        process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+      }/functions/v1/get-active-passenger-trip`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ id_usuario }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        viajes: [],
+        error: data.error || "Error al consultar viaje activo",
+      };
+    }
+    return { success: true, viajes: data.viajes };
+  } catch (error: any) {
+    return {
+      success: false,
+      viajes: [],
       error: error.message || "Error inesperado",
     };
   }

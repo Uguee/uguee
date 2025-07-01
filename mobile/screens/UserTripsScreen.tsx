@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Modal,
+  Alert,
 } from "react-native";
 import { TopMenu } from "../components/TopMenu";
 import { SearchBar } from "../components/SearchBar";
@@ -13,6 +14,10 @@ import UserTripCard from "../components/UserTripCard";
 import UserTripDetailsModal from "../components/UserTripDetailsModal";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { useUserInstitutionTrips } from "../hooks/useUserInstitutionTrips";
+import ScanQRScreen from "./ScanQRScreen";
+import { joinTripAsPassenger } from "../services/tripServices";
+import { getCedulaByUUID } from "../services/userDataService";
+import { useAuth } from "../hooks/useAuth";
 
 function formatPlaceName(nombre: string | null | undefined): string {
   if (!nombre) return "";
@@ -47,6 +52,7 @@ export default function UserTripsScreen({
   const [filterModal, setFilterModal] = useState(false);
   const { trips, loading, error, howTrips, setHowTrips } =
     useUserInstitutionTrips();
+  const { user } = useAuth();
 
   const filteredTrips = trips.filter((trip) => {
     const routeName =
@@ -64,6 +70,13 @@ export default function UserTripsScreen({
         search.toLowerCase()
       )
     );
+  });
+
+  // Función para mapear los datos del viaje y asegurar que el modal reciba los campos correctos
+  const mapTripData = (trip: any) => ({
+    ...trip,
+    conductor: trip.conductor || trip.usuario || undefined,
+    vehiculo: trip.vehiculo || {},
   });
 
   return (
@@ -170,7 +183,7 @@ export default function UserTripsScreen({
               time={item.programado_local || ""}
               estado={item.estado}
               onPress={() => {
-                setSelectedTrip(item);
+                setSelectedTrip(mapTripData(item));
                 setShowDetails(true);
               }}
             />
@@ -179,37 +192,46 @@ export default function UserTripsScreen({
           showsVerticalScrollIndicator={false}
         />
       )}
-      <UserTripDetailsModal
-        visible={showDetails}
-        onClose={() => setShowDetails(false)}
-        pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
-        destinationPlace={formatPlaceName(selectedTrip?.ruta?.nombre_llegada)}
-        departureDate={selectedTrip?.programado_local?.split(",")[0] || ""}
-        departureTime={
-          selectedTrip?.programado_local?.split(",")[1]?.trim() || ""
-        }
-        driver={
-          selectedTrip?.id_conductor ? String(selectedTrip?.id_conductor) : "-"
-        }
-        vehicleType={selectedTrip?.vehiculo?.modelo || "-"}
-        color={selectedTrip?.vehiculo?.color || "-"}
-        plate={selectedTrip?.vehiculo?.placa || "-"}
-        estado={selectedTrip?.estado}
-        pasajeros={selectedTrip?.pasajeros}
-        onStartTrip={() => {
-          setShowDetails(false);
-          if (typeof onGoToUserTripStartScreen === "function") {
-            const tripToPass = {
-              ...selectedTrip,
-              id_conductor:
-                selectedTrip.id_conductor ||
-                (selectedTrip.conductor && selectedTrip.conductor.id_usuario) ||
-                null,
-            };
-            onGoToUserTripStartScreen(tripToPass);
-          }
-        }}
-      />
+      {showDetails &&
+        (console.log("[UserTripsScreen] selectedTrip:", selectedTrip),
+        (
+          <UserTripDetailsModal
+            visible={showDetails}
+            onClose={() => setShowDetails(false)}
+            pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+            destinationPlace={formatPlaceName(
+              selectedTrip?.ruta?.nombre_llegada
+            )}
+            departureDate={selectedTrip?.programado_local?.split(",")[0] || ""}
+            departureTime={
+              selectedTrip?.programado_local?.split(",")[1]?.trim() || ""
+            }
+            driver={
+              selectedTrip?.conductor
+                ? `${selectedTrip.conductor.nombre} ${selectedTrip.conductor.apellido}`
+                : "-"
+            }
+            vehicleType={selectedTrip?.vehiculo?.tipo || "-"}
+            color={selectedTrip?.vehiculo?.color || "-"}
+            plate={selectedTrip?.vehiculo?.placa || "-"}
+            estado={selectedTrip?.estado}
+            pasajeros={selectedTrip?.pasajeros}
+            onStartTrip={() => {
+              setShowDetails(false);
+              if (typeof onGoToUserTripStartScreen === "function") {
+                const tripToPass = {
+                  ...selectedTrip,
+                  id_conductor:
+                    selectedTrip.id_conductor ||
+                    (selectedTrip.conductor &&
+                      selectedTrip.conductor.id_usuario) ||
+                    null,
+                };
+                onGoToUserTripStartScreen(tripToPass);
+              }
+            }}
+          />
+        ))}
       <HomeBottomMenu
         onGoToHome={onGoToHomeScreen}
         onGoToProfile={onGoToProfileScreen}
@@ -217,6 +239,38 @@ export default function UserTripsScreen({
         onGoToServices={onGoToServices}
         activeButton="trips"
       />
+      {/* Botón flotante para escanear QR */}
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          right: 24,
+          bottom: 90,
+          backgroundColor: "#A259FF",
+          borderRadius: 28,
+          paddingVertical: 16,
+          paddingHorizontal: 28,
+          elevation: 6,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.18,
+          shadowRadius: 8,
+          zIndex: 20,
+          flexDirection: "row",
+          alignItems: "center",
+        }}
+        onPress={() => onShowScanQRScreen(null)}
+      >
+        <Text
+          style={{
+            color: "#fff",
+            fontWeight: "bold",
+            fontSize: 17,
+            letterSpacing: 0.5,
+          }}
+        >
+          Escanear QR
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

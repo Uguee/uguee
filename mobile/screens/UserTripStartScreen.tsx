@@ -20,6 +20,7 @@ import ScanQRScreen from "./ScanQRScreen";
 import { joinTrip, leaveTrip } from "../services/passengerService";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getPassengersByTripId } from "../services/tripServices";
+import { formatPlaceName } from "../lib/formatPlaceName";
 
 interface Passenger {
   id: number;
@@ -350,8 +351,10 @@ export default function UserTripStartScreen({
   // Extraer coordenadas para usar en el mapa
   const [startLon, startLat] = routeData.punto_partida.coordinates;
   const [endLon, endLat] = routeData.punto_llegada.coordinates;
-  const pickupPlace = routeData.nombre_partida || "Punto de recogida";
-  const destinationPlace = routeData.nombre_llegada || "Destino";
+  const pickupPlace =
+    formatPlaceName(routeData.nombre_partida) || "Punto de recogida";
+  const destinationPlace =
+    formatPlaceName(routeData.nombre_llegada) || "Destino";
   const driverName = conductorName;
   const driverRole = "Conductor";
 

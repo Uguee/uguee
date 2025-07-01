@@ -77,7 +77,7 @@ const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
               </Text>
             ) : reviews.length === 0 ? (
               <Text style={{ color: "#666", marginTop: 8 }}>
-                No hay reseñas para este viaje.
+                No hay reseñas aún para este viaje.
               </Text>
             ) : (
               reviews.map((review, idx) => (
