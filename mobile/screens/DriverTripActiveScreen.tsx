@@ -16,6 +16,7 @@ import { getPassengersByTripId, endTrip } from "../services/tripServices";
 import { useAuth } from "../hooks/useAuth";
 import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
+import { formatPlaceName } from "../lib/formatPlaceName";
 
 interface DriverTripActiveScreenProps {
   trip: any;
@@ -228,8 +229,12 @@ export default function DriverTripActiveScreen({
       <ReturnButton onPress={onGoBack} />
       {/* Lugares */}
       <View style={styles.placesContainer}>
-        <Text style={styles.placeBox}>{routeData.nombre_partida}</Text>
-        <Text style={styles.placeBox}>{routeData.nombre_llegada}</Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_partida)}
+        </Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_llegada)}
+        </Text>
       </View>
       {/* Mapa */}
       <View style={styles.mapContainer}>
@@ -298,7 +303,7 @@ export default function DriverTripActiveScreen({
             <View>
               <Text style={styles.meetingLabel}>Destino:</Text>
               <Text style={styles.meetingPlace}>
-                {routeData.nombre_llegada}
+                {formatPlaceName(routeData.nombre_llegada)}
               </Text>
             </View>
           </View>

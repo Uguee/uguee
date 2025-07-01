@@ -20,6 +20,7 @@ import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getPassengersByTripId, startTrip } from "../services/tripServices";
 import { leaveTrip } from "../services/passengerService";
+import { formatPlaceName } from "../lib/formatPlaceName";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
@@ -437,8 +438,12 @@ export default function DriverTripStartScreen({
       <ReturnButton onPress={onGoBack} />
       {/* Lugares */}
       <View style={styles.placesContainer}>
-        <Text style={styles.placeBox}>{routeData.nombre_partida}</Text>
-        <Text style={styles.placeBox}>{routeData.nombre_llegada}</Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_partida)}
+        </Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_llegada)}
+        </Text>
       </View>
       {/* Mapa */}
       <View style={styles.mapContainer}>
@@ -520,7 +525,7 @@ export default function DriverTripStartScreen({
             <View>
               <Text style={styles.meetingLabel}>Punto de encuentro:</Text>
               <Text style={styles.meetingPlace}>
-                {routeData.nombre_partida}
+                {formatPlaceName(routeData.nombre_partida)}
               </Text>
             </View>
           </View>

@@ -1,5 +1,6 @@
 import React from "react";
 import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface TripCompletedCardProps {
   route?: string;
@@ -14,7 +15,9 @@ const TripCompletedCard: React.FC<TripCompletedCardProps> = ({
 }) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.icon} />
+      <View style={styles.iconBox}>
+        <Ionicons name="checkmark-circle" size={28} color="#fff" />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.route}>{route}</Text>
         <Text style={styles.label}>
@@ -44,12 +47,18 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  iconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: "#B84CF6",
     marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#B84CF6",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   route: {
     fontWeight: "bold",

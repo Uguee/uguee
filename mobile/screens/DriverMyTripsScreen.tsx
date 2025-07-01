@@ -18,7 +18,9 @@ import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
 import { useDriverTrips } from "../hooks/useDriverTrips";
 import { getRouteById } from "../services/routeService";
-import { getPassengersByTripId } from "../services/tripServices";
+import { getPassengersByTripId, getTripReview } from "../services/tripServices";
+import { usePassengerCounts } from "../hooks/usePassengerCounts";
+import { getCurrentToken } from "../services/authService";
 
 function formatPlaceName(nombre: string | null): string {
   if (!nombre) return "";
@@ -30,6 +32,7 @@ function formatPlaceName(nombre: string | null): string {
 const FILTERS = [
   { label: "Terminado", value: "completed" },
   { label: "Programado", value: "scheduled" },
+  { label: "En curso", value: "in-progress" },
   { label: "Todos", value: "all" },
 ];
 
@@ -46,12 +49,12 @@ const DriverMyTripsScreen = ({
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
-  const [completedTripPassengers, setCompletedTripPassengers] = useState<
-    number | null
-  >(null);
+  const [completedTripReviews, setCompletedTripReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
-  // Elimina el array TRIPS y usa los viajes reales
   const { trips, loading, error } = useDriverTrips();
+  const { passengerCounts, loading: loadingPassengers } =
+    usePassengerCounts(trips);
   console.log("[DriverMyTripsScreen] trips:", trips);
 
   // Log para verificar el orden original
@@ -76,11 +79,18 @@ const DriverMyTripsScreen = ({
   let filteredTrips =
     filter === "all"
       ? trips
-      : trips.filter((trip) =>
-          filter === "completed"
-            ? trip.estado === "completado"
-            : trip.estado !== "completado"
-        );
+      : trips.filter((trip: any) => {
+          if (filter === "completed") {
+            return trip.estado === "completado" || trip.estado === "terminado";
+          }
+          if (filter === "scheduled") {
+            return trip.estado === "programado" || trip.estado === "pendiente";
+          }
+          if (filter === "in-progress") {
+            return trip.estado === "en-curso";
+          }
+          return true;
+        });
 
   // Filtrado por búsqueda
   filteredTrips = filteredTrips.filter((trip: any) => {
@@ -175,21 +185,58 @@ const DriverMyTripsScreen = ({
   const handleShowCompletedModal = async (trip: any) => {
     setSelectedTrip(trip);
     setShowCompletedModal(true);
-    // Trae el número real de pasajeros
+    setCompletedTripReviews([]);
+    setLoadingReviews(true);
     try {
-      const passengers = await getPassengersByTripId(Number(trip.id_viaje));
-      setCompletedTripPassengers(passengers ? passengers.length : 0);
+      // 1. Obtener los pasajeros del viaje
+      const pasajeros = await getPassengersByTripId(Number(trip.id_viaje));
+      console.log("[Reseñas] Pasajeros obtenidos:", pasajeros);
+      // 2. Obtener el JWT actual
+      const jwt = await getCurrentToken();
+      // 3. Consultar la reseña de cada pasajero para este viaje
+      const reviews: any[] = [];
+      for (const pasajero of pasajeros) {
+        console.log("[Reseñas] Consultando reseña para:", {
+          id_usuario: pasajero.id_usuario,
+          id_viaje_number: Number(trip.id_viaje),
+          id_viaje_string: trip.id_viaje,
+          jwt: jwt ?? "",
+        });
+        const res = await getTripReview(
+          pasajero.id_usuario,
+          Number(trip.id_viaje ?? 0),
+          jwt ?? ""
+        );
+        console.log("[Reseñas] Respuesta de getTripReview:", res);
+        if (res.success && res.resena) {
+          reviews.push({
+            rating: res.resena.calificacion,
+            comment: res.resena.descripcion,
+            id_usuario: pasajero.id_usuario,
+            id_reseña: res.resena.id_reseña,
+          });
+        }
+      }
+      setCompletedTripReviews(reviews);
     } catch (e) {
-      setCompletedTripPassengers(null);
+      console.log("[Reseñas] Error al consultar reseñas:", e);
+      setCompletedTripReviews([]);
+    } finally {
+      setLoadingReviews(false);
     }
   };
+
+  // Variable para decidir la fecha/hora a mostrar en el modal
+  const modalFechaMostrar =
+    selectedTrip?.estado === "en-curso" && selectedTrip?.salida_at
+      ? selectedTrip.salida_at
+      : selectedTrip?.programado_at;
 
   const renderTrip = ({ item }: { item: any }) => {
     // Usar el estado que viene de la edge function
     const estado = item.estado;
 
     if (estado === "completado" || estado === "terminado") {
-      // Completado o Terminado - sin color de reborde
       return (
         <TripCompletedCard
           route={
@@ -197,12 +244,7 @@ const DriverMyTripsScreen = ({
               " ➔ " +
               formatPlaceName(item.ruta?.nombre_llegada) || `${item.id_ruta}`
           }
-          passengers={
-            completedTripPassengers !== null &&
-            selectedTrip?.id_viaje === item.id_viaje
-              ? completedTripPassengers
-              : item.pasajeros || 0
-          }
+          passengers={passengerCounts[item.id_viaje] ?? 0}
           onPress={() => handleShowCompletedModal(item)}
         />
       );
@@ -395,13 +437,13 @@ const DriverMyTripsScreen = ({
         }
         address={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
         departureDate={
-          selectedTrip?.programado_at
-            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+          selectedTrip?.salida_at
+            ? new Date(selectedTrip.salida_at).toLocaleDateString("es-CO")
             : "No disponible"
         }
         departureTime={
-          selectedTrip?.programado_at
-            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+          selectedTrip?.salida_at
+            ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO")
             : "No disponible"
         }
         arrivalDate={
@@ -414,11 +456,9 @@ const DriverMyTripsScreen = ({
             ? new Date(selectedTrip.llegada_at).toLocaleTimeString("es-CO")
             : "No disponible"
         }
-        passengers={
-          completedTripPassengers !== null
-            ? completedTripPassengers
-            : selectedTrip?.pasajeros || 0
-        }
+        passengers={passengerCounts[selectedTrip?.id_viaje] ?? 0}
+        reviews={completedTripReviews}
+        loadingReviews={loadingReviews}
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}
@@ -426,15 +466,16 @@ const DriverMyTripsScreen = ({
         pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
         destinationPlace={formatPlaceName(selectedTrip?.ruta?.nombre_llegada)}
         departureDate={
-          selectedTrip?.programado_at
-            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+          modalFechaMostrar
+            ? new Date(modalFechaMostrar).toLocaleDateString("es-CO")
             : "No disponible"
         }
         departureTime={
-          selectedTrip?.programado_at
-            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+          modalFechaMostrar
+            ? new Date(modalFechaMostrar).toLocaleTimeString("es-CO")
             : "No disponible"
         }
+        trip={selectedTrip}
         onStartTrip={() => {
           if (selectedTrip) {
             handleStartTrip(selectedTrip);

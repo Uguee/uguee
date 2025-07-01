@@ -9,11 +9,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-interface Review {
-  rating: number;
-  comment: string;
-}
-
 interface TripCompletedDetailsModalProps {
   visible: boolean;
   onClose: () => void;
@@ -24,7 +19,8 @@ interface TripCompletedDetailsModalProps {
   arrivalDate?: string;
   arrivalTime?: string;
   passengers?: number;
-  reviews?: Review[];
+  reviews?: { rating: number; comment: string }[];
+  loadingReviews?: boolean;
 }
 
 const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
@@ -37,11 +33,8 @@ const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
   arrivalDate = "2025-05-31",
   arrivalTime = "08:00:00 p.m",
   passengers = 3,
-  reviews = [
-    { rating: 3, comment: "Muy buen viaje" },
-    { rating: 4, comment: "Buen viaje, muy cómodo" },
-    { rating: 3, comment: "Me gustó el viaje" },
-  ],
+  reviews = [],
+  loadingReviews = false,
 }) => {
   const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -78,26 +71,36 @@ const TripCompletedDetailsModal: React.FC<TripCompletedDetailsModalProps> = ({
               <Text style={styles.value}>{passengers}</Text>
             </Text>
             <Text style={[styles.label, { marginTop: 10 }]}>Reseñas:</Text>
-            {reviews.map((review, idx) => (
-              <View key={idx} style={styles.reviewBox}>
-                <TouchableOpacity
-                  style={styles.starsRow}
-                  onPress={() => setExpanded(expanded === idx ? null : idx)}
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Ionicons
-                      key={n}
-                      name={n <= review.rating ? "star" : "star-outline"}
-                      size={22}
-                      color={n <= review.rating ? "#FFD600" : "#bbb"}
-                    />
-                  ))}
-                </TouchableOpacity>
-                {expanded === idx && (
-                  <Text style={styles.reviewComment}>{review.comment}</Text>
-                )}
-              </View>
-            ))}
+            {loadingReviews ? (
+              <Text style={{ color: "#666", marginTop: 8 }}>
+                Cargando reseñas...
+              </Text>
+            ) : reviews.length === 0 ? (
+              <Text style={{ color: "#666", marginTop: 8 }}>
+                No hay reseñas para este viaje.
+              </Text>
+            ) : (
+              reviews.map((review, idx) => (
+                <View key={idx} style={styles.reviewBox}>
+                  <TouchableOpacity
+                    style={styles.starsRow}
+                    onPress={() => setExpanded(expanded === idx ? null : idx)}
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Ionicons
+                        key={n}
+                        name={n <= review.rating ? "star" : "star-outline"}
+                        size={22}
+                        color={n <= review.rating ? "#FFD600" : "#bbb"}
+                      />
+                    ))}
+                  </TouchableOpacity>
+                  {expanded === idx && (
+                    <Text style={styles.reviewComment}>{review.comment}</Text>
+                  )}
+                </View>
+              ))
+            )}
           </ScrollView>
         </View>
       </View>

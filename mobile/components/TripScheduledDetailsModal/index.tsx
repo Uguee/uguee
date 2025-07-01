@@ -24,10 +24,10 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
   visible,
   onClose,
   onStartTrip = () => {},
-  pickupPlace = "Campus Meléndez Calle 13 # 100",
-  destinationPlace = "Cl. 13 #98-10",
-  departureDate = "2025-05-31",
-  departureTime = "07:00:00 p.m",
+  pickupPlace,
+  destinationPlace,
+  departureDate,
+  departureTime,
   trip,
 }) => {
   // Determina la fecha y hora a mostrar
@@ -69,7 +69,9 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
               Hora de salida: <Text style={styles.value}>{departureTime}</Text>
             </Text>
             <Text style={styles.confirmText}>
-              ¿Está seguro iniciar su viaje con la ruta actual?
+              {trip?.estado === "en-curso"
+                ? "Debes ver tu viaje para poder continuarlo"
+                : "Debes ver tu viaje para poder iniciarlo"}
             </Text>
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
@@ -79,14 +81,6 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
                 <Text style={styles.closeBtn2Text}>cerrar</Text>
               </TouchableOpacity>
             </View>
-            {/* Fecha y hora */}
-            {fechaMostrar && (
-              <Text style={styles.fechaText}>
-                {new Date(fechaMostrar).toLocaleDateString("es-CO") +
-                  " " +
-                  new Date(fechaMostrar).toLocaleTimeString("es-CO")}
-              </Text>
-            )}
           </ScrollView>
         </View>
       </View>
@@ -199,10 +193,6 @@ const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: "bold",
-  },
-  fechaText: {
-    fontSize: 14,
-    color: "#222",
   },
 });
 
