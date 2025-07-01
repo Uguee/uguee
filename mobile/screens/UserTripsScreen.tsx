@@ -5,7 +5,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Modal,
+  Modal as RNModal,
   Alert,
 } from "react-native";
 import { TopMenu } from "../components/TopMenu";
@@ -15,9 +15,14 @@ import UserTripDetailsModal from "../components/UserTripDetailsModal";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import { useUserInstitutionTrips } from "../hooks/useUserInstitutionTrips";
 import ScanQRScreen from "./ScanQRScreen";
-import { joinTripAsPassenger } from "../services/tripServices";
+import {
+  joinTripAsPassenger,
+  getActivePassengerTrip,
+} from "../services/tripServices";
 import { getCedulaByUUID } from "../services/userDataService";
 import { useAuth } from "../hooks/useAuth";
+import { getCurrentToken } from "../services/authService";
+import { Ionicons } from "@expo/vector-icons";
 
 function formatPlaceName(nombre: string | null | undefined): string {
   if (!nombre) return "";
@@ -70,6 +75,7 @@ export default function UserTripsScreen({
   const { trips, loading, error, howTrips, setHowTrips } =
     useUserInstitutionTrips();
   const { user } = useAuth();
+  const [showActiveTripModal, setShowActiveTripModal] = useState(false);
 
   const filteredTrips = trips.filter((trip) => {
     const routeName =
@@ -95,6 +101,34 @@ export default function UserTripsScreen({
     conductor: trip.conductor || trip.usuario || undefined,
     vehiculo: trip.vehiculo || {},
   });
+
+  const handleScanQRPress = async () => {
+    if (!user) return;
+    try {
+      // Obtener la cédula del usuario
+      const cedula = await getCedulaByUUID(user.id);
+      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
+      // Consultar si ya está en un viaje activo
+      const jwt = getCurrentToken();
+      if (!jwt)
+        throw new Error(
+          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
+        );
+      const res = await getActivePassengerTrip(cedula, jwt);
+      if (res.success && res.viajes && res.viajes.length > 0) {
+        setShowActiveTripModal(true);
+        return;
+      }
+      // Si no está en viaje activo, mostrar el ScanQRScreen
+      onShowScanQRScreen(null);
+    } catch (e: any) {
+      Alert.alert(
+        "Error",
+        e.message ||
+          "No se pudo verificar el estado de tus viajes. Intenta de nuevo."
+      );
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -130,7 +164,7 @@ export default function UserTripsScreen({
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>Viajes actuales disponibles</Text>
-      <Modal
+      <RNModal
         visible={filterModal}
         transparent
         animationType="fade"
@@ -172,7 +206,7 @@ export default function UserTripsScreen({
             ))}
           </View>
         </TouchableOpacity>
-      </Modal>
+      </RNModal>
       {loading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
@@ -195,7 +229,23 @@ export default function UserTripsScreen({
                   : `Ruta ${item.id_ruta}`
               }
               address={formatPlaceName(item.ruta?.nombre_partida)}
-              time={item.programado_local || ""}
+              time={
+                item.salida_at
+                  ? `${new Date(item.salida_at).toLocaleDateString(
+                      "es-CO"
+                    )} ${new Date(item.salida_at).toLocaleTimeString("es-CO", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
+                  : item.programado_at
+                  ? `${new Date(item.programado_at).toLocaleDateString(
+                      "es-CO"
+                    )} ${new Date(item.programado_at).toLocaleTimeString(
+                      "es-CO",
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}`
+                  : ""
+              }
               estado={item.estado}
               onPress={() => {
                 setSelectedTrip(mapTripData(item));
@@ -217,9 +267,27 @@ export default function UserTripsScreen({
             destinationPlace={formatPlaceName(
               selectedTrip?.ruta?.nombre_llegada
             )}
-            departureDate={selectedTrip?.programado_local?.split(",")[0] || ""}
+            departureDate={
+              selectedTrip?.salida_at
+                ? new Date(selectedTrip.salida_at).toLocaleDateString("es-CO")
+                : selectedTrip?.programado_at
+                ? new Date(selectedTrip.programado_at).toLocaleDateString(
+                    "es-CO"
+                  )
+                : "No disponible"
+            }
             departureTime={
-              selectedTrip?.programado_local?.split(",")[1]?.trim() || ""
+              selectedTrip?.salida_at
+                ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : selectedTrip?.programado_at
+                ? new Date(selectedTrip.programado_at).toLocaleTimeString(
+                    "es-CO",
+                    { hour: "2-digit", minute: "2-digit" }
+                  )
+                : "No disponible"
             }
             driver={
               selectedTrip?.conductor
@@ -273,7 +341,7 @@ export default function UserTripsScreen({
           flexDirection: "row",
           alignItems: "center",
         }}
-        onPress={() => onShowScanQRScreen(null)}
+        onPress={handleScanQRPress}
       >
         <Text
           style={{
@@ -286,6 +354,75 @@ export default function UserTripsScreen({
           Escanear QR
         </Text>
       </TouchableOpacity>
+      {/* Modal de advertencia de viaje activo */}
+      <RNModal
+        visible={showActiveTripModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActiveTripModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.25)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 18,
+              padding: 32,
+              alignItems: "center",
+              width: 320,
+              elevation: 8,
+            }}
+          >
+            <Ionicons
+              name="alert-circle"
+              size={64}
+              color="#ff5e5e"
+              style={{ marginBottom: 16 }}
+            />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: "#A259FF",
+                marginBottom: 12,
+                textAlign: "center",
+              }}
+            >
+              Ya tienes un viaje en curso
+            </Text>
+            <Text
+              style={{
+                fontSize: 16,
+                color: "#444",
+                textAlign: "center",
+                marginBottom: 24,
+              }}
+            >
+              Actualmente ya formas parte de un viaje en curso o pendiente. No
+              puedes ingresar a otro viaje hasta finalizar el actual.
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#A259FF",
+                borderRadius: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 32,
+              }}
+              onPress={() => setShowActiveTripModal(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+                Aceptar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </RNModal>
     </View>
   );
 }

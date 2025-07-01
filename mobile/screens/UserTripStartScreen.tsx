@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Modal as RNModal,
 } from "react-native";
 import ReturnButton from "../components/ReturnButton";
 import MapView, { Marker } from "react-native-maps";
@@ -19,8 +20,12 @@ import { getUserDataByIdUsuario } from "../services/userDataService";
 import ScanQRScreen from "./ScanQRScreen";
 import { joinTrip, leaveTrip } from "../services/passengerService";
 import { getCedulaByUUID } from "../services/userDataService";
-import { getPassengersByTripId } from "../services/tripServices";
+import {
+  getPassengersByTripId,
+  getActivePassengerTrip,
+} from "../services/tripServices";
 import { formatPlaceName } from "../lib/formatPlaceName";
+import { getCurrentToken } from "../services/authService";
 
 interface Passenger {
   id: number;
@@ -60,6 +65,10 @@ export default function UserTripStartScreen({
   const [loadingPassengers, setLoadingPassengers] = useState(true);
   const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
   const [myCedula, setMyCedula] = useState<number | null>(null);
+  const [showActiveTripModal, setShowActiveTripModal] = useState<
+    false | "otro" | "mismo"
+  >(false);
+  const [isAlreadyPassengerHere, setIsAlreadyPassengerHere] = useState(false);
 
   // Solicitar permiso de ubicación antes de mostrar el mapa
   useEffect(() => {
@@ -244,6 +253,33 @@ export default function UserTripStartScreen({
     fetchCedula();
   }, [user?.id]);
 
+  // Al montar, verificar si ya es pasajero de este viaje
+  useEffect(() => {
+    const checkIfAlreadyPassenger = async () => {
+      if (!user) return;
+      try {
+        const cedula = await getCedulaByUUID(user.id);
+        if (!cedula) return;
+        const jwt = getCurrentToken();
+        if (!jwt) return;
+        const res = await getActivePassengerTrip(cedula, jwt);
+        if (res.success && res.viajes && res.viajes.length > 0) {
+          const viajeActivo = res.viajes[0];
+          if (Number(viajeActivo.id_viaje) === Number(trip.id_viaje)) {
+            setIsAlreadyPassengerHere(true);
+          } else {
+            setIsAlreadyPassengerHere(false);
+          }
+        } else {
+          setIsAlreadyPassengerHere(false);
+        }
+      } catch {
+        setIsAlreadyPassengerHere(false);
+      }
+    };
+    checkIfAlreadyPassenger();
+  }, [user, trip?.id_viaje]);
+
   // Función para decodificar la polyline de Google Maps
   const decodePolyline = (encoded: string) => {
     const poly = [];
@@ -293,6 +329,37 @@ export default function UserTripStartScreen({
       onGoBack();
     } catch (e: any) {
       Alert.alert("Error", e.message || "No se pudo salir del viaje");
+    }
+  };
+
+  const handleScanQRPress = async () => {
+    if (!user) return;
+    try {
+      const cedula = await getCedulaByUUID(user.id);
+      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
+      const jwt = getCurrentToken();
+      if (!jwt)
+        throw new Error(
+          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
+        );
+      const res = await getActivePassengerTrip(cedula, jwt);
+      if (res.success && res.viajes && res.viajes.length > 0) {
+        const viajeActivo = res.viajes[0];
+        if (Number(viajeActivo.id_viaje) === Number(trip.id_viaje)) {
+          setShowActiveTripModal("mismo");
+        } else {
+          setShowActiveTripModal("otro");
+        }
+        return;
+      }
+      // Si no está en viaje activo, permitir escanear QR
+      onShowScanQRScreen(trip);
+    } catch (e: any) {
+      Alert.alert(
+        "Error",
+        e.message ||
+          "No se pudo verificar el estado de tus viajes. Intenta de nuevo."
+      );
     }
   };
 
@@ -448,7 +515,9 @@ export default function UserTripStartScreen({
             </View>
           </View>
           <Text style={styles.infoText}>
-            Antes de iniciar, escanea el qr proporcionado por el conductor
+            {isAlreadyPassengerHere
+              ? "¡Ya eres pasajero de este viaje! Debes esperar a que el conductor inicie el viaje."
+              : "Antes de iniciar, escanea el qr proporcionado por el conductor"}
           </Text>
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
@@ -521,12 +590,84 @@ export default function UserTripStartScreen({
               styles.startButton,
               { backgroundColor: "#A259FF", width: "100%" },
             ]}
-            onPress={() => onShowScanQRScreen(trip)}
+            onPress={handleScanQRPress}
           >
             <Text style={styles.buttonText}>Escanear QR</Text>
           </TouchableOpacity>
         </View>
       </View>
+      {/* Modal de advertencia de viaje activo o ya es pasajero */}
+      <RNModal
+        visible={!!showActiveTripModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowActiveTripModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.25)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 18,
+              padding: 32,
+              alignItems: "center",
+              width: 320,
+              elevation: 8,
+            }}
+          >
+            <Ionicons
+              name="alert-circle"
+              size={64}
+              color="#ff5e5e"
+              style={{ marginBottom: 16 }}
+            />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: "#A259FF",
+                marginBottom: 12,
+                textAlign: "center",
+              }}
+            >
+              {showActiveTripModal === "otro"
+                ? "Ya formas parte de otro viaje"
+                : "Ya eres pasajero de este viaje"}
+            </Text>
+            <Text
+              style={{
+                fontSize: 16,
+                color: "#444",
+                textAlign: "center",
+                marginBottom: 24,
+              }}
+            >
+              {showActiveTripModal === "otro"
+                ? "Actualmente ya formas parte de un viaje en curso o pendiente diferente a este. No puedes ingresar a otro viaje hasta finalizar el actual."
+                : "Ya eres pasajero de este viaje. Debes esperar a que el conductor inicie el viaje para poder participar."}
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#A259FF",
+                borderRadius: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 32,
+              }}
+              onPress={() => setShowActiveTripModal(false)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+                Aceptar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </RNModal>
     </View>
   );
 }

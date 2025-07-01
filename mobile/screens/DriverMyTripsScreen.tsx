@@ -236,6 +236,16 @@ const DriverMyTripsScreen = ({
   const renderTrip = ({ item }: { item: any }) => {
     // Usar el estado que viene de la edge function
     const estado = item.estado;
+    // Formato de hora solo horas y minutos
+    const horaMostrar = item.salida_at
+      ? `${new Date(item.salida_at).toLocaleDateString("es-CO")} ${new Date(
+          item.salida_at
+        ).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`
+      : item.programado_at
+      ? `${new Date(item.programado_at).toLocaleDateString("es-CO")} ${new Date(
+          item.programado_at
+        ).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`
+      : "";
 
     if (estado === "completado" || estado === "terminado") {
       return (
@@ -245,6 +255,7 @@ const DriverMyTripsScreen = ({
               " ➔ " +
               formatPlaceName(item.ruta?.nombre_llegada) || `${item.id_ruta}`
           }
+          time={horaMostrar}
           passengers={passengerCounts[item.id_viaje] ?? 0}
           onPress={() => handleShowCompletedModal(item)}
         />
@@ -262,6 +273,7 @@ const DriverMyTripsScreen = ({
         >
           <TripScheduledCard
             trip={item}
+            time={horaMostrar}
             onPress={() => {
               handleSelectTrip(item);
             }}
@@ -283,6 +295,7 @@ const DriverMyTripsScreen = ({
         >
           <TripScheduledCard
             trip={item}
+            time={horaMostrar}
             onPress={() => {
               handleSelectTrip(item);
             }}
@@ -305,6 +318,7 @@ const DriverMyTripsScreen = ({
         >
           <TripScheduledCard
             trip={item}
+            time={horaMostrar}
             onPress={() => {
               handleSelectTrip(item);
             }}
@@ -440,11 +454,21 @@ const DriverMyTripsScreen = ({
         departureDate={
           selectedTrip?.salida_at
             ? new Date(selectedTrip.salida_at).toLocaleDateString("es-CO")
+            : selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
             : "No disponible"
         }
         departureTime={
           selectedTrip?.salida_at
-            ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO")
+            ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
             : "No disponible"
         }
         arrivalDate={
@@ -473,7 +497,10 @@ const DriverMyTripsScreen = ({
         }
         departureTime={
           modalFechaMostrar
-            ? new Date(modalFechaMostrar).toLocaleTimeString("es-CO")
+            ? new Date(modalFechaMostrar).toLocaleTimeString("es-CO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
             : "No disponible"
         }
         trip={selectedTrip}

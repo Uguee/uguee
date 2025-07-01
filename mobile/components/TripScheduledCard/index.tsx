@@ -129,7 +129,10 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
               {fechaMostrar
                 ? new Date(fechaMostrar).toLocaleDateString("es-CO") +
                   " " +
-                  new Date(fechaMostrar).toLocaleTimeString("es-CO")
+                  new Date(fechaMostrar).toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                 : "No disponible"}
             </Text>
           </View>
