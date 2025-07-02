@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,21 @@ import {
   TouchableOpacity,
   Dimensions,
   FlatList,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TopMenu } from "../components/TopMenu";
 import { HomeBottomMenu } from "../components/HomeBottomMenu";
 import RatingModal from "../components/RatingModal";
 import ViewRatingModal from "../components/ViewRatingModal";
+import {
+  getFinishedTripsByUserId,
+  getActivePassengerTrip,
+} from "../services/tripServices";
+import { getTripReview, createTripReview } from "../services/reviewService";
+import { useAuth } from "../hooks/useAuth";
+import { getCurrentToken } from "../services/authService";
+import { getCedulaByUUID } from "../services/userDataService";
 
 interface UserServicesScreenProps {
   onGoToHome?: () => void;
@@ -29,37 +38,51 @@ const ServiciosScreen = ({
   onGoToServices = () => {},
   onGoToScanQR = () => {},
 }: UserServicesScreenProps) => {
-  const [ratingModalVisible, setRatingModalVisible] = React.useState(false);
-  const [selectedTrip, setSelectedTrip] = React.useState<any>(null);
-  const [viewRatingModalVisible, setViewRatingModalVisible] =
-    React.useState(false);
-  const [viewRatingData, setViewRatingData] = React.useState<{
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [viewRatingModalVisible, setViewRatingModalVisible] = useState(false);
+  const [viewRatingData, setViewRatingData] = useState<{
     rating: number;
     comment: string;
   } | null>(null);
-  const historialViajes = [
-    {
-      id: 1,
-      fechaInicio: "18 junio 2025, 3:00 p.m.",
-      fechaLlegada: "18 junio 2025, 3:40 p.m.",
-      desde: "Universidad del Valle",
-      hasta: "Unicentro - Sur",
-      estado: "Pendiente a calificar", // info fija por ahora
-      conductor: "Roberto Rojerrio",
-      placa: "ABC123",
-    },
-    {
-      id: 2,
-      fechaInicio: "15 junio 2025, 10:00 a.m.",
-      fechaLlegada: "15 junio 2025, 10:40 a.m.",
-      desde: "Unicentro - Sur",
-      hasta: "Universidad del Valle",
-      estado: "Calificado", // info fija por ahora
-      conductor: "María López",
-      placa: "XYZ789",
-    },
-    // Puedes agregar más entradas aquí
-  ];
+  const [historialViajes, setHistorialViajes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      setLoading(true);
+      try {
+        if (!user?.id) {
+          console.log("No hay user.id");
+          return;
+        }
+        const id_usuario = await getCedulaByUUID(user.id);
+        if (!id_usuario) {
+          console.log("No se pudo obtener id_usuario");
+          return;
+        }
+        const jwt = getCurrentToken();
+        if (!jwt) {
+          console.log("No hay JWT");
+          return;
+        }
+        console.log("Consultando viajes con:", {
+          id_usuario,
+          jwt: jwt.slice(0, 10) + "...",
+        });
+        const { viajes } = await getFinishedTripsByUserId(id_usuario, jwt);
+        console.log("Respuesta de getFinishedTripsByUserId:", viajes);
+        setHistorialViajes(viajes);
+      } catch (e) {
+        console.error("Error al consultar viajes:", e);
+        setHistorialViajes([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
+  }, [user?.id]);
 
   // Componente para la tarjeta de historial de viaje
   const TripsHistoryCard = ({
@@ -68,67 +91,164 @@ const ServiciosScreen = ({
   }: {
     item: any;
     onPress?: () => void;
-  }) => (
-    <TouchableOpacity
-      style={styles.tripCard}
-      activeOpacity={0.8}
-      onPress={onPress}
-    >
-      <Text style={styles.tripRoute} numberOfLines={2} ellipsizeMode="tail">
-        {item.desde} ➔ {item.hasta}
-      </Text>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginTop: 6,
-          marginBottom: 6,
-        }}
-      >
-        <View
-          style={[
-            styles.estadoBadge,
-            item.estado === "Pendiente a calificar"
-              ? styles.estadoPendiente
-              : styles.estadoCalificado,
-          ]}
-        >
-          <Text style={styles.estadoBadgeText}>{item.estado}</Text>
-        </View>
-      </View>
-      <View style={styles.fechaRow}>
-        <Text style={styles.fechaLabel}>Inicio:</Text>
-        <Text style={styles.fechaValue}>{item.fechaInicio}</Text>
-      </View>
-      <View style={styles.fechaRow}>
-        <Text style={styles.fechaLabel}>Llegada:</Text>
-        <Text style={styles.fechaValue}>{item.fechaLlegada}</Text>
-      </View>
-      <View style={styles.fechaRow}>
-        <Text style={styles.fechaLabel}>Conductor:</Text>
-        <Text style={styles.fechaValue}>{item.conductor}</Text>
-      </View>
-      <View style={styles.fechaRow}>
-        <Text style={styles.fechaLabel}>Placa:</Text>
-        <Text style={styles.fechaValue}>{item.placa}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  }) => {
+    // Log fuera del JSX
+    console.log("Conductor del viaje:", item.conductor);
 
-  const handleOpenRating = (trip: any) => {
+    return (
+      <TouchableOpacity
+        style={styles.tripCard}
+        activeOpacity={0.8}
+        onPress={onPress}
+      >
+        <Text style={styles.tripRoute} numberOfLines={2} ellipsizeMode="tail">
+          {item.ruta?.nombre_partida} ➔ {item.ruta?.nombre_llegada}
+        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginTop: 6,
+            marginBottom: 6,
+          }}
+        >
+          <View
+            style={[
+              styles.estadoBadge,
+              item.tiene_resena
+                ? styles.estadoCalificado
+                : styles.estadoPendiente,
+            ]}
+          >
+            <Text style={styles.estadoBadgeText}>
+              {item.tiene_resena ? "Calificado" : "Pendiente a calificar"}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.fechaRow}>
+          <Text style={styles.fechaLabel}>Inicio:</Text>
+          <Text style={styles.fechaValue}>
+            {item.salida_at
+              ? new Date(item.salida_at).toLocaleString("es-CO")
+              : "-"}
+          </Text>
+        </View>
+        <View style={styles.fechaRow}>
+          <Text style={styles.fechaLabel}>Llegada:</Text>
+          <Text style={styles.fechaValue}>
+            {item.llegada_at
+              ? new Date(item.llegada_at).toLocaleString("es-CO")
+              : "-"}
+          </Text>
+        </View>
+        <View style={styles.fechaRow}>
+          <Text style={styles.fechaLabel}>Placa:</Text>
+          <Text style={styles.fechaValue}>{item.vehiculo?.placa || "-"}</Text>
+        </View>
+        <View style={styles.fechaRow}>
+          <Text style={styles.fechaLabel}>Conductor:</Text>
+          <Text style={styles.fechaValue}>
+            {item.conductor &&
+            (item.conductor.nombre || item.conductor.apellido)
+              ? `${item.conductor.nombre || ""} ${
+                  item.conductor.apellido || ""
+                }`.trim()
+              : "-"}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const handleOpenRating = async (trip: any) => {
+    if (!trip || !trip.id_viaje) return;
     setSelectedTrip(trip);
-    if (trip.estado === "Calificado") {
-      // En el futuro, estos datos vendrán de Supabase
-      setViewRatingData({ rating: 4, comment: "Muy buen viaje" });
+    if (trip.tiene_resena) {
+      // Mostrar modal de reseña existente
+      if (!user?.id) return;
+      const id_usuario = await getCedulaByUUID(user.id);
+      if (!id_usuario) return;
+      const jwt = getCurrentToken();
+      if (!jwt) return;
+      const res = await getTripReview(id_usuario, trip.id_viaje, jwt);
+      setViewRatingData({
+        rating: res.resena?.calificacion || 0,
+        comment: res.resena?.descripcion || "",
+      });
       setViewRatingModalVisible(true);
     } else {
       setRatingModalVisible(true);
     }
   };
 
-  const handleSubmitRating = (rating: number, comment: string) => {
-    // Aquí luego guardarás en Supabase
-    console.log("Calificación enviada:", rating, comment, selectedTrip);
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    setRatingModalVisible(false);
+    if (!selectedTrip || !selectedTrip.id_viaje || !user?.id) return;
+    try {
+      const id_usuario = await getCedulaByUUID(user.id);
+      if (!id_usuario) throw new Error("No se pudo obtener el id_usuario");
+      const jwt = getCurrentToken();
+      if (!jwt) throw new Error("No hay JWT");
+      const res = await createTripReview(
+        id_usuario,
+        selectedTrip.id_viaje,
+        rating,
+        comment,
+        jwt
+      );
+      if (res.success) {
+        // Actualizar el historial para reflejar el cambio
+        setHistorialViajes((prev) =>
+          prev.map((v) =>
+            v.id_viaje === selectedTrip.id_viaje
+              ? { ...v, tiene_resena: true }
+              : v
+          )
+        );
+        alert("¡Reseña guardada exitosamente!");
+      } else {
+        alert(res.error || "Error al guardar la reseña");
+      }
+    } catch (e: any) {
+      alert(e.message || "Error inesperado al guardar la reseña");
+    }
+  };
+
+  // Handler para escanear QR con validación de viaje activo
+  const handleScanQRPress = async () => {
+    if (!user) return;
+    try {
+      const cedula = await getCedulaByUUID(user.id);
+      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
+      const jwt = getCurrentToken();
+      if (!jwt)
+        throw new Error(
+          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
+        );
+      const res = await getActivePassengerTrip(cedula, jwt);
+      if (res.success && res.viajes && res.viajes.length > 0) {
+        // Mostrar alert bonito
+        Alert.alert(
+          "Ya tienes un viaje en curso",
+          "Actualmente ya formas parte de un viaje en curso o pendiente. No puedes ingresar a otro viaje hasta finalizar el actual.",
+          [
+            {
+              text: "Aceptar",
+              style: "default",
+            },
+          ]
+        );
+        return;
+      }
+      // Si no está en viaje activo, permitir escanear
+      onGoToScanQR();
+    } catch (e: any) {
+      Alert.alert(
+        "Error",
+        e.message ||
+          "No se pudo verificar el estado de tus viajes. Intenta de nuevo."
+      );
+    }
   };
 
   return (
@@ -144,7 +264,7 @@ const ServiciosScreen = ({
       {/* Escaneo */}
       <TouchableOpacity
         style={[styles.scanButton, { marginHorizontal: 20 }]}
-        onPress={onGoToScanQR}
+        onPress={handleScanQRPress}
       >
         <Ionicons name="camera-outline" size={24} color="white" />
         <Text style={styles.scanText}>Escanear código para iniciar viaje</Text>
@@ -155,18 +275,26 @@ const ServiciosScreen = ({
       <Text style={[styles.sectionTitle, { marginLeft: 27 }]}>
         Historial de viajes
       </Text>
-      <FlatList
-        data={historialViajes}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        renderItem={({ item }) => (
-          <TripsHistoryCard
-            item={item}
-            onPress={() => handleOpenRating(item)}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <Text style={{ textAlign: "center", marginTop: 30 }}>
+          Cargando viajes...
+        </Text>
+      ) : (
+        <FlatList
+          data={historialViajes}
+          keyExtractor={(item) =>
+            item?.id_viaje ? item.id_viaje.toString() : Math.random().toString()
+          }
+          contentContainerStyle={{ paddingBottom: 120 }}
+          renderItem={({ item }) => (
+            <TripsHistoryCard
+              item={item}
+              onPress={() => handleOpenRating(item)}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       <RatingModal
         visible={ratingModalVisible}
         onClose={() => setRatingModalVisible(false)}

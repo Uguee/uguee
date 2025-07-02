@@ -43,3 +43,46 @@ export async function getTripReview(
     };
   }
 }
+
+/**
+ * Crea una reseña para un viaje terminado usando la edge function 'to-review-a-trip'.
+ * @param {number} id_usuario - ID del usuario pasajero (numérico)
+ * @param {number} id_viaje - ID del viaje
+ * @param {number} calificacion - Calificación (1-5)
+ * @param {string} descripcion - Comentario (máx 500 caracteres)
+ * @param {string} jwt - Token JWT para autenticación
+ * @returns {Promise<{ success: boolean; reseña?: any; error?: string }>} Resultado de la operación
+ */
+export async function createTripReview(
+  id_usuario: number,
+  id_viaje: number,
+  calificacion: number,
+  descripcion: string,
+  jwt: string
+): Promise<{ success: boolean; reseña?: any; error?: string }> {
+  try {
+    const response = await fetch(
+      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/to-review-a-trip",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          id_usuario,
+          id_viaje,
+          calificacion,
+          descripcion,
+        }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, error: data.error || "Error al crear reseña" };
+    }
+    return { success: true, reseña: data.reseña };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Error inesperado" };
+  }
+}

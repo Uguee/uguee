@@ -26,6 +26,7 @@ import {
 } from "../services/tripServices";
 import { formatPlaceName } from "../lib/formatPlaceName";
 import { getCurrentToken } from "../services/authService";
+import { useTripInProgressSubscription } from "../hooks/useTripInProgressSubscription";
 
 interface Passenger {
   id: number;
@@ -35,7 +36,7 @@ interface Passenger {
 interface UserTripStartProps {
   trip: any;
   onGoBack: () => void;
-  onStartTrip: () => void;
+  onStartTrip: (trip: any) => void;
   onShowScanQRScreen: (trip: any) => void;
 }
 
@@ -279,6 +280,18 @@ export default function UserTripStartScreen({
     };
     checkIfAlreadyPassenger();
   }, [user, trip?.id_viaje]);
+
+  // Suscripción realtime: si el viaje pasa a 'en-curso', navegar automáticamente
+  useTripInProgressSubscription(trip.id_viaje, (viajeActualizado) => {
+    console.log(
+      "🌟 Callback onInProgress ejecutado en UserTripStartScreen:",
+      viajeActualizado
+    );
+    if (typeof onStartTrip === "function") {
+      console.log("🏁 Navegando a user-trip-active con:", viajeActualizado);
+      onStartTrip(viajeActualizado);
+    }
+  });
 
   // Función para decodificar la polyline de Google Maps
   const decodePolyline = (encoded: string) => {

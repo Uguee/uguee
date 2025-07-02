@@ -442,16 +442,23 @@ export async function endTrip(id_viaje: number, id_conductor: number) {
 /**
  * Consulta el viaje más relevante en el que el usuario participa como pasajero.
  * Usa la edge function 'get-active-passenger-trip'.
- * @param {number} id_usuario - ID del usuario
+ * @param {number} id_usuario - ID del usuario (cédula)
  * @param {string} jwt - Token JWT para autenticación
- * @returns {Promise<{ success: boolean; viajes: any[]; error?: string }>}
+ * @returns {Promise<{ success: boolean; viajes: any[]; error?: string }>} Donde cada viaje incluye info enriquecida (vehiculo, ruta, conductor)
  */
-export async function getActivePassengerTrip(id_usuario: number, jwt: string) {
+export async function getActivePassengerTrip(
+  id_usuario: number,
+  jwt: string
+): Promise<{ success: boolean; viajes: any[]; error?: string }> {
+  console.log(
+    "[getActivePassengerTrip] llamada con cedula=",
+    id_usuario,
+    "jwt=",
+    jwt
+  );
   try {
     const response = await fetch(
-      `${
-        process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-      }/functions/v1/get-active-passenger-trip`,
+      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-active-passenger-trip",
       {
         method: "POST",
         headers: {
@@ -477,4 +484,33 @@ export async function getActivePassengerTrip(id_usuario: number, jwt: string) {
       error: error.message || "Error inesperado",
     };
   }
+}
+
+/**
+ * Consulta los viajes finalizados donde el usuario fue pasajero, junto con la bandera de si ya dejó reseña y los datos del conductor.
+ * @param id_usuario ID del usuario pasajero (cédula)
+ * @param jwt JWT de autenticación
+ * @returns {Promise<{ viajes: any[] }>} Lista de viajes terminados, bandera tiene_resena y datos del conductor
+ */
+export async function getFinishedTripsByUserId(
+  id_usuario: number,
+  jwt: string
+): Promise<{ viajes: any[] }> {
+  const response = await fetch(
+    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-finished-trips-by-user-id",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ id_usuario }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error al consultar viajes finalizados");
+  }
+  // Ahora cada viaje incluye el objeto 'conductor'
+  return data;
 }

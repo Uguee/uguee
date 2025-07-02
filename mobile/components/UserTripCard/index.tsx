@@ -12,6 +12,7 @@ interface UserTripCardProps {
     | "completado"
     | "desconocido";
   onPress?: () => void;
+  customEstadoLabel?: string;
 }
 
 function formatPlaceName(nombre: string | null | undefined): string {
@@ -42,6 +43,7 @@ const UserTripCard: React.FC<UserTripCardProps> = ({
   time = "2:30 PM",
   estado = "programado",
   onPress = () => {},
+  customEstadoLabel,
 }) => {
   let borderColor = "#222";
   if (estado === "pendiente") borderColor = "#E9D5FF";
@@ -70,7 +72,9 @@ const UserTripCard: React.FC<UserTripCardProps> = ({
               { backgroundColor: getEstadoBadgeColor(estado) },
             ]}
           >
-            <Text style={styles.estadoBadgeText}>{getEstadoLabel(estado)}</Text>
+            <Text style={styles.estadoBadgeText}>
+              {customEstadoLabel || getEstadoLabel(estado)}
+            </Text>
           </View>
         </View>
       </View>

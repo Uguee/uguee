@@ -44,6 +44,12 @@ import { joinTripAsPassenger } from "./services/tripServices";
 import UserServicesScreen from "./screens/userServicesScreen";
 import UserTripStartScreen from "./screens/UserTripStartScreen";
 import TripCompletedDetailsModal from "./components/TripCompletedDetailsModal";
+import UserTripActiveScreen from "./screens/UserTripActiveScreen";
+import RatingModal from "./components/RatingModal";
+import { useTripEndSubscription } from "./hooks/useTripEndSubscription";
+import { getActivePassengerTrip } from "./services/tripServices";
+import { getCurrentToken } from "./services/authService";
+import { createTripReview } from "./services/reviewService";
 
 type Screen =
   | "welcome"
@@ -76,7 +82,8 @@ type Screen =
   | "scan-qr"
   | "user-services"
   | "user-trip-start"
-  | "driver-trip-active";
+  | "driver-trip-active"
+  | "user-trip-active";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -107,6 +114,9 @@ const AppNavigator = () => {
   const [completedTrip, setCompletedTrip] = useState<any>(null);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showEndTripModal, setShowEndTripModal] = useState(false);
+  const [userActiveTripData, setUserActiveTripData] = useState<any>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [tripToRate, setTripToRate] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -129,6 +139,93 @@ const AppNavigator = () => {
       getCedulaByUUID(user.id).then(setCedula);
     }
   }, [user?.id]);
+
+  // Lógica para detectar viaje activo y suscribirse a su finalización
+  useEffect(() => {
+    console.log("[App] useEffect: user?.id=", user?.id, "cedula=", cedula);
+    const fetchActiveTrip = async () => {
+      if (!user?.id || !cedula) {
+        console.log(
+          "[App] No hay user?.id o cedula, no se consulta viaje activo"
+        );
+        return;
+      }
+      const jwt = getCurrentToken();
+      if (!jwt) {
+        console.log("[App] No hay JWT, no se consulta viaje activo");
+        return;
+      }
+      console.log(
+        "[App] Llamando getActivePassengerTrip con cedula=",
+        cedula,
+        "jwt=",
+        jwt
+      );
+      const res = await getActivePassengerTrip(Number(cedula), jwt);
+      console.log("[App] Resultado getActivePassengerTrip:", res);
+      if (res.success && res.viajes.length > 0) {
+        // Selecciona el viaje con mayor id_viaje
+        const viajeMasReciente = res.viajes.reduce(
+          (max, v) => (v.id_viaje > max.id_viaje ? v : max),
+          res.viajes[0]
+        );
+        setTripToRate(viajeMasReciente);
+        console.log("[App] setTripToRate (mayor id_viaje):", viajeMasReciente);
+        console.log("[App] id_viaje seteado:", viajeMasReciente?.id_viaje);
+      } else {
+        setTripToRate(null);
+        console.log("[App] No hay viaje activo, setTripToRate(null)");
+      }
+    };
+    fetchActiveTrip();
+  }, [user?.id, cedula]);
+
+  // Suscribirse al fin del viaje activo
+  useTripEndSubscription(tripToRate?.id_viaje, (viajeFinalizado) => {
+    console.log(
+      "[App] Callback useTripEndSubscription: viajeFinalizado=",
+      viajeFinalizado
+    );
+    setTripToRate(viajeFinalizado);
+    setShowRatingModal(true);
+  });
+
+  // Handler para guardar la reseña y redirigir
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    setShowRatingModal(false);
+    if (!tripToRate || !tripToRate.id_viaje || !user?.id) {
+      console.log(
+        "[App] handleSubmitRating: tripToRate o id_viaje o user.id faltante"
+      );
+      return;
+    }
+    try {
+      const id_usuario = await getCedulaByUUID(user.id);
+      const jwt = getCurrentToken();
+      if (!id_usuario || !jwt) throw new Error("No hay usuario o JWT");
+      console.log("[App] Enviando reseña:", {
+        id_usuario,
+        id_viaje: tripToRate.id_viaje,
+        rating,
+        comment,
+      });
+      const res = await createTripReview(
+        id_usuario,
+        tripToRate.id_viaje,
+        rating,
+        comment,
+        jwt
+      );
+      if (res.success) {
+        alert("¡Reseña guardada exitosamente!");
+        setCurrentScreen("user-services");
+      } else {
+        alert(res.error || "Error al guardar la reseña");
+      }
+    } catch (e: any) {
+      alert(e.message || "Error inesperado al guardar la reseña");
+    }
+  };
 
   const handleBackToHome = () => {
     setCurrentScreen("welcome");
@@ -377,10 +474,41 @@ const AppNavigator = () => {
         [
           {
             text: "OK",
-            onPress: () => {
+            onPress: async () => {
               setShowScanQRScreen(false);
               setScanQRTripData(null);
-              setCurrentScreen("user-trips");
+              // Refresca el viaje activo y setea tripToRate
+              try {
+                const jwt = getCurrentToken();
+                if (!cedula || !jwt) return;
+                const res = await getActivePassengerTrip(Number(cedula), jwt);
+                if (res.success && res.viajes.length > 0) {
+                  const viajeMasReciente = res.viajes.reduce(
+                    (max, v) => (v.id_viaje > max.id_viaje ? v : max),
+                    res.viajes[0]
+                  );
+                  setTripToRate(viajeMasReciente);
+                  console.log(
+                    "[App] (post-join) setTripToRate (mayor id_viaje):",
+                    viajeMasReciente
+                  );
+                  console.log(
+                    "[App] (post-join) id_viaje seteado:",
+                    viajeMasReciente?.id_viaje
+                  );
+                } else {
+                  setTripToRate(null);
+                  console.log(
+                    "[App] (post-join) No hay viaje activo, setTripToRate(null)"
+                  );
+                }
+              } catch (e) {
+                console.log(
+                  "[App] (post-join) Error refrescando viaje activo:",
+                  e
+                );
+              }
+              setCurrentScreen("user-services");
             },
           },
         ]
@@ -717,6 +845,14 @@ const AppNavigator = () => {
             onShowScanQRScreen={handleShowScanQRScreen}
             onGoToServices={handleGoToServices}
             onGoToUserTripStartScreen={handleGoToUserTripStartScreen}
+            onGoToUserTripActiveScreen={(tripData) => {
+              console.log(
+                "[App] Navegando a user-trip-active con trip:",
+                tripData
+              );
+              setUserActiveTripData(tripData);
+              setCurrentScreen("user-trip-active");
+            }}
           />
         );
       case "driver-trip-start":
@@ -817,7 +953,10 @@ const AppNavigator = () => {
           <UserTripStartScreen
             trip={userTripStartData}
             onGoBack={() => setCurrentScreen("user-trips")}
-            onStartTrip={() => {}}
+            onStartTrip={(viajeActualizado) => {
+              setUserActiveTripData(viajeActualizado);
+              setCurrentScreen("user-trip-active");
+            }}
             onShowScanQRScreen={handleShowScanQRScreenFromTripStart}
           />
         );
@@ -906,6 +1045,13 @@ const AppNavigator = () => {
             </Modal>
           </>
         );
+      case "user-trip-active":
+        return (
+          <UserTripActiveScreen
+            trip={userActiveTripData}
+            onGoBack={() => setCurrentScreen("user-trips")}
+          />
+        );
       default:
         return (
           <WelcomeScreen onLogin={handleLogin} onRegister={handleRegister} />
@@ -917,6 +1063,26 @@ const AppNavigator = () => {
     <>
       <StatusBar style="auto" />
       {renderCurrentScreen()}
+      {/* Modal de calificación global al finalizar viaje */}
+      <RatingModal
+        visible={showRatingModal}
+        onClose={() => {
+          setShowRatingModal(false);
+          setCurrentScreen("user-services");
+          // Mostrar alerta personalizada sin título
+          Alert.alert(
+            "",
+            "Tu reseña es importante y nos ayuda a mejorar, recuerda hacerla luego.",
+            [
+              {
+                text: "OK",
+                onPress: () => {},
+              },
+            ]
+          );
+        }}
+        onSubmit={handleSubmitRating}
+      />
       {/* Modal de viaje completado */}
       <TripCompletedDetailsModal
         visible={showCompletedModal}

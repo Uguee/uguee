@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,10 @@ import {
   joinTripAsPassenger,
   getActivePassengerTrip,
 } from "../services/tripServices";
-import { getCedulaByUUID } from "../services/userDataService";
+import {
+  getCedulaByUUID,
+  getUserDataByIdUsuario,
+} from "../services/userDataService";
 import { useAuth } from "../hooks/useAuth";
 import { getCurrentToken } from "../services/authService";
 import { Ionicons } from "@expo/vector-icons";
@@ -59,6 +62,7 @@ interface UserTripsScreenProps {
   onShowScanQRScreen?: (tripData: any) => void;
   onGoToServices?: () => void;
   onGoToUserTripStartScreen?: (tripData: any) => void;
+  onGoToUserTripActiveScreen?: (tripData: any) => void;
 }
 
 export default function UserTripsScreen({
@@ -67,6 +71,7 @@ export default function UserTripsScreen({
   onShowScanQRScreen = () => {},
   onGoToServices = () => {},
   onGoToUserTripStartScreen = () => {},
+  onGoToUserTripActiveScreen = () => {},
 }: UserTripsScreenProps) {
   const [search, setSearch] = useState("");
   const [showDetails, setShowDetails] = useState(false);
@@ -76,6 +81,8 @@ export default function UserTripsScreen({
     useUserInstitutionTrips();
   const { user } = useAuth();
   const [showActiveTripModal, setShowActiveTripModal] = useState(false);
+  const [activePassengerTrip, setActivePassengerTrip] = useState<any>(null);
+  const [loadingActiveTrip, setLoadingActiveTrip] = useState(true);
 
   const filteredTrips = trips.filter((trip) => {
     const routeName =
@@ -94,6 +101,30 @@ export default function UserTripsScreen({
       )
     );
   });
+
+  useEffect(() => {
+    const fetchActiveTrip = async () => {
+      if (!user) return;
+      setLoadingActiveTrip(true);
+      try {
+        const cedula = await getCedulaByUUID(user.id);
+        const jwt = getCurrentToken();
+        if (cedula && jwt) {
+          const res = await getActivePassengerTrip(cedula, jwt);
+          if (res.success && res.viajes && res.viajes.length > 0) {
+            setActivePassengerTrip(res.viajes[0]);
+          } else {
+            setActivePassengerTrip(null);
+          }
+        }
+      } catch {
+        setActivePassengerTrip(null);
+      } finally {
+        setLoadingActiveTrip(false);
+      }
+    };
+    fetchActiveTrip();
+  }, [user]);
 
   // Función para mapear los datos del viaje y asegurar que el modal reciba los campos correctos
   const mapTripData = (trip: any) => ({
@@ -130,6 +161,17 @@ export default function UserTripsScreen({
     }
   };
 
+  // Si el viaje activo tiene salida_at (ya inició), lo mostramos destacado y lo quitamos de la lista
+  const showActiveTripCard =
+    activePassengerTrip && activePassengerTrip.salida_at;
+  const tripsWithoutActive = filteredTrips.filter(
+    (trip) =>
+      !showActiveTripCard ||
+      (trip?.id_viaje &&
+        activePassengerTrip?.id_viaje &&
+        String(trip.id_viaje) !== String(activePassengerTrip.id_viaje))
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <TopMenu onMenuPress={() => {}} />
@@ -164,6 +206,40 @@ export default function UserTripsScreen({
         </TouchableOpacity>
       </View>
       <Text style={styles.title}>Viajes actuales disponibles</Text>
+      {loadingActiveTrip ? (
+        <View style={{ alignItems: "center", marginTop: 20 }}>
+          <Text style={{ color: "#A259FF" }}>Buscando viajes en curso...</Text>
+        </View>
+      ) : showActiveTripCard ? (
+        <UserTripCard
+          route={
+            activePassengerTrip.ruta?.nombre_partida &&
+            activePassengerTrip.ruta?.nombre_llegada
+              ? `${formatPlaceName(
+                  activePassengerTrip.ruta.nombre_partida
+                )} ➔ ${formatPlaceName(
+                  activePassengerTrip.ruta.nombre_llegada
+                )}`
+              : `Ruta ${activePassengerTrip.id_ruta}`
+          }
+          address={formatPlaceName(activePassengerTrip.ruta?.nombre_partida)}
+          time={
+            activePassengerTrip.salida_at
+              ? `${new Date(activePassengerTrip.salida_at).toLocaleDateString(
+                  "es-CO"
+                )} ${new Date(activePassengerTrip.salida_at).toLocaleTimeString(
+                  "es-CO",
+                  { hour: "2-digit", minute: "2-digit" }
+                )}`
+              : "-"
+          }
+          estado={"en-curso"}
+          onPress={() => {
+            setSelectedTrip(mapTripData(activePassengerTrip));
+            setShowDetails(true);
+          }}
+        />
+      ) : null}
       <RNModal
         visible={filterModal}
         transparent
@@ -217,8 +293,10 @@ export default function UserTripsScreen({
         </View>
       ) : (
         <FlatList
-          data={filteredTrips}
-          keyExtractor={(item) => item.id_viaje?.toString()}
+          data={tripsWithoutActive}
+          keyExtractor={(item) =>
+            item?.id_viaje ? item.id_viaje.toString() : Math.random().toString()
+          }
           renderItem={({ item }) => (
             <UserTripCard
               route={
@@ -251,70 +329,101 @@ export default function UserTripsScreen({
                 setSelectedTrip(mapTripData(item));
                 setShowDetails(true);
               }}
+              customEstadoLabel={
+                activePassengerTrip &&
+                item?.id_viaje &&
+                activePassengerTrip?.id_viaje &&
+                String(item.id_viaje) ===
+                  String(activePassengerTrip.id_viaje) &&
+                !item.salida_at
+                  ? "Eres pasajero de este viaje"
+                  : undefined
+              }
             />
           )}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         />
       )}
-      {showDetails &&
-        (console.log("[UserTripsScreen] selectedTrip:", selectedTrip),
-        (
-          <UserTripDetailsModal
-            visible={showDetails}
-            onClose={() => setShowDetails(false)}
-            pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
-            destinationPlace={formatPlaceName(
-              selectedTrip?.ruta?.nombre_llegada
-            )}
-            departureDate={
-              selectedTrip?.salida_at
-                ? new Date(selectedTrip.salida_at).toLocaleDateString("es-CO")
-                : selectedTrip?.programado_at
-                ? new Date(selectedTrip.programado_at).toLocaleDateString(
-                    "es-CO"
-                  )
-                : "No disponible"
+      {showDetails && (
+        <UserTripDetailsModal
+          visible={showDetails}
+          onClose={() => setShowDetails(false)}
+          pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+          destinationPlace={formatPlaceName(selectedTrip?.ruta?.nombre_llegada)}
+          departureDate={
+            selectedTrip?.salida_at
+              ? new Date(selectedTrip.salida_at).toLocaleDateString("es-CO")
+              : selectedTrip?.programado_at
+              ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+              : "No disponible"
+          }
+          departureTime={
+            selectedTrip?.salida_at
+              ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : selectedTrip?.programado_at
+              ? new Date(selectedTrip.programado_at).toLocaleTimeString(
+                  "es-CO",
+                  { hour: "2-digit", minute: "2-digit" }
+                )
+              : "No disponible"
+          }
+          driver={
+            selectedTrip?.conductor
+              ? `${selectedTrip.conductor.nombre} ${selectedTrip.conductor.apellido}`
+              : "-"
+          }
+          vehicleType={getTipoVehiculoLabel(selectedTrip?.vehiculo?.tipo)}
+          color={selectedTrip?.vehiculo?.color || "-"}
+          plate={selectedTrip?.vehiculo?.placa || "-"}
+          estado={selectedTrip?.estado}
+          pasajeros={selectedTrip?.pasajeros}
+          onStartTrip={async () => {
+            setShowDetails(false);
+            let conductor = selectedTrip.conductor;
+            if (!conductor && selectedTrip.id_conductor) {
+              try {
+                const data = await getUserDataByIdUsuario(
+                  Number(selectedTrip.id_conductor)
+                );
+                if (data && data.nombre && data.apellido) {
+                  conductor = {
+                    id_usuario: selectedTrip.id_conductor,
+                    nombre: data.nombre,
+                    apellido: data.apellido,
+                  };
+                }
+              } catch (e) {
+                // Si falla, deja conductor como undefined
+              }
             }
-            departureTime={
-              selectedTrip?.salida_at
-                ? new Date(selectedTrip.salida_at).toLocaleTimeString("es-CO", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : selectedTrip?.programado_at
-                ? new Date(selectedTrip.programado_at).toLocaleTimeString(
-                    "es-CO",
-                    { hour: "2-digit", minute: "2-digit" }
-                  )
-                : "No disponible"
-            }
-            driver={
-              selectedTrip?.conductor
-                ? `${selectedTrip.conductor.nombre} ${selectedTrip.conductor.apellido}`
-                : "-"
-            }
-            vehicleType={getTipoVehiculoLabel(selectedTrip?.vehiculo?.tipo)}
-            color={selectedTrip?.vehiculo?.color || "-"}
-            plate={selectedTrip?.vehiculo?.placa || "-"}
-            estado={selectedTrip?.estado}
-            pasajeros={selectedTrip?.pasajeros}
-            onStartTrip={() => {
-              setShowDetails(false);
+            const tripToPass = {
+              ...selectedTrip,
+              id_conductor:
+                selectedTrip.id_conductor ||
+                (selectedTrip.conductor && selectedTrip.conductor.id_usuario) ||
+                null,
+              id_ruta:
+                selectedTrip.id_ruta ||
+                (selectedTrip.ruta && selectedTrip.ruta.id_ruta) ||
+                null,
+              conductor,
+            };
+            if (selectedTrip?.estado === "en-curso") {
+              if (typeof onGoToUserTripActiveScreen === "function") {
+                onGoToUserTripActiveScreen(tripToPass);
+              }
+            } else {
               if (typeof onGoToUserTripStartScreen === "function") {
-                const tripToPass = {
-                  ...selectedTrip,
-                  id_conductor:
-                    selectedTrip.id_conductor ||
-                    (selectedTrip.conductor &&
-                      selectedTrip.conductor.id_usuario) ||
-                    null,
-                };
                 onGoToUserTripStartScreen(tripToPass);
               }
-            }}
-          />
-        ))}
+            }
+          }}
+        />
+      )}
       <HomeBottomMenu
         onGoToHome={onGoToHomeScreen}
         onGoToProfile={onGoToProfileScreen}
