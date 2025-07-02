@@ -508,7 +508,7 @@ const AppNavigator = () => {
                   e
                 );
               }
-              setCurrentScreen("user-services");
+              setCurrentScreen("user-trips");
             },
           },
         ]

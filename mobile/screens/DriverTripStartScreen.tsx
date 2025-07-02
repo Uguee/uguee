@@ -299,9 +299,26 @@ export default function DriverTripStartScreen({
   };
 
   // Hook de suscripción en tiempo real
-  const passengers = usePassengersSubscription(trip?.id_viaje);
+  const passengersFromSubscription = usePassengersSubscription(trip?.id_viaje);
+  const [passengers, setPassengers] = useState<any[]>([]);
   const loadingPassengers = false; // El hook no expone loading, pero la lista se actualiza sola
   const errorPassengers = null;
+
+  // Sincronizar el estado local con la suscripción
+  useEffect(() => {
+    setPassengers(passengersFromSubscription || []);
+  }, [passengersFromSubscription]);
+
+  // Función para recargar manualmente los pasajeros
+  const reloadPassengers = async () => {
+    if (!trip?.id_viaje) return;
+    try {
+      const res = await getPassengersByTripId(trip.id_viaje);
+      setPassengers(res || []);
+    } catch (e) {
+      // Puedes mostrar un error si quieres
+    }
+  };
 
   // Formatear los pasajeros para mostrar nombre y rol
   const formattedPassengers = (passengers || []).map((p: any) => ({
@@ -309,6 +326,12 @@ export default function DriverTripStartScreen({
     name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
     rol: p.rol_institucional || "",
   }));
+
+  // Al cerrar el modal QR, recargar la lista de pasajeros
+  const handleCloseQRModal = async () => {
+    setShowQRModal(false);
+    await reloadPassengers();
+  };
 
   const handleStartTrip = async () => {
     try {
@@ -543,9 +566,7 @@ export default function DriverTripStartScreen({
         visible={showQRModal}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          setShowQRModal(false);
-        }}
+        onRequestClose={handleCloseQRModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.qrModalContent}>
@@ -563,9 +584,7 @@ export default function DriverTripStartScreen({
             </Text>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => {
-                setShowQRModal(false);
-              }}
+              onPress={handleCloseQRModal}
             >
               <Text style={styles.closeButtonText}>Cerrar</Text>
             </TouchableOpacity>
