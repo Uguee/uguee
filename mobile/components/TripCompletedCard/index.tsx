@@ -4,12 +4,14 @@ import { Ionicons } from "@expo/vector-icons";
 
 interface TripCompletedCardProps {
   route?: string;
+  time: string;
   passengers?: number;
   onPress?: () => void;
 }
 
 const TripCompletedCard: React.FC<TripCompletedCardProps> = ({
   route = "Univalle ➔ Multicentro",
+  time,
   passengers = 3,
   onPress = () => {},
 }) => {
@@ -72,6 +74,12 @@ const styles = StyleSheet.create({
   },
   bold: {
     fontWeight: "bold",
+  },
+  timeText: {
+    color: "#7C3AED",
+    fontWeight: "bold",
+    fontSize: 15,
+    marginBottom: 4,
   },
 });
 

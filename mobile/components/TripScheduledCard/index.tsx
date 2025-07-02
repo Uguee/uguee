@@ -3,6 +3,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 
 interface TripScheduledCardProps {
   trip: any; // Datos completos del viaje
+  time: string; // NUEVO: hora del viaje
   onPress?: () => void;
   onStartTrip?: () => void;
   canStartTrip?: boolean;
@@ -18,6 +19,7 @@ function formatPlaceName(nombre: string | null): string {
 
 const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
   trip,
+  time,
   onPress = () => {},
   onStartTrip = () => {},
   canStartTrip = false,

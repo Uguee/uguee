@@ -21,6 +21,7 @@ import { getCedulaByUUID } from "../services/userDataService";
 import { getPassengersByTripId, startTrip } from "../services/tripServices";
 import { leaveTrip } from "../services/passengerService";
 import { formatPlaceName } from "../lib/formatPlaceName";
+import { usePassengersSubscription } from "../hooks/usePassengersSubscription";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
@@ -50,11 +51,6 @@ export default function DriverTripStartScreen({
   const mapRef = useRef<MapView>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQRData] = useState("");
-
-  // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
-  const [passengers, setPassengers] = useState<any[]>([]);
-  const [loadingPassengers, setLoadingPassengers] = useState(true);
-  const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
 
   // Estado para el modal de confirmación de eliminación
   const [modalVisible, setModalVisible] = useState(false);
@@ -302,64 +298,17 @@ export default function DriverTripStartScreen({
     }
   };
 
-  // Obtener pasajeros reales del viaje
-  useEffect(() => {
-    const fetchPassengers = async () => {
-      console.log(
-        "LLAMANDO getPassengersByTripId",
-        trip?.id_viaje,
-        typeof getPassengersByTripId
-      );
-      setLoadingPassengers(true);
-      setErrorPassengers(null);
-      try {
-        if (trip?.id_viaje) {
-          const data = await getPassengersByTripId(Number(trip.id_viaje));
-          console.log("RESULTADO getPassengersByTripId", data);
-          // Formatear a { id, name, rol }
-          const formatted = (data || []).map((p: any) => ({
-            id: p.id_usuario,
-            name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
-            rol: p.rol_institucional || "",
-          }));
-          setPassengers(formatted);
-        } else {
-          setPassengers([]);
-        }
-      } catch (e: any) {
-        console.log("ERROR getPassengersByTripId", e);
-        setErrorPassengers(e.message || "Error al cargar pasajeros");
-        setPassengers([]);
-      } finally {
-        setLoadingPassengers(false);
-      }
-    };
-    fetchPassengers();
-  }, [trip?.id_viaje]);
+  // Hook de suscripción en tiempo real
+  const passengers = usePassengersSubscription(trip?.id_viaje);
+  const loadingPassengers = false; // El hook no expone loading, pero la lista se actualiza sola
+  const errorPassengers = null;
 
-  // Refrescar pasajeros tras cerrar el QR
-  const refreshPassengers = async () => {
-    setLoadingPassengers(true);
-    setErrorPassengers(null);
-    try {
-      if (trip?.id_viaje) {
-        const data = await getPassengersByTripId(Number(trip.id_viaje));
-        const formatted = (data || []).map((p: any) => ({
-          id: p.id_usuario,
-          name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
-          rol: p.rol_institucional || "",
-        }));
-        setPassengers(formatted);
-      } else {
-        setPassengers([]);
-      }
-    } catch (e: any) {
-      setErrorPassengers(e.message || "Error al cargar pasajeros");
-      setPassengers([]);
-    } finally {
-      setLoadingPassengers(false);
-    }
-  };
+  // Formatear los pasajeros para mostrar nombre y rol
+  const formattedPassengers = (passengers || []).map((p: any) => ({
+    id: p.id_usuario,
+    name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+    rol: p.rol_institucional || "",
+  }));
 
   const handleStartTrip = async () => {
     try {
@@ -411,9 +360,6 @@ export default function DriverTripStartScreen({
       setRemovingPassenger(true);
       try {
         await leaveTrip(Number(trip.id_viaje), Number(passengerToRemove.id));
-        setPassengers((prev) =>
-          prev.filter((p) => p.id !== passengerToRemove.id)
-        );
         setModalVisible(false);
         setPassengerToRemove(null);
         Alert.alert("Éxito", "Pasajero eliminado del viaje");
@@ -545,7 +491,7 @@ export default function DriverTripStartScreen({
               <Text style={{ color: "#FF4D4D", marginTop: 8 }}>
                 {errorPassengers}
               </Text>
-            ) : passengers.length === 0 ? (
+            ) : formattedPassengers.length === 0 ? (
               <Text style={{ color: "#666", marginTop: 8 }}>
                 No hay pasajeros registrados
               </Text>
@@ -554,10 +500,10 @@ export default function DriverTripStartScreen({
                 style={styles.passengerScroll}
                 showsVerticalScrollIndicator={true}
               >
-                {passengers.map((p) => (
+                {formattedPassengers.map((p) => (
                   <View key={p.id} style={styles.passengerRow}>
                     <Text style={styles.passengerName}>{p.name}</Text>
-                    {<Text>{p.rol}</Text>}
+                    <Text>{p.rol}</Text>
                     <TouchableOpacity
                       style={styles.removePassengerBtn}
                       onPress={() => handleAskRemovePassenger(p)}
@@ -597,9 +543,8 @@ export default function DriverTripStartScreen({
         visible={showQRModal}
         transparent
         animationType="fade"
-        onRequestClose={async () => {
+        onRequestClose={() => {
           setShowQRModal(false);
-          await refreshPassengers();
         }}
       >
         <View style={styles.modalOverlay}>
@@ -618,9 +563,8 @@ export default function DriverTripStartScreen({
             </Text>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={async () => {
+              onPress={() => {
                 setShowQRModal(false);
-                await refreshPassengers();
               }}
             >
               <Text style={styles.closeButtonText}>Cerrar</Text>
