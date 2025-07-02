@@ -27,6 +27,7 @@ import {
 import { formatPlaceName } from "../lib/formatPlaceName";
 import { getCurrentToken } from "../services/authService";
 import { useTripInProgressSubscription } from "../hooks/useTripInProgressSubscription";
+import { usePassengersSubscription } from "../hooks/usePassengersSubscription";
 
 interface Passenger {
   id: number;
@@ -62,9 +63,6 @@ export default function UserTripStartScreen({
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [conductorName, setConductorName] = useState<string>("Conductor");
   const mapRef = useRef<MapView>(null);
-  const [passengers, setPassengers] = useState<Passenger[]>([]);
-  const [loadingPassengers, setLoadingPassengers] = useState(true);
-  const [errorPassengers, setErrorPassengers] = useState<string | null>(null);
   const [myCedula, setMyCedula] = useState<number | null>(null);
   const [showActiveTripModal, setShowActiveTripModal] = useState<
     false | "otro" | "mismo"
@@ -216,33 +214,6 @@ export default function UserTripStartScreen({
     getRouteCoordinates();
   }, [routeData]);
 
-  // Obtener pasajeros reales del viaje
-  useEffect(() => {
-    const fetchPassengers = async () => {
-      setLoadingPassengers(true);
-      setErrorPassengers(null);
-      try {
-        if (trip?.id_viaje) {
-          const data = await getPassengersByTripId(Number(trip.id_viaje));
-          // Formatear a { id, name }
-          const formatted = (data || []).map((p: any) => ({
-            id: p.id_usuario,
-            name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
-          }));
-          setPassengers(formatted);
-        } else {
-          setPassengers([]);
-        }
-      } catch (e: any) {
-        setErrorPassengers(e.message || "Error al cargar pasajeros");
-        setPassengers([]);
-      } finally {
-        setLoadingPassengers(false);
-      }
-    };
-    fetchPassengers();
-  }, [trip?.id_viaje]);
-
   // Obtener la cédula del usuario autenticado
   useEffect(() => {
     const fetchCedula = async () => {
@@ -375,6 +346,17 @@ export default function UserTripStartScreen({
       );
     }
   };
+
+  // Hook de suscripción en tiempo real
+  const passengers = usePassengersSubscription(trip?.id_viaje);
+  const loadingPassengers = false; // El hook no expone loading, pero la lista se actualiza sola
+  const errorPassengers = null;
+
+  // Formatear los pasajeros para mostrar nombre
+  const formattedPassengers = (passengers || []).map((p: any) => ({
+    id: p.id_usuario,
+    name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+  }));
 
   if (locationPermission === null || loadingRouteData) {
     return (
@@ -544,7 +526,7 @@ export default function UserTripStartScreen({
               <Text style={{ color: "#FF4D4D", marginTop: 8 }}>
                 {errorPassengers}
               </Text>
-            ) : passengers.length === 0 ? (
+            ) : formattedPassengers.length === 0 ? (
               <Text style={{ color: "#666", marginTop: 8 }}>
                 No hay pasajeros registrados
               </Text>
@@ -553,46 +535,42 @@ export default function UserTripStartScreen({
                 style={styles.passengerScroll}
                 showsVerticalScrollIndicator={true}
               >
-                {passengers.map((p) => {
-                  if (myCedula) {
-                  }
-                  return (
-                    <View key={p.id} style={styles.passengerRow}>
-                      <Text style={styles.passengerName}>
-                        {p.name}
-                        {myCedula && Number(p.id) === Number(myCedula)
-                          ? " (tú)"
-                          : ""}
-                      </Text>
-                      {myCedula && Number(p.id) === Number(myCedula) && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            Alert.alert(
-                              "¿Salir del viaje?",
-                              "¿Estás seguro que deseas salirte de este viaje?",
-                              [
-                                { text: "Cancelar", style: "cancel" },
-                                {
-                                  text: "Salir del viaje",
-                                  style: "destructive",
-                                  onPress: handleLeaveTrip,
-                                },
-                              ]
-                            );
-                          }}
-                          style={{ marginLeft: 8 }}
-                          accessibilityLabel="Salir del viaje"
-                        >
-                          <Ionicons
-                            name="exit-outline"
-                            size={22}
-                            color="#FF4D4D"
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  );
-                })}
+                {formattedPassengers.map((p) => (
+                  <View key={p.id} style={styles.passengerRow}>
+                    <Text style={styles.passengerName}>
+                      {p.name}
+                      {myCedula && Number(p.id) === Number(myCedula)
+                        ? " (tú)"
+                        : ""}
+                    </Text>
+                    {myCedula && Number(p.id) === Number(myCedula) && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.alert(
+                            "¿Salir del viaje?",
+                            "¿Estás seguro que deseas salirte de este viaje?",
+                            [
+                              { text: "Cancelar", style: "cancel" },
+                              {
+                                text: "Salir del viaje",
+                                style: "destructive",
+                                onPress: handleLeaveTrip,
+                              },
+                            ]
+                          );
+                        }}
+                        style={{ marginLeft: 8 }}
+                        accessibilityLabel="Salir del viaje"
+                      >
+                        <Ionicons
+                          name="exit-outline"
+                          size={22}
+                          color="#FF4D4D"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
               </ScrollView>
             )}
           </View>
