@@ -22,6 +22,7 @@ import { getTripReview, createTripReview } from "../services/reviewService";
 import { useAuth } from "../hooks/useAuth";
 import { getCurrentToken } from "../services/authService";
 import { getCedulaByUUID } from "../services/userDataService";
+import { validateActiveTripQR } from "../lib/validateActiveTrip";
 
 interface UserServicesScreenProps {
   onGoToHome?: () => void;
@@ -218,30 +219,24 @@ const ServiciosScreen = ({
   const handleScanQRPress = async () => {
     if (!user) return;
     try {
-      const cedula = await getCedulaByUUID(user.id);
-      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
-      const jwt = getCurrentToken();
-      if (!jwt)
-        throw new Error(
-          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
-        );
-      const res = await getActivePassengerTrip(cedula, jwt);
-      if (res.success && res.viajes && res.viajes.length > 0) {
-        // Mostrar alert bonito
-        Alert.alert(
-          "Ya tienes un viaje en curso",
-          "Actualmente ya formas parte de un viaje en curso o pendiente. No puedes ingresar a otro viaje hasta finalizar el actual.",
-          [
-            {
-              text: "Aceptar",
-              style: "default",
-            },
-          ]
-        );
+      const result = await validateActiveTripQR({
+        userId: user.id,
+        getCedulaByUUID,
+        getActivePassengerTrip,
+        getCurrentToken,
+      });
+      if (result.estado === "otro-viaje") {
+        Alert.alert("Ya tienes un viaje en curso", result.mensaje, [
+          {
+            text: "Aceptar",
+            style: "default",
+          },
+        ]);
         return;
       }
-      // Si no está en viaje activo, permitir escanear
-      onGoToScanQR();
+      if (result.estado === "no-activo") {
+        onGoToScanQR();
+      }
     } catch (e: any) {
       Alert.alert(
         "Error",

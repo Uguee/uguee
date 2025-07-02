@@ -28,6 +28,7 @@ import { formatPlaceName } from "../lib/formatPlaceName";
 import { getCurrentToken } from "../services/authService";
 import { useTripInProgressSubscription } from "../hooks/useTripInProgressSubscription";
 import { usePassengersSubscription } from "../hooks/usePassengersSubscription";
+import { validateActiveTripQR } from "../lib/validateActiveTrip";
 
 interface Passenger {
   id: number;
@@ -319,25 +320,24 @@ export default function UserTripStartScreen({
   const handleScanQRPress = async () => {
     if (!user) return;
     try {
-      const cedula = await getCedulaByUUID(user.id);
-      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
-      const jwt = getCurrentToken();
-      if (!jwt)
-        throw new Error(
-          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
-        );
-      const res = await getActivePassengerTrip(cedula, jwt);
-      if (res.success && res.viajes && res.viajes.length > 0) {
-        const viajeActivo = res.viajes[0];
-        if (Number(viajeActivo.id_viaje) === Number(trip.id_viaje)) {
-          setShowActiveTripModal("mismo");
-        } else {
-          setShowActiveTripModal("otro");
-        }
+      const result = await validateActiveTripQR({
+        userId: user.id,
+        idViajeActual: trip.id_viaje,
+        getCedulaByUUID,
+        getActivePassengerTrip,
+        getCurrentToken,
+      });
+      if (result.estado === "mismo-viaje") {
+        setShowActiveTripModal("mismo");
         return;
       }
-      // Si no está en viaje activo, permitir escanear QR
-      onShowScanQRScreen(trip);
+      if (result.estado === "otro-viaje") {
+        setShowActiveTripModal("otro");
+        return;
+      }
+      if (result.estado === "no-activo") {
+        onShowScanQRScreen(trip);
+      }
     } catch (e: any) {
       Alert.alert(
         "Error",

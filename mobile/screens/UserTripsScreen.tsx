@@ -26,6 +26,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import { getCurrentToken } from "../services/authService";
 import { Ionicons } from "@expo/vector-icons";
+import { validateActiveTripQR } from "../lib/validateActiveTrip";
 
 function formatPlaceName(nombre: string | null | undefined): string {
   if (!nombre) return "";
@@ -136,22 +137,19 @@ export default function UserTripsScreen({
   const handleScanQRPress = async () => {
     if (!user) return;
     try {
-      // Obtener la cédula del usuario
-      const cedula = await getCedulaByUUID(user.id);
-      if (!cedula) throw new Error("No se pudo obtener la cédula del usuario");
-      // Consultar si ya está en un viaje activo
-      const jwt = getCurrentToken();
-      if (!jwt)
-        throw new Error(
-          "No se encontró un token de sesión válido. Por favor, vuelve a iniciar sesión."
-        );
-      const res = await getActivePassengerTrip(cedula, jwt);
-      if (res.success && res.viajes && res.viajes.length > 0) {
+      const result = await validateActiveTripQR({
+        userId: user.id,
+        getCedulaByUUID,
+        getActivePassengerTrip,
+        getCurrentToken,
+      });
+      if (result.estado === "otro-viaje") {
         setShowActiveTripModal(true);
         return;
       }
-      // Si no está en viaje activo, mostrar el ScanQRScreen
-      onShowScanQRScreen(null);
+      if (result.estado === "no-activo") {
+        onShowScanQRScreen(null);
+      }
     } catch (e: any) {
       Alert.alert(
         "Error",

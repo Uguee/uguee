@@ -50,6 +50,7 @@ import { useTripEndSubscription } from "./hooks/useTripEndSubscription";
 import { getActivePassengerTrip } from "./services/tripServices";
 import { getCurrentToken } from "./services/authService";
 import { createTripReview } from "./services/reviewService";
+import { getRouteById } from "./services/routeService";
 
 type Screen =
   | "welcome"
@@ -150,7 +151,7 @@ const AppNavigator = () => {
         );
         return;
       }
-      const jwt = getCurrentToken();
+      const jwt = getCurrentToken() || "";
       if (!jwt) {
         console.log("[App] No hay JWT, no se consulta viaje activo");
         return;
@@ -428,8 +429,19 @@ const AppNavigator = () => {
       return;
     }
 
-    if (!user?.id || !cedula) {
+    if (!user?.id) {
       Alert.alert("Error", "No se pudo obtener la información del usuario");
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
+    if (cedula === null) {
+      Alert.alert(
+        "Cargando información",
+        "Por favor espera unos segundos mientras cargamos tu información de usuario. Intenta escanear de nuevo en un momento."
+      );
       setShowScanQRScreen(false);
       setScanQRTripData(null);
       setCurrentScreen("user-trips");
@@ -479,8 +491,7 @@ const AppNavigator = () => {
               setScanQRTripData(null);
               // Refresca el viaje activo y setea tripToRate
               try {
-                const jwt = getCurrentToken();
-                if (!cedula || !jwt) return;
+                const jwt = getCurrentToken() || "";
                 const res = await getActivePassengerTrip(Number(cedula), jwt);
                 if (res.success && res.viajes.length > 0) {
                   const viajeMasReciente = res.viajes.reduce(
@@ -882,11 +893,10 @@ const AppNavigator = () => {
           <ScanQRScreen
             onScan={async (qrData?: string) => {
               if (!qrData) {
-                setCurrentScreen("user-trip-start");
+                setCurrentScreen("user-trips");
                 return;
               }
               try {
-                // Lógica original: unir al pasajero al viaje usando joinTripAsPassenger
                 let cedula = null;
                 if (user?.id) {
                   cedula = await getCedulaByUUID(user.id);
@@ -917,7 +927,7 @@ const AppNavigator = () => {
                     {
                       text: "OK",
                       onPress: () => {
-                        setCurrentScreen("user-trip-start");
+                        setCurrentScreen("user-trips");
                       },
                     },
                   ]
@@ -929,13 +939,13 @@ const AppNavigator = () => {
                   [
                     {
                       text: "OK",
-                      onPress: () => setCurrentScreen("user-trip-start"),
+                      onPress: () => setCurrentScreen("user-trips"),
                     },
                   ]
                 );
               }
             }}
-            onGoBack={() => setCurrentScreen("user-trip-start")}
+            onGoBack={() => setCurrentScreen("user-trips")}
           />
         );
       case "user-services":

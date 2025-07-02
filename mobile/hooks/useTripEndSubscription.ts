@@ -17,8 +17,10 @@ export function useTripEndSubscription(
     console.log("[useTripEndSubscription] Suscribiendo a viaje:", idViaje);
 
     const subscription = supabase
-      .from(`viaje:id_viaje=eq.${idViaje}`)
+      .from("viaje")
       .on("UPDATE", (payload: any) => {
+        if (payload.new?.id_viaje !== idViaje) return;
+
         console.log("[useTripEndSubscription] Recibido UPDATE:", payload);
         if (!payload.old?.llegada_at && payload.new?.llegada_at) {
           console.log(
