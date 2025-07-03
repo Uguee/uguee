@@ -171,7 +171,10 @@ const AppNavigator = () => {
           res.viajes[0]
         );
         setTripToRate(viajeMasReciente);
-        console.log("[App] setTripToRate (mayor id_viaje):", viajeMasReciente);
+        console.log(
+          "[App] (post-join) setTripToRate (mayor id_viaje):",
+          viajeMasReciente
+        );
         console.log("[App] id_viaje seteado:", viajeMasReciente?.id_viaje);
       } else {
         setTripToRate(null);
@@ -180,6 +183,10 @@ const AppNavigator = () => {
     };
     fetchActiveTrip();
   }, [user?.id, cedula]);
+
+  useEffect(() => {
+    console.log("[App] useEffect tripToRate?.id_viaje:", tripToRate?.id_viaje);
+  }, [tripToRate?.id_viaje]);
 
   // Suscribirse al fin del viaje activo
   useTripEndSubscription(tripToRate?.id_viaje, (viajeFinalizado) => {
@@ -449,6 +456,7 @@ const AppNavigator = () => {
     }
 
     try {
+      console.log("[App] Antes de refrescar viaje activo tras escanear QR");
       console.log("[App] Procesando QR escaneado:", qrData);
 
       // Parsear los datos del QR
@@ -478,7 +486,10 @@ const AppNavigator = () => {
       // Unir al pasajero al viaje
       const result = await joinTripAsPassenger(cedula, id_conductor, id_viaje);
 
-      console.log("[App] Unión exitosa:", result);
+      console.log(
+        "[App] Resultado getActivePassengerTrip (post-join):",
+        result
+      );
 
       Alert.alert(
         "¡Te has unido al viaje!",
@@ -499,6 +510,14 @@ const AppNavigator = () => {
                     res.viajes[0]
                   );
                   setTripToRate(viajeMasReciente);
+                  console.log(
+                    "[App] (post-join) setTripToRate (mayor id_viaje):",
+                    viajeMasReciente
+                  );
+                  console.log(
+                    "[App] (post-join) id_viaje seteado:",
+                    viajeMasReciente?.id_viaje
+                  );
                 } else {
                   setTripToRate(null);
                 }
