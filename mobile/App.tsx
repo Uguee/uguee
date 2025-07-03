@@ -499,19 +499,8 @@ const AppNavigator = () => {
                     res.viajes[0]
                   );
                   setTripToRate(viajeMasReciente);
-                  console.log(
-                    "[App] (post-join) setTripToRate (mayor id_viaje):",
-                    viajeMasReciente
-                  );
-                  console.log(
-                    "[App] (post-join) id_viaje seteado:",
-                    viajeMasReciente?.id_viaje
-                  );
                 } else {
                   setTripToRate(null);
-                  console.log(
-                    "[App] (post-join) No hay viaje activo, setTripToRate(null)"
-                  );
                 }
               } catch (e) {
                 console.log(
