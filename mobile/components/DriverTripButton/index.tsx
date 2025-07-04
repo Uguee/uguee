@@ -23,10 +23,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#A259FF",
     borderRadius: 24,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 28,
     alignSelf: "flex-start",
-    margin: 8,
+    margin: 30,
+    marginRight: 0,
     // Sombra para iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

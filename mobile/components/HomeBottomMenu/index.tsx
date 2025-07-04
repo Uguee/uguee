@@ -5,12 +5,16 @@ import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 interface HomeBottomMenuProps {
   onGoToProfile: () => void;
   onGoToHome: () => void;
+  onGoToMyTrips: () => void;
+  onGoToServices?: () => void;
   activeButton?: "home" | "trips" | "services" | "profile";
 }
 
 export const HomeBottomMenu = ({
   onGoToProfile,
   onGoToHome,
+  onGoToMyTrips,
+  onGoToServices,
   activeButton = "home",
 }: HomeBottomMenuProps) => {
   const buttons = [
@@ -24,13 +28,13 @@ export const HomeBottomMenu = ({
       label: "Mis viajes",
       icon: <MaterialIcons name="airport-shuttle" size={28} color="#000" />,
       active: activeButton === "trips",
-      onPress: () => alert("Mis viajes"),
+      onPress: onGoToMyTrips,
     },
     {
       label: "Servicios",
       icon: <Ionicons name="settings-outline" size={28} color="#000" />,
       active: activeButton === "services",
-      onPress: () => alert("Servicios"),
+      onPress: onGoToServices ?? (() => alert("Servicios")),
     },
     {
       label: "Perfil",

@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { TopMenu } from "../components/DriverTopMenu";
 import { SearchBar } from "../components/SearchBar";
@@ -15,22 +16,15 @@ import DriverTripButton from "../components/DriverTripButton";
 import { DriverHomeBottomMenu } from "../components/DriverHomeBottomMenu";
 import TripCompletedDetailsModal from "../components/TripCompletedDetailsModal";
 import TripScheduledDetailsModal from "../components/TripScheduledDetailsModal";
+import { useDriverTrips } from "../hooks/useDriverTrips";
+import { getRouteById } from "../services/routeService";
 
-const TRIPS = [
-  {
-    id: "1",
-    type: "completed",
-    route: "Univalle ➔ Multicentro",
-    passengers: 3,
-  },
-  {
-    id: "2",
-    type: "scheduled",
-    route: "Univalle ➔ Multicentro",
-    arrivalDateTime: "2025-06-17 ➔ 08:00:00 p.m",
-  },
-  // Puedes agregar más viajes aquí
-];
+function formatPlaceName(nombre: string | null): string {
+  if (!nombre) return "";
+  const partes = nombre.split(",").map((p) => p.trim());
+  // Tomar las primeras 3 partes y añadir "Cali"
+  return `${partes.slice(0, 3).join(", ")}, Cali`;
+}
 
 const FILTERS = [
   { label: "Terminado", value: "completed" },
@@ -43,6 +37,7 @@ const DriverMyTripsScreen = ({
   onGoToMyVehicles = () => {},
   onGoToProfile = () => {},
   onGoToCreateTripScreen = () => {},
+  onStartTripScreen = (_trip: any) => {},
 }) => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -51,43 +46,206 @@ const DriverMyTripsScreen = ({
   const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
 
+  // Elimina el array TRIPS y usa los viajes reales
+  const { trips, loading, error } = useDriverTrips();
+  console.log("[DriverMyTripsScreen] trips:", trips);
+
+  // Log para verificar el orden original
+  if (trips.length > 0) {
+    console.log("[DriverMyTripsScreen] Orden original de viajes:");
+    trips.slice(0, 3).forEach((trip, index) => {
+      console.log(
+        `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+          trip.estado
+        }`
+      );
+    });
+  }
+
+  const handleSelectTrip = async (trip: any) => {
+    // Usar directamente los datos del viaje que ya vienen de la edge function
+    setSelectedTrip(trip);
+    setShowScheduledModal(true);
+  };
+
   // Filtrado por estado
   let filteredTrips =
     filter === "all"
-      ? TRIPS
-      : TRIPS.filter((trip) =>
+      ? trips
+      : trips.filter((trip) =>
           filter === "completed"
-            ? trip.type === "completed"
-            : trip.type === "scheduled"
+            ? trip.estado === "completado"
+            : trip.estado !== "completado"
         );
 
   // Filtrado por búsqueda
-  filteredTrips = filteredTrips.filter((trip) =>
-    trip.route.toLowerCase().includes(search.toLowerCase())
-  );
+  filteredTrips = filteredTrips.filter((trip: any) => {
+    const routeName =
+      trip.ruta?.nombre_partida && trip.ruta?.nombre_llegada
+        ? `${formatPlaceName(trip.ruta.nombre_partida)} ➔ ${formatPlaceName(
+            trip.ruta.nombre_llegada
+          )}`
+        : `Ruta ${trip.id_ruta}`;
+    return routeName.toLowerCase().includes(search.toLowerCase());
+  });
+
+  // Ordenar por fecha programada (más recientes primero)
+  console.log("[DriverMyTripsScreen] Antes del sort - primeros 3 viajes:");
+  filteredTrips.slice(0, 3).forEach((trip, index) => {
+    console.log(
+      `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+        trip.estado
+      }`
+    );
+  });
+
+  filteredTrips.sort((a, b) => {
+    const dateA = new Date(a.programado_at);
+    const dateB = new Date(b.programado_at);
+    const diff = dateB.getTime() - dateA.getTime(); // Descendente (más reciente primero)
+
+    console.log(
+      `[Sort] Comparando: Viaje ${
+        a.id_viaje
+      } (${dateA.toISOString()}) vs Viaje ${
+        b.id_viaje
+      } (${dateB.toISOString()}) = ${diff}`
+    );
+
+    return diff;
+  });
+
+  // Log para verificar el orden después del sort
+  console.log("[DriverMyTripsScreen] Después del sort - primeros 3 viajes:");
+  filteredTrips.slice(0, 3).forEach((trip, index) => {
+    console.log(
+      `${index + 1}. Viaje ${trip.id_viaje} - ${trip.programado_at} - ${
+        trip.estado
+      }`
+    );
+  });
+
+  const canStartTrip = (trip: any) => {
+    // Permitir iniciar viajes pendientes y programados si están cerca de la hora
+    if (trip.estado !== "pendiente" && trip.estado !== "programado")
+      return false;
+
+    // Verificar si la fecha/hora actual está cerca de la hora programada
+    const now = new Date();
+    const tripDate = new Date(trip.programado_at);
+    const diffInMinutes = Math.abs(
+      (tripDate.getTime() - now.getTime()) / (1000 * 60)
+    );
+
+    // Log para debuggear
+    console.log(`[canStartTrip] Viaje ${trip.id_viaje}:`, {
+      estado: trip.estado,
+      programado_at: trip.programado_at,
+      hora_actual: now.toISOString(),
+      diffInMinutes: diffInMinutes,
+      puedeIniciar: diffInMinutes <= 30,
+    });
+
+    // Permitir iniciar el viaje si estamos dentro de los 30 minutos antes o después de la hora programada
+    return diffInMinutes <= 30;
+  };
+
+  const handleStartTrip = async (trip: any) => {
+    console.log("[DriverMyTripsScreen] handleStartTrip - trip:", trip);
+    console.log(
+      "[DriverMyTripsScreen] onStartTripScreen function:",
+      typeof onStartTripScreen
+    );
+
+    // Pasa el objeto trip completo
+    onStartTripScreen(trip);
+  };
 
   const renderTrip = ({ item }: { item: any }) => {
-    if (item.type === "completed") {
+    // Usar el estado que viene de la edge function
+    const estado = item.estado;
+
+    if (estado === "completado") {
+      // Completado - sin color de reborde
       return (
         <TripCompletedCard
-          route={item.route}
-          passengers={item.passengers}
+          route={
+            formatPlaceName(item.ruta?.nombre_partida) +
+              " ➔ " +
+              formatPlaceName(item.ruta?.nombre_llegada) || `${item.id_ruta}`
+          }
+          passengers={item.pasajeros || 0}
           onPress={() => {
             setSelectedTrip(item);
             setShowCompletedModal(true);
           }}
         />
       );
+    } else if (estado === "en-curso") {
+      // En curso
+      return (
+        <View
+          style={{
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2,
+          }}
+        >
+          <TripScheduledCard
+            trip={item}
+            onPress={() => {
+              handleSelectTrip(item);
+            }}
+            canStartTrip={false} // No se puede iniciar si ya está en curso
+            onStartTrip={() => {}}
+          />
+        </View>
+      );
+    } else if (estado === "pendiente") {
+      // Pendiente
+      return (
+        <View
+          style={{
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2,
+          }}
+        >
+          <TripScheduledCard
+            trip={item}
+            onPress={() => {
+              handleSelectTrip(item);
+            }}
+            canStartTrip={canStartTrip(item)}
+            onStartTrip={() => {
+              handleStartTrip(item);
+            }}
+          />
+        </View>
+      );
     } else {
       return (
-        <TripScheduledCard
-          route={item.route}
-          arrivalDateTime={item.arrivalDateTime}
-          onPress={() => {
-            setSelectedTrip(item);
-            setShowScheduledModal(true);
+        <View
+          style={{
+            borderRadius: 12,
+            marginBottom: 8,
+            marginHorizontal: 12,
+            padding: 2,
           }}
-        />
+        >
+          <TripScheduledCard
+            trip={item}
+            onPress={() => {
+              handleSelectTrip(item);
+            }}
+            canStartTrip={canStartTrip(item)} // Permitir iniciar si está cerca de la hora
+            onStartTrip={() => {
+              handleStartTrip(item);
+            }}
+          />
+        </View>
       );
     }
   };
@@ -148,13 +306,48 @@ const DriverMyTripsScreen = ({
       </Modal>
       {/* Lista de viajes */}
       <Text style={styles.sectionTitle}>Viajes creados</Text>
-      <FlatList
-        data={filteredTrips}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTrip}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color="#A259FF" />
+          <Text style={{ marginTop: 12, color: "#666" }}>
+            Cargando viajes...
+          </Text>
+        </View>
+      ) : error ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text
+            style={{
+              color: "#FF4D4D",
+              textAlign: "center",
+              marginHorizontal: 20,
+            }}
+          >
+            Error al cargar los viajes: {error}
+          </Text>
+        </View>
+      ) : filteredTrips.length === 0 ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: "#666", fontSize: 16 }}>
+            No hay viajes disponibles
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredTrips}
+          keyExtractor={(item) =>
+            item.id_viaje?.toString() || String(item.id_viaje)
+          }
+          renderItem={renderTrip}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       {/* Botón de crear viaje */}
       <View style={styles.createButtonContainer} pointerEvents="box-none">
         <DriverTripButton onPress={onGoToCreateTripScreen} />
@@ -163,14 +356,58 @@ const DriverMyTripsScreen = ({
       <TripCompletedDetailsModal
         visible={showCompletedModal}
         onClose={() => setShowCompletedModal(false)}
-        route={selectedTrip?.route}
-        passengers={selectedTrip?.passengers}
-        // Puedes pasar más props aquí si lo deseas
+        route={
+          selectedTrip?.ruta?.nombre_partida &&
+          selectedTrip?.ruta?.nombre_llegada
+            ? `${formatPlaceName(
+                selectedTrip.ruta.nombre_partida
+              )} ➔ ${formatPlaceName(selectedTrip.ruta.nombre_llegada)}`
+            : `Ruta ${selectedTrip?.id_ruta}`
+        }
+        address={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+        departureDate={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        departureTime={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
+        arrivalDate={
+          selectedTrip?.llegada_at
+            ? new Date(selectedTrip.llegada_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        arrivalTime={
+          selectedTrip?.llegada_at
+            ? new Date(selectedTrip.llegada_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
+        passengers={selectedTrip?.pasajeros || 0}
       />
       <TripScheduledDetailsModal
         visible={showScheduledModal}
         onClose={() => setShowScheduledModal(false)}
-        // Puedes pasar más props aquí si lo deseas
+        pickupPlace={formatPlaceName(selectedTrip?.ruta?.nombre_partida)}
+        destinationPlace={formatPlaceName(selectedTrip?.ruta?.nombre_llegada)}
+        departureDate={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleDateString("es-CO")
+            : "No disponible"
+        }
+        departureTime={
+          selectedTrip?.programado_at
+            ? new Date(selectedTrip.programado_at).toLocaleTimeString("es-CO")
+            : "No disponible"
+        }
+        onStartTrip={() => {
+          if (selectedTrip) {
+            handleStartTrip(selectedTrip);
+            setShowScheduledModal(false);
+          }
+        }}
       />
       {/* Menú inferior */}
       <DriverHomeBottomMenu

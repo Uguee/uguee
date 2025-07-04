@@ -19,12 +19,14 @@ interface AddVehicleScreenProps {
   onGoToMyVehicles?: () => void;
   onGoToHomeScreen?: () => void;
   onGoToProfile?: () => void;
+  onGoToMyTripsScreen?: () => void;
 }
 
 export default function AddVehicleScreen({
   onGoToMyVehicles = () => {},
   onGoToHomeScreen = () => {},
   onGoToProfile = () => {},
+  onGoToMyTripsScreen = () => {},
 }: AddVehicleScreenProps) {
   const { user } = useAuth();
   const [form, setForm] = useState<{
@@ -312,7 +314,7 @@ export default function AddVehicleScreen({
         onGoToProfile={onGoToProfile}
         onGoToHome={onGoToHomeScreen}
         onGoToMyVehicles={onGoToMyVehicles}
-        onGoToMyTrips={() => {}}
+        onGoToMyTrips={onGoToMyTripsScreen}
         activeButton="vehicles"
       />
     </View>

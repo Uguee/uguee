@@ -7,7 +7,6 @@ import {
   VerifyIdentityScreen,
   CameraPermissionsScreen,
   StartVerificationScreen,
-  HomeScreen,
   DocumentVerificationScreen,
   RegisterToInstScreen,
   DriverRegisterScreen,
@@ -17,18 +16,24 @@ import {
   InstProfileScreen,
   ProfileScreen,
 } from "./screens";
+import { HomeScreen } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
-import ListTripsUserScreen from "./screens/ListTripsUserScreen";
 import InstitutionListScreen from "./screens/InstitutionListScreen";
 import SelectedInstScreen from "./screens/SelectedInstScreen";
 import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
+import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
-import { View, Text } from "react-native";
+import { View, Text, Alert } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
+import DriverTripStartScreen from "./screens/DriverTripStartScreen";
+import DriveQRScreen from "./screens/DriveQRScreen";
+import ScanQRScreen from "./screens/ScanQRScreen";
+import { joinTripAsPassenger } from "./services/tripServices";
+import UserServicesScreen from "./screens/userServicesScreen";
 
 type Screen =
   | "welcome"
@@ -54,7 +59,12 @@ type Screen =
   | "register-route"
   | "driver-routes"
   | "driver-my-trips"
-  | "driver-create-trip";
+  | "driver-create-trip"
+  | "user-trips"
+  | "driver-trip-start"
+  | "driver-qr"
+  | "scan-qr"
+  | "user-services";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -63,6 +73,22 @@ const AppNavigator = () => {
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
   const [cedula, setCedula] = React.useState<number | null>(null);
+  const [tripStartData, setTripStartData] = useState<{
+    pickupPlace: string;
+    destinationPlace: string;
+    punto_partida?: {
+      coordinates: [number, number];
+    };
+    punto_llegada?: {
+      coordinates: [number, number];
+    };
+    trayecto?: {
+      coordinates: [number, number][];
+    };
+  } | null>(null);
+  const [qrValue, setQRValue] = useState<string | null>(null);
+  const [showScanQRScreen, setShowScanQRScreen] = useState(false);
+  const [scanQRTripData, setScanQRTripData] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -262,10 +288,103 @@ const AppNavigator = () => {
   const handleGoToCreateTripScreen = () =>
     setCurrentScreen("driver-create-trip");
 
+  const handleGoToUserTripsScreen = () => setCurrentScreen("user-trips");
+
   // Cuando se crea una ruta, refrescar las rutas
   const handleRouteCreated = () => {
     setRoutesRefreshKey((k) => k + 1);
     setCurrentScreen("driver-routes");
+  };
+
+  const handleGoToServices = () => setCurrentScreen("user-services");
+  const handleGoBackFromScanQR = () => setCurrentScreen("user-trips");
+
+  const handleShowScanQRScreen = (tripData: any) => {
+    setScanQRTripData(tripData);
+    setShowScanQRScreen(true);
+  };
+
+  const handleQRScan = async (qrData?: string) => {
+    if (!qrData) {
+      Alert.alert("Error", "No se pudo leer el código QR");
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
+    if (!user?.id || !cedula) {
+      Alert.alert("Error", "No se pudo obtener la información del usuario");
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
+    try {
+      console.log("[App] Procesando QR escaneado:", qrData);
+
+      // Parsear los datos del QR
+      const qrParts = qrData.split(",");
+      const viajePart = qrParts.find((part) => part.startsWith("viaje:"));
+      const conductorPart = qrParts.find((part) =>
+        part.startsWith("conductor:")
+      );
+
+      if (!viajePart || !conductorPart) {
+        throw new Error("Formato de QR inválido");
+      }
+
+      const id_viaje = parseInt(viajePart.split(":")[1]);
+      const id_conductor = parseInt(conductorPart.split(":")[1]);
+
+      if (!id_viaje || !id_conductor) {
+        throw new Error("Datos del QR incompletos");
+      }
+
+      console.log("[App] Datos extraídos del QR:", {
+        id_viaje,
+        id_conductor,
+        id_pasajero: cedula,
+      });
+
+      // Unir al pasajero al viaje
+      const result = await joinTripAsPassenger(cedula, id_conductor, id_viaje);
+
+      console.log("[App] Unión exitosa:", result);
+
+      Alert.alert(
+        "¡Te has unido al viaje!",
+        "Has sido agregado exitosamente al viaje. El conductor ha sido notificado.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowScanQRScreen(false);
+              setScanQRTripData(null);
+              setCurrentScreen("user-trips");
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error("[App] Error al procesar QR:", error);
+
+      Alert.alert(
+        "Error",
+        error.message || "No se pudo unir al viaje. Inténtalo de nuevo.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowScanQRScreen(false);
+              setScanQRTripData(null);
+              setCurrentScreen("user-trips");
+            },
+          },
+        ]
+      );
+    }
   };
 
   // Componente de Dashboard basado en rol
@@ -284,6 +403,8 @@ const AppNavigator = () => {
           onGoToMyInstitution={() => {}}
           onGoToProfile={handleGoToProfile}
           onGoToInstitutionProfile={handleGoToInstProfile}
+          onGoToMyTripsScreen={handleGoToUserTripsScreen}
+          onGoToServices={handleGoToServices}
         />
       </ProtectedRoute>
     );
@@ -298,6 +419,19 @@ const AppNavigator = () => {
         >
           <Text>Cargando...</Text>
         </View>
+      );
+    }
+
+    if (showScanQRScreen) {
+      return (
+        <ScanQRScreen
+          onScan={handleQRScan}
+          onGoBack={() => {
+            setShowScanQRScreen(false);
+            setScanQRTripData(null);
+            setCurrentScreen("user-trips");
+          }}
+        />
       );
     }
 
@@ -376,7 +510,18 @@ const AppNavigator = () => {
           />
         );
       case "dashboard":
-        return <DashboardScreen />;
+        return (
+          <HomeScreen
+            onGoToInstitutions={handleGoToInstitutions}
+            onGoToBecomeDriver={handleGoToDriverRegister}
+            onGoToDriverView={handleGoToDriverView}
+            onGoToMyInstitution={() => {}}
+            onGoToProfile={handleGoToProfile}
+            onGoToInstitutionProfile={handleGoToInstProfile}
+            onGoToMyTripsScreen={handleGoToUserTripsScreen}
+            onGoToServices={handleGoToServices}
+          />
+        );
       case "institutions":
         return (
           <InstitutionListScreen
@@ -385,6 +530,7 @@ const AppNavigator = () => {
               setSelectedInstitution(institution);
               setCurrentScreen("selected-institution");
             }}
+            onGoToServices={handleGoToServices}
           />
         );
       case "selected-institution":
@@ -396,6 +542,7 @@ const AppNavigator = () => {
               setSelectedInstitution(institution);
               setCurrentScreen("register-to-inst");
             }}
+            onGoToServices={handleGoToServices}
           />
         );
       case "register-to-inst":
@@ -429,8 +576,8 @@ const AppNavigator = () => {
         return (
           <MyVehiclesScreen
             onGoToDriverHomeScreen={handleGoToDriverView}
-            onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToProfileScreen={handleGoToProfileFromDriver}
+            onGoToAddVehicleScreen={handleGoToAddVehicleScreen}
             onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
@@ -440,6 +587,7 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToHomeScreen={handleGoToDriverView}
             onGoToProfile={handleGoToProfileFromDriver}
+            onGoToMyTripsScreen={handleGoToMyTripsScreen}
           />
         );
       case "inst-profile":
@@ -497,6 +645,10 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToCreateTripScreen={handleGoToCreateTripScreen}
+            onStartTripScreen={(trip: any) => {
+              setTripStartData(trip);
+              setCurrentScreen("driver-trip-start");
+            }}
           />
         );
       case "driver-create-trip":
@@ -504,6 +656,47 @@ const AppNavigator = () => {
           <DriverCreateTripScreen
             onGoToRegisterRouteScreen={handleGoToRegisterRouteScreen}
             onGoBack={() => setCurrentScreen("driver-my-trips")}
+          />
+        );
+      case "user-trips":
+        return (
+          <UserTripsScreen
+            onGoToHomeScreen={handleGoToHomeScreen}
+            onGoToProfileScreen={handleGoToProfile}
+            onShowScanQRScreen={handleShowScanQRScreen}
+            onGoToServices={handleGoToServices}
+          />
+        );
+      case "driver-trip-start":
+        return (
+          <DriverTripStartScreen
+            trip={tripStartData}
+            onGoBack={() => setCurrentScreen("driver-my-trips")}
+            onGoToQRScreen={(qr) => {
+              setQRValue(qr);
+              setCurrentScreen("driver-qr");
+            }}
+          />
+        );
+      case "driver-qr":
+        return (
+          <DriveQRScreen
+            qrValue={qrValue || "QR-PLACEHOLDER"}
+            onGoBack={() => setCurrentScreen("driver-trip-start")}
+          />
+        );
+      case "scan-qr":
+        return (
+          <ScanQRScreen onGoBack={handleGoBackFromScanQR} onScan={() => {}} />
+        );
+      case "user-services":
+        return (
+          <UserServicesScreen
+            onGoToHome={() => setCurrentScreen("dashboard")}
+            onGoToProfile={handleGoToProfile}
+            onGoToMyTrips={() => setCurrentScreen("user-trips")}
+            onGoToServices={() => setCurrentScreen("user-services")}
+            onGoToScanQR={() => setCurrentScreen("scan-qr")}
           />
         );
       default:

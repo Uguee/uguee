@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { supabase } from '../src/lib/supabase';
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
+import { createTrip } from "../services/tripServices";
 // import { EstadoValidacion } from '../types/validaciones';
 
 interface RouteData {
@@ -12,10 +13,7 @@ interface ViajeData {
   id_ruta: number;
   id_conductor: number;
   id_vehiculo: string;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string;
-  reseña?: number;
+  programado_at?: string;
 }
 
 export const useViajeManager = () => {
@@ -25,47 +23,73 @@ export const useViajeManager = () => {
   /**
    * Validar conductor y vehículo antes de crear viaje
    */
-  const validarRequisitos = async (idConductor: number, placaVehiculo: string) => {
-    console.log('🔍 Validando requisitos...');
-    
+  const validarRequisitos = async (
+    idConductor: number,
+    placaVehiculo: string
+  ) => {
+    console.log("🔍 Validando requisitos...");
+
     // Validaciones paralelas para mejor rendimiento
     const [conductorResult, vehiculoResult] = await Promise.all([
       supabase
-        .from('registro')
-        .select('validacion_conductor')
-        .eq('id_usuario', idConductor)
+        .from("registro")
+        .select("validacion_conductor")
+        .eq("id_usuario", idConductor)
         .single(),
-      
+
       supabase
-        .from('vehiculo')  
-        .select('validacion, id_usuario')
-        .eq('placa', placaVehiculo)
-        .single()
+        .from("vehiculo")
+        .select("validacion, id_usuario, fecha_tecnicomecanica, vigencia_soat")
+        .eq("placa", placaVehiculo)
+        .single(),
     ]);
 
     const errors = [];
-    
+
     // Verificar conductor
     if (conductorResult.error) {
-      errors.push('Conductor no registrado en ninguna institución');
-    } else if (conductorResult.data?.validacion_conductor !== 'validado') {
-      errors.push(Conductor no validado (estado: ${conductorResult.data?.validacion_conductor || 'sin estado'}));
+      errors.push("Conductor no registrado en ninguna institución");
+    } else if (conductorResult.data?.validacion_conductor !== "validado") {
+      errors.push(
+        `Conductor no validado (estado: ${
+          conductorResult.data?.validacion_conductor || "sin estado"
+        })`
+      );
     }
-    
+
     // Verificar vehículo
     if (vehiculoResult.error) {
-      errors.push('Vehículo no encontrado');
-    } else if (vehiculoResult.data?.validacion !== 'validado') {
-      errors.push(Vehículo no validado (estado: ${vehiculoResult.data?.validacion || 'sin estado'}));
+      errors.push("Vehículo no encontrado");
+    } else if (vehiculoResult.data?.validacion !== "validado") {
+      errors.push(
+        `Vehículo no validado (estado: ${
+          vehiculoResult.data?.validacion || "sin estado"
+        })`
+      );
     } else if (vehiculoResult.data?.id_usuario !== idConductor) {
-      errors.push('El vehículo no pertenece al conductor');
+      errors.push("El vehículo no pertenece al conductor");
+    }
+
+    // Verificar fechas de documentos del vehículo
+    const now = new Date();
+    if (vehiculoResult.data?.fecha_tecnicomecanica) {
+      const fechaTecnico = new Date(vehiculoResult.data.fecha_tecnicomecanica);
+      if (fechaTecnico < now) {
+        errors.push("La revisión técnico-mecánica ha expirado");
+      }
+    }
+    if (vehiculoResult.data?.vigencia_soat) {
+      const fechaSoat = new Date(vehiculoResult.data.vigencia_soat);
+      if (fechaSoat < now) {
+        errors.push("El SOAT ha expirado");
+      }
     }
 
     return {
       isValid: errors.length === 0,
       errors,
       conductor: conductorResult.data?.validacion_conductor,
-      vehiculo: vehiculoResult.data?.validacion
+      vehiculo: vehiculoResult.data?.validacion,
     };
   };
 
@@ -77,37 +101,45 @@ export const useViajeManager = () => {
     setError(null);
 
     try {
-      console.log('🚗 Iniciando creación de viaje...');
-      
+      console.log("🚗 Iniciando creación de viaje...");
+      console.log("📋 Datos del viaje recibidos:", viajeData);
+
       // 1. VALIDAR REQUISITOS PRIMERO
-      const validacion = await validarRequisitos(viajeData.id_conductor, viajeData.id_vehiculo);
-      
+      const validacion = await validarRequisitos(
+        viajeData.id_conductor,
+        viajeData.id_vehiculo
+      );
+
       if (!validacion.isValid) {
-        throw new Error(Validación falló: ${validacion.errors.join(', ')});
+        throw new Error(`Validación falló: ${validacion.errors.join(", ")}`);
       }
 
-      console.log('✅ Validaciones pasadas, creando viaje...');
+      console.log("✅ Validaciones pasadas, creando viaje...");
 
-      // 2. CREAR VIAJE SI TODO ESTÁ VALIDADO
-      const { data, error } = await supabase
-        .from('viaje')
-        .insert({
-          id_ruta: viajeData.id_ruta,
-          id_conductor: viajeData.id_conductor,
-          id_vehiculo: viajeData.id_vehiculo,
-          fecha: viajeData.fecha,
-          hora_salida: viajeData.hora_salida,
-          hora_llegada: viajeData.hora_llegada,
-          reseña: 1
-        })
-        .select();
+      // 2. OBTENER TOKEN DE SESIÓN
+      const session = supabase.auth.session();
+      if (!session?.access_token) {
+        throw new Error("No se pudo obtener el token de sesión");
+      }
 
-      if (error) throw error;
-      
-      console.log('🎉 Viaje creado exitosamente:', data);
-      return data;
+      console.log("🔑 Token de sesión obtenido");
+
+      // 3. CREAR VIAJE USANDO LA EDGE FUNCTION
+      console.log("📤 Enviando datos a la edge function:", {
+        id_conductor: viajeData.id_conductor,
+        id_vehiculo: viajeData.id_vehiculo,
+        id_ruta: viajeData.id_ruta,
+        programado_at: viajeData.programado_at,
+      });
+
+      const viajeCreado = await createTrip(viajeData, session.access_token);
+
+      console.log("🎉 Viaje creado exitosamente:", viajeCreado);
+      return viajeCreado;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al crear viaje';
+      console.error("❌ Error al crear viaje:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al crear viaje";
       setError(errorMessage);
       throw err;
     } finally {
@@ -124,14 +156,15 @@ export const useViajeManager = () => {
 
     try {
       const { data, error } = await supabase
-        .from('ruta')
-        .select('id_ruta, longitud')
-        .order('id_ruta', { ascending: false });
+        .from("ruta")
+        .select("id_ruta, longitud")
+        .order("id_ruta", { ascending: false });
 
       if (error) throw error;
       return data || [];
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al obtener rutas';
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al obtener rutas";
       setError(errorMessage);
       throw err;
     } finally {
@@ -144,6 +177,6 @@ export const useViajeManager = () => {
     crearViaje,
     validarRequisitos,
     isLoading,
-    error
+    error,
   };
 };

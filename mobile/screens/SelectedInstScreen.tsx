@@ -21,12 +21,16 @@ interface SelectedInstScreenProps {
   institution: Institution | null;
   onGoHome: () => void;
   onRequestRegister: (institution: Institution) => void;
+  onGoToMyTripsScreen?: () => void;
+  onGoToServices?: () => void;
 }
 
 export default function SelectedInstScreen({
   institution,
   onGoHome,
   onRequestRegister,
+  onGoToMyTripsScreen,
+  onGoToServices,
 }: SelectedInstScreenProps) {
   const { user } = useAuth();
 
@@ -108,6 +112,8 @@ export default function SelectedInstScreen({
       <HomeBottomMenu
         onGoToProfile={() => {}}
         onGoToHome={onGoHome}
+        onGoToMyTrips={onGoToMyTripsScreen ?? (() => {})}
+        onGoToServices={onGoToServices}
         activeButton="home"
       />
     </View>
