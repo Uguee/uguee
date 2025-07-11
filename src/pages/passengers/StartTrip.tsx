@@ -12,20 +12,24 @@ import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { es } from "date-fns/locale";
 import { TripService } from "@/services/tripService";
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { supabase } from "@/integrations/supabase/client";
+import { useViajeManager } from '@/hooks/useViajeManager';
 
 const StartTrip = () => {
-  const [origin, setOrigin] = useState("");
-  const [destination, setDestination] = useState("");
-  const [transportType, setTransportType] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<string>("");
+  const [destination, setDestination] = useState<string>("");
+  const [transportType, setTransportType] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [routes, setRoutes] = useState<any[]>([]);
   const { searchRoutes } = useRoutes();
   const { toast } = useToast();
   const { vehicleTypes, isLoading: isLoadingTypes, error: typesError, fetchVehicleTypes } = useVehicleTypes();
+  const { currentUserId } = useCurrentUser();
 
   // New state for map functionality
   const [originLocation, setOriginLocation] = useState<Location | null>(null);
@@ -36,8 +40,13 @@ const StartTrip = () => {
   const [destinationSuggestions, setDestinationSuggestions] = useState<Location[]>([]);
   const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
   const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
-  const [departureTime, setDepartureTime] = useState<Date | null>(null);
-  const [isDepartureDialogOpen, setIsDepartureDialogOpen] = useState(false);
+  const [departureTime, setDepartureTime] = useState<string>("");
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [selectedTripRoute, setSelectedTripRoute] = useState<[number, number][] | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
+
+  const { crearSolicitudViaje } = useViajeManager();
 
   // Debounce function for address search
   const debounce = (func: Function, wait: number) => {
@@ -239,19 +248,25 @@ const StartTrip = () => {
       );
 
       // Transform the trips into the format expected by the UI
-      const formattedRoutes = similarTrips.map(trip => ({
-        id: trip.id_viaje,
-        driver: {
-          name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
-          phone: trip.conductor?.celular
-        },
-        departureTime: trip.hora_salida,
-        estimatedArrival: trip.hora_llegada,
-        price: 0, // You might want to add price to your trip model
-        availableSeats: 4, // You might want to add capacity to your trip model
-        transportType: trip.vehiculo?.tipo?.tipo,
-        distance: 0 // You might want to calculate this based on the route
-      }));
+      const formattedRoutes = similarTrips.map(trip => {
+        // Use the new timestampz fields
+        const departureTime = trip.programado_at ? new Date(trip.programado_at) : null;
+        const arrivalTime = trip.llegada_at ? new Date(trip.llegada_at) : null;
+        return {
+          id_viaje: trip.id_viaje,
+          id_ruta: trip.id_ruta,
+          driver: {
+            name: `${trip.conductor?.nombre} ${trip.conductor?.apellido}`,
+            phone: trip.conductor?.celular
+          },
+          departureTime,
+          estimatedArrival: arrivalTime,
+          price: 0, // You might want to add price to your trip model
+          availableSeats: 4, // You might want to add capacity to your trip model
+          transportType: trip.vehiculo?.tipo?.tipo,
+          distance: 0 // You might want to calculate this based on the route
+        };
+      });
 
       setRoutes(formattedRoutes);
     } catch (err: any) {
@@ -279,27 +294,221 @@ const StartTrip = () => {
 
   // Handle new request
   const handleNewRequest = () => {
-    setOrigin("");
-    setOriginLocation(null);
-    setDestination("");
-    setDestinationLocation(null);
-    setRoute(null);
-    setRoutes([]);
-    setError(null);
-    setDepartureTime(null);
-    setIsDepartureDialogOpen(true);
+    if (!originLocation || !destinationLocation) {
+      toast({
+        title: "Error",
+        description: "Debes especificar origen y destino antes de crear una solicitud",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsRequestDialogOpen(true);
   };
 
-  // Handle departure time selection
-  const handleDepartureTimeChange = (value: string) => {
-    if (value === "now") {
-      setDepartureTime(new Date());
-    } else {
-      const [hours, minutes] = value.split(":").map(Number);
-      const date = new Date();
-      date.setHours(hours, minutes, 0, 0);
-      setDepartureTime(date);
+  const handleSubmitRequest = async () => {
+    if (!departureTime) {
+      toast({
+        title: "Error",
+        description: "Debes especificar la hora de salida",
+        variant: "destructive",
+      });
+      return;
     }
+
+    if (!route || !originLocation || !destinationLocation) {
+      toast({
+        title: "Error",
+        description: "Debes especificar una ruta válida con origen y destino",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      // Format the route data for PostGIS
+      const routeLineString = route.map(coord => `${coord[1]} ${coord[0]}`).join(',');
+      const originPoint = `${originLocation.lng} ${originLocation.lat}`;
+      const destinationPoint = `${destinationLocation.lng} ${destinationLocation.lat}`;
+
+      console.log('📍 Creando ruta con puntos:', {
+        origin: originPoint,
+        destination: destinationPoint,
+        routeLength: route.length
+      });
+
+      // First, create the route using the PostGIS function
+      const { data: routeData, error: routeError } = await supabase
+        .rpc('insertar_ruta', {
+          p_longitud: route.length,
+          p_punto_partida_wkt: `POINT(${originPoint})`,
+          p_punto_llegada_wkt: `POINT(${destinationPoint})`,
+          p_trayecto_wkt: `LINESTRING(${routeLineString})`
+        });
+
+      if (routeError) {
+        console.error('❌ Error creating route:', routeError);
+        throw new Error('No se pudo crear la ruta');
+      }
+
+      if (!routeData || !routeData[0]?.id_ruta_nuevo) {
+        throw new Error('No se pudo obtener el ID de la ruta creada');
+      }
+
+      console.log('✅ Ruta creada:', routeData[0]);
+
+      // Format the date and time for the trip
+      const today = new Date();
+      const [hours, minutes] = departureTime.split(':');
+      const programadoAt = new Date(today);
+      programadoAt.setHours(Number(hours), Number(minutes), 0, 0);
+      const programadoAtISO = programadoAt.toISOString();
+
+      console.log('🕒 Creando solicitud de viaje con datos:', {
+        id_ruta: routeData[0].id_ruta_nuevo,
+        programado_at: programadoAtISO
+      });
+
+      // Create the trip request using crearSolicitudViaje
+      const solicitudCreada = await crearSolicitudViaje({
+        id_ruta: routeData[0].id_ruta_nuevo,
+        id_conductor: currentUserId, // This will be used as id_pasajero
+        id_vehiculo: null,
+        programado_at: programadoAtISO,
+        salida_at: null,
+        llegada_at: null
+      });
+
+      console.log('✅ Solicitud de viaje creada:', solicitudCreada);
+
+      toast({
+        title: "Éxito",
+        description: "Tu solicitud de viaje ha sido creada",
+        variant: "default",
+      });
+
+      setIsRequestDialogOpen(false);
+      setDepartureTime("");
+    } catch (error) {
+      console.error('❌ Error creating trip request:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'object' && error !== null
+          ? JSON.stringify(error)
+          : "No se pudo crear la solicitud de viaje";
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
+  const handleViewRoute = async (tripId: number) => {
+    try {
+      // If the same trip is clicked again, clear the route
+      if (selectedTripId === tripId) {
+        setSelectedTripRoute(null);
+        setSelectedTripId(null);
+        return;
+      }
+
+      console.log('handleViewRoute called with tripId:', tripId);
+      // Get the trip from the routes array
+      const trip = routes.find(r => r.id_viaje === tripId);
+      console.log('Found trip:', trip);
+      if (!trip) {
+        console.log('No trip found with id_viaje:', tripId);
+        return;
+      }
+
+      // Get the route details from the database
+      console.log('Fetching route with id_ruta:', trip.id_ruta);
+      const { data, error } = await supabase
+        .rpc('obtener_ruta_con_coordenadas', {
+          p_id_ruta: trip.id_ruta
+        });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Route data received:', data);
+
+      if (data && data.length > 0) {
+        // trayecto_coords might be a JSON string or an array
+        let trayectoCoords = data[0].trayecto_coords;
+        console.log('Raw trayecto_coords:', trayectoCoords);
+        
+        if (typeof trayectoCoords === 'string') {
+          try {
+            trayectoCoords = JSON.parse(trayectoCoords);
+            console.log('Parsed trayecto_coords:', trayectoCoords);
+          } catch (e) {
+            console.error('Error parsing trayecto_coords:', e);
+            trayectoCoords = [];
+          }
+        }
+        
+        if (Array.isArray(trayectoCoords)) {
+          // Convert coordinates to the format expected by the map
+          const routeCoordinates = trayectoCoords
+            .filter(
+              (coord: any): coord is { x: number; y: number } =>
+                coord &&
+                typeof coord === 'object' &&
+                typeof coord.y === 'number' &&
+                typeof coord.x === 'number'
+            )
+            .map((coord) => [coord.y, coord.x] as [number, number]);
+          console.log('Processed route coordinates:', routeCoordinates);
+          
+          if (routeCoordinates.length > 0) {
+            setSelectedTripRoute(routeCoordinates);
+            setSelectedTripId(tripId);
+          } else {
+            console.log('No valid coordinates found in trayecto_coords');
+            toast({
+              title: "Error",
+              description: "La ruta no contiene coordenadas válidas",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.log('trayectoCoords is not an array:', trayectoCoords);
+          toast({
+            title: "Error",
+            description: "El formato de la ruta no es válido",
+            variant: "destructive",
+          });
+          setSelectedTripRoute([]);
+        }
+    } else {
+        console.log('No route data found');
+        toast({
+          title: "Error",
+          description: "No se pudo encontrar la ruta",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la ruta",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add new function to clear the selected trip route
+  const handleClearRoute = () => {
+    setSelectedTripRoute(null);
+    setSelectedTripId(null);
   };
 
   return (
@@ -452,6 +661,7 @@ const StartTrip = () => {
                 origin={originLocation}
                 destination={destinationLocation}
                 route={route}
+                selectedTripRoute={selectedTripRoute}
                 onCurrentLocationChange={handleCurrentLocationChange}
                 allowClickToSetPoints={true}
                 onMapClick={handleMapClick}
@@ -472,33 +682,64 @@ const StartTrip = () => {
                 </div>
               ) : routes.length > 0 ? (
                 <div className="space-y-4 pr-2">
-                  {routes.map((route, index) => (
+                  {routes.map((route) => (
                     <div
-                      key={index}
-                      className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow"
+                      key={route.id_viaje}
+                      className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
                     >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium">
+                      <div className="flex flex-col space-y-4">
+                        {/* Driver and Time Info */}
+                        <div className="space-y-2">
+                          <h3 className="font-medium text-lg">
                             {route.driver?.name || "Conductor"}
                           </h3>
                           <p className="text-sm text-gray-600">
-                            {route.departureTime} - {route.estimatedArrival}
+                            {format(route.departureTime, "HH:mm", { locale: es })}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-primary">
-                            ₡{route.price.toFixed(2)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {route.availableSeats} asientos disponibles
-                          </p>
+
+                        {/* Trip Details */}
+                        <div className="space-y-1">
+                            <p className="text-sm">
+                              <span className="font-medium">Teléfono:</span> {route.driver?.phone}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Vehículo:</span> {route.transportType}
+                            </p>
+                          </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2 pt-2">
+                          <button
+                            className={`w-full px-4 py-2 ${
+                              route.id_usuario === currentUserId
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-primary hover:bg-primary/90'
+                            } text-white rounded-md transition-colors`}
+                            onClick={() => {
+                              // TODO: Implement reservation functionality
+                              toast({
+                                title: "Funcionalidad en desarrollo",
+                                description: "La reserva de viajes estará disponible próximamente",
+                              });
+                            }}
+                            disabled={route.id_usuario === currentUserId}
+                          >
+                            {route.id_usuario === currentUserId
+                              ? 'No puedes reservar tu propio viaje'
+                              : 'Reservar'}
+                          </button>
+                          <button
+                            className={`w-full px-4 py-2 ${
+                              selectedTripId === route.id_viaje
+                                ? 'bg-red-500 hover:bg-red-600'
+                                : 'bg-secondary hover:bg-secondary/90'
+                            } text-white rounded-md transition-colors`}
+                            onClick={() => selectedTripId === route.id_viaje ? handleClearRoute() : handleViewRoute(route.id_viaje)}
+                          >
+                            {selectedTripId === route.id_viaje ? 'Borrar ruta' : 'Ver ruta'}
+                          </button>
                         </div>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500">
-                        <span className="capitalize">{route.transportType}</span>
-                        <span className="mx-2">•</span>
-                        <span>{route.distance} km</span>
                       </div>
                     </div>
                   ))}
@@ -509,8 +750,6 @@ const StartTrip = () => {
                 </p>
               )}
               <div className="mt-4">
-                <Dialog open={isDepartureDialogOpen} onOpenChange={setIsDepartureDialogOpen}>
-                  <DialogTrigger asChild>
                     <Button
                       variant="outline"
                       className="w-full"
@@ -518,39 +757,55 @@ const StartTrip = () => {
                     >
                       Hacer nueva solicitud
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Selecciona la hora de partida</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <RadioGroup
-                        defaultValue="now"
-                        onValueChange={handleDepartureTimeChange}
-                        className="space-y-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="now" id="now" />
-                          <Label htmlFor="now">Ahora mismo</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="custom" id="custom" />
-                          <Label htmlFor="custom">Personalizar hora</Label>
-                        </div>
-                      </RadioGroup>
-                      {departureTime && (
-                        <div className="mt-4 text-sm text-gray-600">
-                          Hora seleccionada: {format(departureTime, "HH:mm", { locale: es })}
-                        </div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Add the new request dialog */}
+      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear solicitud de viaje</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="departureTime">Hora de salida</Label>
+              <Input
+                id="departureTime"
+                type="time"
+                value={departureTime}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value) {
+                    setDepartureTime(value);
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRequestDialogOpen(false);
+                  setDepartureTime("");
+                }}
+                disabled={isSubmittingRequest}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmitRequest}
+                disabled={isSubmittingRequest || !departureTime}
+              >
+                {isSubmittingRequest ? "Creando solicitud..." : "Crear solicitud"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

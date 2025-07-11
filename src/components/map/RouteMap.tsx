@@ -11,6 +11,8 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useIncidents } from '@/hooks/useIncidents';
+import { iconosIncidente } from '../maps/incidentIcons';
 
 // Fix para los iconos de Leaflet
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
@@ -34,10 +36,12 @@ interface RouteMapProps {
   origin: Location | null;
   destination: Location | null;
   route: [number, number][] | null;
+  selectedTripRoute?: [number, number][] | null;
   onCurrentLocationChange?: (location: Location) => void;
   onRouteGenerated?: (origin: Location, destination: Location, route: [number, number][]) => void;
   onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
   allowClickToSetPoints?: boolean;
+  showIncidents?: boolean;
 }
 
 // Componente para manejar la ubicación actual
@@ -168,12 +172,14 @@ export function RouteMap({
   origin, 
   destination, 
   route, 
+  selectedTripRoute,
   onCurrentLocationChange,
   onRouteGenerated,
   onMapClick,
-  allowClickToSetPoints = false 
+  allowClickToSetPoints = false,
+  showIncidents = true
 }: RouteMapProps) {
-  const [isMapReady, setIsMapReady] = useState(false);
+  const { incidents } = useIncidents();
 
   // Definir iconos personalizados para origen y destino
   const originIcon = new L.Icon({
@@ -198,73 +204,120 @@ export function RouteMap({
     <div className="relative h-full w-full" style={{ zIndex: 0 }}>
       {allowClickToSetPoints && (
         <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[1000] max-w-xs">
-          <h3 className="font-medium text-sm mb-2">📍 Seleccionar Puntos</h3>
-          {!origin && (
-            <p className="text-xs text-gray-600">1. Haz clic derecho para seleccionar el origen</p>
-          )}
-          {origin && !destination && (
-            <p className="text-xs text-gray-600">2. Haz clic izquierdo para seleccionar el destino</p>
-          )}
-          {origin && destination && (
-            <p className="text-xs text-green-600">✅ Ruta generada</p>
-          )}
+          <p className="text-sm text-gray-600">
+            Haz clic derecho para establecer el origen y clic izquierdo para el destino
+          </p>
         </div>
       )}
-
       <MapContainer
-        center={origin ? [origin.lat, origin.lng] : [3.4516, -76.5320]}
+        center={[4.5709, -74.2973]} // Bogotá coordinates
         zoom={13}
-        className="h-full w-full"
+        style={{ height: '100%', width: '100%' }}
         zoomControl={false}
-        whenReady={() => setIsMapReady(true)}
-        style={{ zIndex: 0 }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-
         <ZoomControl position="bottomright" />
         
-        {isMapReady && (
-          <>
+        {/* Current Location Controller */}
             <MapController onCurrentLocationChange={onCurrentLocationChange} />
-            {allowClickToSetPoints && (
-              <MapClickHandler onMapClick={onMapClick} />
-            )}
+
+        {/* Map Click Handler */}
+        {allowClickToSetPoints && <MapClickHandler onMapClick={onMapClick} />}
+
+        {/* Fit Bounds Controller */}
+        <FitBounds origin={origin} destination={destination} route={route} />
+
+        {/* Origin Marker */}
             {origin && (
-              <Marker 
-                position={[origin.lat, origin.lng]}
-                icon={originIcon}
-              >
+          <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
                 <Popup>
-                  <strong>Origen:</strong> {origin.address}
+              <div className="text-sm">
+                <p className="font-medium">Origen</p>
+                <p>{origin.address}</p>
+              </div>
                 </Popup>
               </Marker>
             )}
+
+        {/* Destination Marker */}
             {destination && (
-              <Marker 
-                position={[destination.lat, destination.lng]}
-                icon={destinationIcon}
-              >
+          <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
                 <Popup>
-                  <strong>Destino:</strong> {destination.address}
+              <div className="text-sm">
+                <p className="font-medium">Destino</p>
+                <p>{destination.address}</p>
+              </div>
                 </Popup>
               </Marker>
             )}
+
+        {/* User's Route */}
             {route && (
               <Polyline
                 positions={route}
-                color="#8B5CF6"
+            color="#9333EA"
                 weight={4}
                 opacity={0.7}
               />
             )}
-            {(origin || destination || route) && (
-              <FitBounds origin={origin} destination={destination} route={route} />
-            )}
+
+        {/* Selected Trip Route */}
+        {selectedTripRoute && (
+          <>
+            <Polyline
+              positions={selectedTripRoute}
+              color="#DC2626"
+              weight={4}
+              opacity={0.7}
+              dashArray="5, 10"
+            />
+            {/* Trip's Origin Marker */}
+            <Marker
+              position={selectedTripRoute[0]}
+              icon={L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="w-4 h-4 bg-black rounded-full border-2 border-white"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              })}
+            />
+            {/* Trip's Destination Marker */}
+            <Marker
+              position={selectedTripRoute[selectedTripRoute.length - 1]}
+              icon={L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="w-4 h-4 bg-black rounded-full border-2 border-white"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              })}
+            />
           </>
         )}
+
+        {/* Marcadores de incidentes */}
+        {showIncidents && incidents?.map((incident) => (
+          <Marker
+            key={incident.id_incidente}
+            position={[
+              incident.coordenada.coordinates[1],
+              incident.coordenada.coordinates[0]
+            ]}
+            icon={iconosIncidente[incident.tipo as keyof typeof iconosIncidente]}
+          >
+            <Popup>
+              <div className="flex flex-col gap-1">
+                <span className="font-medium capitalize">{incident.tipo}</span>
+                <p className="text-sm">{incident.descripcion}</p>
+                <span className="text-xs text-gray-500">
+                  {new Date(incident.fecha).toLocaleString()}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );

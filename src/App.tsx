@@ -14,7 +14,7 @@ import Register from "./pages/Authentication/Register";
 import InstitutionRegister from "./pages/Authentication/InstitutionRegister";
 import InstitutionAdminRegister from "./pages/Authentication/InstitutionAdminRegister";
 import DocumentVerification from "./pages/Authentication/DocumentVerification";
-import Dashboard from "./pages/passengers/Dashboard";
+import Dashboard from "./pages/passengers/index";
 import SearchRoutes from "./pages/passengers/SearchRoutes";
 import StartTrip from "./pages/passengers/StartTrip";
 import RouteDetail from "./pages/passengers/RouteDetail";
@@ -39,6 +39,8 @@ import Unauthorized from './pages/Unauthorized';
 import InstitutionPendingValidation from './pages/institution/InstitutionPendingValidation';
 import InstitutionRequests from './pages/admin/InstitutionRequests';
 import DriverRegister from "./pages/drivers/DriverRegister";
+import TripRequests from "./pages/drivers/TripRequests";
+import ReportIncident from '@/pages/passengers/ReportIncident';
 
 const queryClient = new QueryClient();
 
@@ -236,6 +238,14 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/driver/trip-requests" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario', 'admin', 'admin_institucional']}>
+            <TripRequests />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/driver-not-allowed" 
         element={<DriverNotAllowed />} 
       />
@@ -314,6 +324,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['usuario']}>
             <DriverRegister />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Report Incident route */}
+      <Route 
+        path="/report-incident" 
+        element={
+          <ProtectedRoute allowedRoles={['usuario']}>
+            <ReportIncident />
           </ProtectedRoute>
         } 
       />

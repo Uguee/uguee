@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useIncidents } from '@/hooks/useIncidents';
+import { iconosIncidente } from './incidentIcons';
 
 // Fix para los iconos de Leaflet
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
@@ -37,6 +39,7 @@ interface DriverRouteMapProps {
   existingRoute?: any; // Ruta existente de la base de datos
   mode?: 'seleccionar' | 'nueva'; // Modo de operación
   onMapClick?: (lat: number, lng: number, isRightClick: boolean) => void;
+  showIncidents?: boolean; // Nueva prop
 }
 
 // Componente para manejar los clics en el mapa
@@ -74,13 +77,15 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
   onRouteGenerated,
   existingRoute,
   mode = 'nueva',
-  onMapClick
+  onMapClick,
+  showIncidents = true // Por defecto mostrar incidentes
 }) => {
   const [origin, setOrigin] = useState<RoutePoint | null>(null);
   const [destination, setDestination] = useState<RoutePoint | null>(null);
   const [route, setRoute] = useState<[number, number][] | null>(null);
   const [isGeneratingRoute, setIsGeneratingRoute] = useState(false);
   const [routeBounds, setRouteBounds] = useState<L.LatLngBounds | null>(null);
+  const { incidents } = useIncidents();
 
   // Efecto para manejar la ruta existente
   useEffect(() => {
@@ -281,6 +286,28 @@ const DriverRouteMap: React.FC<DriverRouteMapProps> = ({
             opacity={0.7}
           />
         )}
+
+        {/* Marcadores de incidentes */}
+        {showIncidents && incidents?.map((incident) => (
+          <Marker
+            key={incident.id_incidente}
+            position={[
+              incident.coordenada.coordinates[1],
+              incident.coordenada.coordinates[0]
+            ]}
+            icon={iconosIncidente[incident.tipo as keyof typeof iconosIncidente]}
+          >
+            <Popup>
+              <div className="flex flex-col gap-1">
+                <span className="font-medium capitalize">{incident.tipo}</span>
+                <p className="text-sm">{incident.descripcion}</p>
+                <span className="text-xs text-gray-500">
+                  {new Date(incident.fecha).toLocaleString()}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
 
       {/* Estilos para los marcadores */}

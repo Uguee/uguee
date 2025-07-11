@@ -10,11 +10,11 @@ interface RouteData {
 
 interface ViajeData {
   id_ruta: number;
-  id_conductor: number;
-  id_vehiculo: string;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string;
+  id_conductor: number | null;
+  id_vehiculo: string | null;
+  programado_at: string | null;
+  salida_at: string | null;
+  llegada_at: string | null;
   reseña?: number;
 }
 
@@ -25,8 +25,18 @@ export const useViajeManager = () => {
   /**
    * Validar conductor y vehículo antes de crear viaje
    */
-  const validarRequisitos = async (idConductor: number, placaVehiculo: string) => {
+  const validarRequisitos = async (idConductor: number | null, placaVehiculo: string | null) => {
     console.log('🔍 Validando requisitos...');
+    
+    // Si es una solicitud de pasajero (idConductor es null), no validar conductor ni vehículo
+    if (idConductor === null) {
+      return {
+        isValid: true,
+        errors: [],
+        conductor: null,
+        vehiculo: null
+      };
+    }
     
     // Validaciones paralelas para mejor rendimiento
     const [conductorResult, vehiculoResult] = await Promise.all([
@@ -52,13 +62,15 @@ export const useViajeManager = () => {
       errors.push(`Conductor no validado (estado: ${conductorResult.data?.validacion_conductor || 'sin estado'})`);
     }
     
-    // Verificar vehículo
-    if (vehiculoResult.error) {
-      errors.push('Vehículo no encontrado');
-    } else if (vehiculoResult.data?.validacion !== 'validado') {
-      errors.push(`Vehículo no validado (estado: ${vehiculoResult.data?.validacion || 'sin estado'})`);
-    } else if (vehiculoResult.data?.id_usuario !== idConductor) {
-      errors.push('El vehículo no pertenece al conductor');
+    // Verificar vehículo solo si se proporcionó una placa
+    if (placaVehiculo) {
+      if (vehiculoResult.error) {
+        errors.push('Vehículo no encontrado');
+      } else if (vehiculoResult.data?.validacion !== 'validado') {
+        errors.push(`Vehículo no validado (estado: ${vehiculoResult.data?.validacion || 'sin estado'})`);
+      } else if (vehiculoResult.data?.id_usuario !== idConductor) {
+        errors.push('El vehículo no pertenece al conductor');
+      }
     }
 
     return {
@@ -77,10 +89,11 @@ export const useViajeManager = () => {
     setError(null);
 
     try {
-      console.log('🚗 Iniciando creación de viaje...');
+      console.log('🚗 Iniciando creación de viaje...', viajeData);
       
       // 1. VALIDAR REQUISITOS PRIMERO
       const validacion = await validarRequisitos(viajeData.id_conductor, viajeData.id_vehiculo);
+      console.log('🔍 Resultado de validación:', validacion);
       
       if (!validacion.isValid) {
         throw new Error(`Validación falló: ${validacion.errors.join(', ')}`);
@@ -95,18 +108,61 @@ export const useViajeManager = () => {
           id_ruta: viajeData.id_ruta,
           id_conductor: viajeData.id_conductor,
           id_vehiculo: viajeData.id_vehiculo,
-          fecha: viajeData.fecha,
-          hora_salida: viajeData.hora_salida,
-          hora_llegada: viajeData.hora_llegada
+          programado_at: viajeData.programado_at,
+          salida_at: viajeData.salida_at,
+          llegada_at: viajeData.llegada_at
         })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en la inserción:', error);
+        throw new Error(`Error al crear viaje: ${error.message}`);
+      }
       
       console.log('🎉 Viaje creado exitosamente:', data);
       return data;
     } catch (err) {
+      console.error('❌ Error completo:', err);
       const errorMessage = err instanceof Error ? err.message : 'Error al crear viaje';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Crear una solicitud de viaje para pasajeros
+   */
+  const crearSolicitudViaje = async (viajeData: ViajeData) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log('🚗 Iniciando creación de solicitud de viaje...', viajeData);
+
+      // Crear la solicitud de viaje usando los nuevos campos timestampz
+      const { data, error } = await supabase
+        .from('solicitud_viaje')
+        .insert({
+          id_ruta: viajeData.id_ruta,
+          id_pasajero: viajeData.id_conductor, // En este caso, id_conductor es el id del pasajero
+          salida_at: viajeData.programado_at, // Usar programado_at como salida_at
+          llegada_at: null, // Llegada será null hasta que se complete el viaje
+          estado: 'pendiente'
+        } as any)
+        .select();
+
+      if (error) {
+        console.error('❌ Error en la inserción:', error);
+        throw new Error(`Error al crear solicitud de viaje: ${error.message}`);
+      }
+      
+      console.log('🎉 Solicitud de viaje creada exitosamente:', data);
+      return data;
+    } catch (err) {
+      console.error('❌ Error completo:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear solicitud de viaje';
       setError(errorMessage);
       throw err;
     } finally {
@@ -141,6 +197,7 @@ export const useViajeManager = () => {
   return {
     fetchRutasDisponibles,
     crearViaje,
+    crearSolicitudViaje,
     validarRequisitos,
     isLoading,
     error

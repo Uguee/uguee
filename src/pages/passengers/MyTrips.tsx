@@ -7,7 +7,7 @@ import { TripService } from '@/services/tripService';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { RouteMap } from '@/components/map/RouteMap';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,6 @@ const MyTrips = () => {
   const { currentUserId } = useCurrentUser();
   const { toast } = useToast();
   const [selectedTrip, setSelectedTrip] = useState<any | null>(null);
-  const [showDetails, setShowDetails] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -37,8 +36,125 @@ const MyTrips = () => {
     setError(null);
 
     try {
-      const data = await TripService.getUserTrips(currentUserId);
-      setTrips(data);
+      // Obtener las reservas del usuario (viajes confirmados)
+      const { data: reservas, error: reservasError } = await supabase
+        .from('reserva')
+        .select(`
+          id_viaje,
+          viaje (
+            id_viaje,
+            programado_at,
+            salida_at,
+            llegada_at,
+            id_ruta,
+            id_conductor,
+            id_vehiculo,
+            conductor:usuario!viaje_id_conductor_fkey (
+              nombre,
+              apellido,
+              celular
+            ),
+            vehiculo:vehiculo (
+              placa,
+              color,
+              modelo,
+              tipo:tipo_vehiculo (
+                tipo
+              )
+            ),
+            ruta:ruta (
+              id_ruta,
+              longitud,
+              punto_partida,
+              punto_llegada,
+              trayecto
+            )
+          )
+        `)
+        .eq('id_usuario', currentUserId);
+
+      if (reservasError) throw reservasError;
+
+      // Obtener las solicitudes de viaje del usuario (trip requests)
+      const { data: solicitudes, error: solicitudesError } = await supabase
+        .from('solicitud_viaje')
+        .select(`
+          id_solicitud,
+          salida_at,
+          llegada_at,
+          estado,
+          created_at,
+          ruta (
+            id_ruta,
+            longitud,
+            punto_partida,
+            punto_llegada,
+            trayecto
+          ),
+          conductor:usuario!solicitud_viaje_id_conductor_fkey (
+            nombre,
+            apellido,
+            celular
+          ),
+          vehiculo:vehiculo!solicitud_viaje_id_vehiculo_fkey (
+            placa,
+            color,
+            modelo,
+            tipo:tipo_vehiculo (
+              tipo
+            )
+          )
+        `)
+        .eq('id_pasajero', currentUserId)
+        .order('created_at', { ascending: false });
+
+      if (solicitudesError) throw solicitudesError;
+
+      // Procesar los viajes confirmados
+      const viajesConfirmados = reservas
+        ?.map(r => r.viaje)
+        .filter(v => v !== null)
+        .map(viaje => {
+          const fechaHoraViaje = new Date(viaje.programado_at);
+          const now = new Date();
+          
+          return {
+            ...viaje,
+            esFuturo: fechaHoraViaje > now,
+            tipo: 'reserva' as const
+          };
+        }) || [];
+
+      // Procesar las solicitudes de viaje
+      const solicitudesProcesadas = (solicitudes as any || []).map((solicitud: any) => {
+        const fechaHoraViaje = new Date(solicitud.salida_at);
+        const now = new Date();
+        
+        return {
+          id_viaje: solicitud.id_solicitud, // Use id_solicitud as id_viaje for consistency
+          programado_at: solicitud.salida_at,
+          salida_at: solicitud.salida_at,
+          llegada_at: solicitud.llegada_at,
+          id_ruta: solicitud.ruta.id_ruta,
+          id_conductor: solicitud.conductor?.id_usuario,
+          id_vehiculo: solicitud.vehiculo?.placa,
+          conductor: solicitud.conductor,
+          vehiculo: solicitud.vehiculo,
+          ruta: solicitud.ruta,
+          esFuturo: fechaHoraViaje > now,
+          estado: solicitud.estado,
+          tipo: 'solicitud' as const
+        };
+      });
+
+      // Combinar ambos arrays
+      const todosLosViajes = [...viajesConfirmados, ...solicitudesProcesadas];
+
+      // Separar viajes futuros y pasados
+      const viajesFuturos = todosLosViajes.filter(viaje => viaje.esFuturo);
+      const viajesPasados = todosLosViajes.filter(viaje => !viaje.esFuturo);
+
+      setTrips(viajesFuturos);
     } catch (err) {
       console.error('Error fetching trips:', err);
       setError('No se pudieron cargar tus viajes. Por favor, intenta de nuevo más tarde.');
@@ -52,21 +168,29 @@ const MyTrips = () => {
     }
   };
 
-  const formatTime = (timeString: string | null | undefined) => {
-    if (!timeString) return 'Hora no disponible';
+  const formatTime = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Hora no disponible';
     try {
-      return timeString.substring(0, 5); // Formato HH:mm
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('es-CO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
     } catch (error) {
       return 'Hora no disponible';
     }
   };
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'Fecha no disponible';
+  const formatDate = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Fecha no disponible';
     try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Fecha no disponible';
-      return format(date, "EEEE d 'de' MMMM", { locale: es });
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('es-CO', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
     } catch (error) {
       return 'Fecha no disponible';
     }
@@ -74,9 +198,9 @@ const MyTrips = () => {
 
   // Filtrar viajes según la pestaña activa
   const filteredTrips = trips.filter(trip => {
-    if (!trip?.fecha || !trip?.hora_salida) return false;
+    if (!trip?.programado_at) return false;
     try {
-      const fechaHoraViaje = new Date(`${trip.fecha}T${trip.hora_salida}`);
+      const fechaHoraViaje = new Date(trip.programado_at);
       if (isNaN(fechaHoraViaje.getTime())) return false;
       const now = new Date();
       
@@ -93,10 +217,10 @@ const MyTrips = () => {
 
     try {
       const { error } = await supabase
-        .from('usuario_ruta')
+        .from('reserva')
         .delete()
         .eq('id_usuario', currentUserId)
-        .eq('id_ruta', tripId);
+        .eq('id_viaje', tripId);
 
       if (error) throw error;
 
@@ -140,6 +264,46 @@ const MyTrips = () => {
         description: "No se pudieron cargar los detalles de la ruta",
         variant: "destructive",
       });
+    }
+  };
+
+  // Add getRouteData helper function
+  const getRouteData = (trip: any) => {
+    if (!trip?.ruta?.punto_partida || !trip?.ruta?.punto_llegada) {
+      return null;
+    }
+
+    try {
+      const puntoPartida = trip.ruta.punto_partida;
+      const puntoLlegada = trip.ruta.punto_llegada;
+      const trayecto = trip.ruta.trayecto;
+
+      // Extract coordinates: [longitud, latitud] -> [latitud, longitud]
+      const [lngPartida, latPartida] = puntoPartida.coordinates;
+      const [lngLlegada, latLlegada] = puntoLlegada.coordinates;
+
+      const origin = {
+        lat: latPartida,
+        lng: lngPartida,
+        address: 'Punto de partida'
+      };
+
+      const destination = {
+        lat: latLlegada,
+        lng: lngLlegada,
+        address: 'Punto de llegada'
+      };
+
+      // Convert route if it exists
+      let route: [number, number][] = [];
+      if (trayecto && trayecto.coordinates) {
+        route = trayecto.coordinates.map(([lng, lat]: number[]) => [lat, lng]);
+      }
+
+      return { origin, destination, route };
+    } catch (error) {
+      console.error('Error parsing route data:', error);
+      return null;
     }
   };
 
@@ -202,21 +366,43 @@ const MyTrips = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-medium">
-                          {formatDate(trip.fecha)}
+                          {formatDate(trip.programado_at)}
                         </span>
-                        <span className="px-2 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
-                          {activeTab === 'upcoming' ? 'Próximo' : 'Pasado'}
+                        <span className={`px-2 py-1 text-sm rounded-full ${
+                          trip.tipo === 'solicitud' 
+                            ? trip.estado === 'aceptada' 
+                              ? 'bg-green-100 text-green-800'
+                              : trip.estado === 'pendiente'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                            : activeTab === 'upcoming' 
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {trip.tipo === 'solicitud' 
+                            ? trip.estado === 'aceptada' 
+                              ? 'Aceptada'
+                              : trip.estado === 'pendiente'
+                              ? 'Pendiente'
+                              : 'Rechazada'
+                            : activeTab === 'upcoming' 
+                              ? 'Próximo' 
+                              : 'Pasado'}
                         </span>
                       </div>
                       <h3 className="text-xl mt-2">
-                        <span className="font-medium">Conductor:</span> {trip.conductor?.nombre} {trip.conductor?.apellido}
+                        <span className="font-medium">
+                          {trip.tipo === 'solicitud' ? 'Solicitud de viaje' : 'Conductor:'}
+                        </span> {trip.conductor?.nombre} {trip.conductor?.apellido}
                       </h3>
                       <p className="text-gray-600">
-                        Salida: {formatTime(trip.hora_salida)} | Llegada estimada: {formatTime(trip.hora_llegada)}
+                        Salida: {formatTime(trip.salida_at || trip.programado_at)} | Llegada estimada: {formatTime(trip.llegada_at)}
                       </p>
-                      <p className="text-gray-600 mt-1">
-                        <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo?.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
-                      </p>
+                      {trip.vehiculo && (
+                        <p className="text-gray-600 mt-1">
+                          <span className="font-medium">Vehículo:</span> {trip.vehiculo?.tipo?.tipo} {trip.vehiculo?.color} {trip.vehiculo?.modelo}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <button
@@ -227,7 +413,7 @@ const MyTrips = () => {
                       </button>
                       {activeTab === 'upcoming' && (
                         <button
-                          onClick={() => handleCancelTrip(trip.id_ruta)}
+                          onClick={() => handleCancelTrip(trip.id_viaje)}
                           className="px-4 py-2 text-red-500 border border-red-500 rounded-md hover:bg-red-50"
                         >
                           Cancelar
@@ -249,66 +435,35 @@ const MyTrips = () => {
             <DialogTitle>Detalles del viaje</DialogTitle>
           </DialogHeader>
           {selectedTrip && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-medium mb-4">Información del conductor</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Nombre:</span> {selectedTrip.conductor?.nombre} {selectedTrip.conductor?.apellido}</p>
-                    <p><span className="font-medium">Teléfono:</span> {selectedTrip.conductor?.celular}</p>
-                  </div>
-
-                  <h3 className="font-medium mb-4 mt-6">Información del viaje</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Fecha:</span> {formatDate(selectedTrip.fecha)}</p>
-                    <p><span className="font-medium">Hora de salida:</span> {formatTime(selectedTrip.hora_salida)}</p>
-                    <p><span className="font-medium">Hora estimada de llegada:</span> {formatTime(selectedTrip.hora_llegada)}</p>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium mb-4">Información del vehículo</h3>
-                  <div className="space-y-2">
-                    <p><span className="font-medium">Tipo:</span> {selectedTrip.vehiculo?.tipo?.tipo}</p>
-                    <p><span className="font-medium">Color:</span> {selectedTrip.vehiculo?.color}</p>
-                    <p><span className="font-medium">Modelo:</span> {selectedTrip.vehiculo?.modelo}</p>
-                    <p><span className="font-medium">Placa:</span> {selectedTrip.vehiculo?.placa}</p>
-                  </div>
+            <div className="mt-4">
+              <div className="h-[400px] rounded-lg overflow-hidden">
+                {(() => {
+                  const routeData = getRouteData(selectedTrip);
+                  if (routeData && routeData.origin && routeData.destination) {
+                    return (
+                      <RouteMap
+                        origin={routeData.origin}
+                        destination={routeData.destination}
+                        route={routeData.route || []}
+                        allowClickToSetPoints={false}
+                      />
+                    );
+                  } else {
+                    return (
+                      <div className="flex items-center justify-center h-full bg-gray-100">
+                        <p className="text-gray-500">No hay información de ruta disponible</p>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+              <div className="mt-4">
+                <h3 className="font-medium">Horario</h3>
+                <div className="text-gray-600">
+                  {formatDate(selectedTrip.programado_at)} - {formatTime(selectedTrip.salida_at || selectedTrip.programado_at)}
+                  {selectedTrip.llegada_at && ` | Llegada: ${formatTime(selectedTrip.llegada_at)}`}
                 </div>
               </div>
-
-              <div>
-                <h3 className="font-medium mb-4">Ruta del viaje</h3>
-                <div className="h-[300px] rounded-lg overflow-hidden">
-                  <RouteMap
-                    origin={selectedTrip.routeDetails?.origen_coords ? {
-                      lat: selectedTrip.routeDetails.origen_coords.y,
-                      lng: selectedTrip.routeDetails.origen_coords.x,
-                      address: selectedTrip.routeDetails.origen_coords.address || "Origen"
-                    } : null}
-                    destination={selectedTrip.routeDetails?.destino_coords ? {
-                      lat: selectedTrip.routeDetails.destino_coords.y,
-                      lng: selectedTrip.routeDetails.destino_coords.x,
-                      address: selectedTrip.routeDetails.destino_coords.address || "Destino"
-                    } : null}
-                    route={selectedTrip.routeDetails?.trayecto_coords?.map((coord: any) => [coord.y, coord.x]) || null}
-                    allowClickToSetPoints={false}
-                  />
-                </div>
-              </div>
-
-              {activeTab === 'upcoming' && (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={() => {
-                      handleCancelTrip(selectedTrip.id_ruta);
-                      setIsDialogOpen(false);
-                    }}
-                    className="px-4 py-2 text-red-500 border border-red-500 rounded-md hover:bg-red-50"
-                  >
-                    Cancelar viaje
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>

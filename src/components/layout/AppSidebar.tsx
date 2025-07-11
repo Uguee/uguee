@@ -6,7 +6,8 @@ import {
   Heart, 
   Car,
   Plus,
-  Play
+  Play,
+  AlertTriangle
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/useAuth"
@@ -109,6 +110,11 @@ export const AppSidebar = () => {
       url: "/favorite-routes",
       icon: Heart,
     },
+    {
+      title: "Reportar Incidente",
+      url: "/report-incident",
+      icon: AlertTriangle,
+    },
   ];
 
   // Menu items for driver navigation
@@ -123,6 +129,11 @@ export const AppSidebar = () => {
       title: "Crear viaje",
       url: "/driver/create-trip",
       icon: Plus,
+    },
+    {
+      title: "Solicitudes de viaje",
+      url: "/driver/trip-requests",
+      icon: Calendar,
     },
     {
       title: "Historial de viajes",

@@ -34,6 +34,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
     color: '',
     modelo: new Date().getFullYear(),
     tipo: '',
+    categoria: '',
     vigencia_soat: '',
     fecha_tecnicomecanica: '',
     soat_documento: null as File | null,
@@ -223,6 +224,11 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
       }
     }
 
+    // Validar categoría para vehículos que no son bicicleta ni monopatín
+    if (!esBicicletaOMonopatin && !formData.categoria) {
+      newErrors.categoria = "Debes seleccionar una categoría";
+    }
+
     // Validaciones específicas para vehículos que no son bicicleta ni monopatín
     if (!esBicicletaOMonopatin) {
       // Validar SOAT
@@ -280,6 +286,7 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
         tipo: tipo,
         color: formData.color,
         modelo: formData.modelo,
+        categoria: esBicicletaOMonopatin ? null : formData.categoria,
         validacion: 'pendiente',
         vigencia_soat: esBicicletaOMonopatin ? null : formData.vigencia_soat,
         fecha_tecnicomecanica: esBicicletaOMonopatin ? null : formData.fecha_tecnicomecanica,
@@ -433,6 +440,27 @@ const AgregarVehiculoForm = ({ isOpen, onClose, onSuccess, userId }: AgregarVehi
 
           {!esBicicletaOMonopatin && (
             <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Categoría de Viajes</label>
+                <Select
+                  value={formData.categoria}
+                  onValueChange={(value) => setFormData({ ...formData, categoria: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Viajes intermunicipales">Viajes intermunicipales</SelectItem>
+                    <SelectItem value="Viajes metropolitanos">Viajes metropolitanos</SelectItem>
+                    <SelectItem value="Viajes al interior del campus">Viajes al interior del campus</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.categoria && (
+                  <p className="mt-1 text-sm text-red-600">{errors.categoria}</p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">Fecha de Vencimiento SOAT</label>
                 <Input

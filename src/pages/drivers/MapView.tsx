@@ -148,10 +148,9 @@ const MapView = () => {
         id_ruta: idRutaAUsar,
         id_conductor: currentUserId, // ✅ Ahora usa el usuario real
         id_vehiculo: vehiculo,
-        fecha: fecha,
-        hora_salida: horaSalida,
-        hora_llegada: horaLlegada,
-        reseña: 1
+        programado_at: `${fecha}T${horaSalida}:00`,
+        salida_at: null,
+        llegada_at: null
       });
 
       console.log('Viaje creado:', viajeCreado);

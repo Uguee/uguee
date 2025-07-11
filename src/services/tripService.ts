@@ -5,9 +5,9 @@ export interface Trip {
   id_conductor: number;
   id_ruta: number;
   id_vehiculo: string;
-  fecha: string;
-  hora_salida: string;
-  hora_llegada: string;
+  programado_at: string;
+  salida_at: string | null;
+  llegada_at: string | null;
   reseña?: number;
   conductor: {
     nombre: string;
@@ -45,8 +45,8 @@ export class TripService {
             )
           )
         `)
-        .gte('fecha', new Date().toISOString().split('T')[0])
-        .order('fecha', { ascending: true });
+        .gte('programado_at', new Date().toISOString())
+        .order('programado_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching trips:', error);
@@ -62,19 +62,19 @@ export class TripService {
 
   static async getUserTrips(userId: number): Promise<Trip[]> {
     try {
-      // Obtener las rutas que el usuario ha reservado
-      const { data: userRoutes, error: routesError } = await supabase
-        .from('usuario_ruta')
-        .select('id_ruta')
+      // Obtener los viajes que el usuario ha reservado
+      const { data: userReservations, error: reservationsError } = await supabase
+        .from('reserva')
+        .select('id_viaje')
         .eq('id_usuario', userId);
 
-      if (routesError) throw routesError;
+      if (reservationsError) throw reservationsError;
 
-      if (!userRoutes || userRoutes.length === 0) {
+      if (!userReservations || userReservations.length === 0) {
         return [];
       }
 
-      // Obtener los viajes asociados a esas rutas
+      // Obtener los viajes asociados a esas reservas
       const { data: trips, error: tripsError } = await supabase
         .from('viaje')
         .select(`
@@ -100,7 +100,7 @@ export class TripService {
             trayecto
           )
         `)
-        .in('id_ruta', userRoutes.map(r => r.id_ruta));
+        .in('id_viaje', userReservations.map(r => r.id_viaje));
 
       if (tripsError) throw tripsError;
 
@@ -113,7 +113,6 @@ export class TripService {
 
   static async findSimilarTrips(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }, transportType?: string): Promise<Trip[]> {
     try {
-      // First get all upcoming trips
       const { data: trips, error: tripsError } = await supabase
         .from('viaje')
         .select(`
@@ -132,8 +131,8 @@ export class TripService {
             )
           )
         `)
-        .gte('fecha', new Date().toISOString().split('T')[0])
-        .order('fecha', { ascending: true });
+        .gte('programado_at', new Date().toISOString())
+        .order('programado_at', { ascending: true });
 
       if (tripsError) throw tripsError;
 

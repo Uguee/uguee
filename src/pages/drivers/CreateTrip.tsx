@@ -41,6 +41,16 @@ interface RutaDetalle {
   trayecto_coords: CoordenadaPoint[];
 }
 
+interface Vehiculo {
+  placa: string;
+  color: string;
+  modelo: number;
+  tipo_vehiculo: {
+    tipo: string;
+  };
+  validacion: string;
+}
+
 const CreateTrip = () => {
   // Estados para nueva ruta
   const [currentRoute, setCurrentRoute] = useState<{
@@ -62,8 +72,8 @@ const CreateTrip = () => {
   // Datos del viaje
   const [fecha, setFecha] = useState('');
   const [horaSalida, setHoraSalida] = useState('');
-  const [horaLlegada, setHoraLlegada] = useState('');
   const [vehiculo, setVehiculo] = useState('');
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
 
   const { saveRoute, isLoading: isLoadingRoute } = useRouteManager();
   const { fetchRutasDisponibles, crearViaje, isLoading: isLoadingViaje } = useViajeManager();
@@ -152,6 +162,38 @@ const CreateTrip = () => {
     cargarDetalleRuta();
   }, [rutaSeleccionada, modoCreacion]);
 
+  // Cargar vehículos del conductor
+  useEffect(() => {
+    const cargarVehiculos = async () => {
+      if (!currentUserId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('vehiculo')
+          .select(`
+            *,
+            tipo_vehiculo (
+              tipo
+            )
+          `)
+          .eq('id_usuario', currentUserId)
+          .eq('validacion', 'validado');
+
+        if (error) throw error;
+        setVehiculos(data || []);
+      } catch (err) {
+        console.error('Error cargando vehículos:', err);
+        toast({
+          title: "Error",
+          description: "No se pudieron cargar los vehículos",
+          variant: "destructive",
+        });
+      }
+    };
+
+    cargarVehiculos();
+  }, [currentUserId]);
+
   const handleRouteGenerated = (
     origin: RoutePoint, 
     destination: RoutePoint, 
@@ -177,8 +219,8 @@ const CreateTrip = () => {
 
     console.log('🔍 DEBUG - currentUserId actual:', currentUserId);
 
-    // Validaciones existentes
-    if (!fecha || !horaSalida || !horaLlegada || !vehiculo) {
+    // Validaciones actualizadas
+    if (!fecha || !horaSalida || !vehiculo) {
       toast({
         title: "❌ Campos requeridos",
         description: "Por favor completa todos los campos del viaje",
@@ -235,15 +277,27 @@ const CreateTrip = () => {
         throw new Error('ID de ruta inválido');
       }
 
-      // Crear el viaje CON VALIDACIONES
-      console.log('Creando viaje...');
+      // Formatear la fecha correctamente
+      const fechaHora = new Date(`${fecha}T${horaSalida}`);
+      const ahora = new Date();
+
+      if (fechaHora <= ahora) {
+        toast({
+          title: "❌ Fecha inválida",
+          description: "La fecha y hora programada debe ser futura",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Creando viaje con fecha:', fechaHora.toISOString());
       const viajeCreado = await crearViaje({
         id_ruta: idRutaAUsar,
         id_conductor: currentUserId,
         id_vehiculo: vehiculo,
-        fecha: fecha,
-        hora_salida: horaSalida,
-        hora_llegada: horaLlegada
+        programado_at: fechaHora.toISOString(),
+        salida_at: null,
+        llegada_at: null
       });
 
       console.log('Viaje creado:', viajeCreado);
@@ -262,7 +316,6 @@ const CreateTrip = () => {
       setRutaSeleccionada(null);
       setFecha('');
       setHoraSalida('');
-      setHoraLlegada('');
       setVehiculo('');
 
       // Recargar rutas disponibles
@@ -508,7 +561,7 @@ const CreateTrip = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Hora de salida
+                      Hora programada
                     </label>
                     <Input
                       type="time"
@@ -520,27 +573,23 @@ const CreateTrip = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Hora estimada de llegada
+                      Vehículo
                     </label>
-                    <Input
-                      type="time"
-                      value={horaLlegada}
-                      onChange={(e) => setHoraLlegada(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Vehículo (ID)
-                    </label>
-                    <Input
-                      type="text"
+                    <Select
                       value={vehiculo}
-                      onChange={(e) => setVehiculo(e.target.value)}
-                      placeholder="Ingresa el ID del vehículo"
-                      className="w-full"
-                    />
+                      onValueChange={setVehiculo}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un vehículo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehiculos.map((v) => (
+                          <SelectItem key={v.placa} value={v.placa}>
+                            {v.placa} - {v.tipo_vehiculo.tipo} ({v.color})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
