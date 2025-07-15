@@ -164,6 +164,66 @@ export class UserService {
   }
 
   /**
+   * Obtiene los datos del usuario por UUID utilizando la variante POST
+   * de la edge function (`get-user-data-post`). Esta variante resulta
+   * más segura cuando el UUID se envía en el body.
+   */
+  static async getUserByUuidPost(uuid: string, accessToken?: string): Promise<User | null> {
+    try {
+      console.log('🔍 UserService (POST): Consultando usuario por UUID:', uuid);
+
+      const headers = await this.getAuthHeaders(accessToken);
+      const url = SUPABASE_FUNCTIONS.GET_USER_DATA_POST;
+
+      console.log('📡 Llamando endpoint (POST):', url);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ uuid }),
+        // Añadir timeout razonable
+        signal: AbortSignal.timeout(5000)
+      });
+
+      if (!response.ok) {
+        console.error('❌ Response not OK (POST):', response.status, response.statusText);
+        return null;
+      }
+
+      const result: UserDataResponse = await response.json();
+      console.log('📥 Respuesta del endpoint (POST):', result);
+
+      if (!result.success || !result.data) {
+        console.error('❌ Endpoint (POST) no devolvió datos válidos:', result);
+        return null;
+      }
+
+      console.log('✅ Datos recibidos del endpoint (POST):', {
+        id_usuario: result.data.id_usuario,
+        nombre: result.data.nombre,
+        rol: result.data.rol,
+        uuid: result.data.uuid
+      });
+
+      const mappedUser = await this.mapUserData(result.data);
+      console.log('🎯 Usuario final mapeado (POST):', {
+        id: mappedUser.id,
+        firstName: mappedUser.firstName,
+        role: mappedUser.role
+      });
+
+      return mappedUser;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error('❌ Request timeout (POST)');
+      } else {
+        console.error('❌ Error en getUserByUuidPost:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
    * Obtiene todos los usuarios (para uso administrativo)
    */
   static async getAllUsers(): Promise<User[]> {

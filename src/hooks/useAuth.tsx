@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
-      const userData = await UserService.getUserByUuid(supabaseUser.id, accessToken);
+      const userData = await UserService.getUserByUuidPost(supabaseUser.id, accessToken);
       
       if (userData) {
         console.log('✅ Datos obtenidos del UserService:', userData);
@@ -49,6 +49,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!userData.email && supabaseUser.email) {
           console.log('🔧 Usando email de Supabase como respaldo:', supabaseUser.email);
           userData.email = supabaseUser.email;
+        }
+        // Si faltan firstName o lastName en los datos del endpoint, intentar recuperarlos
+        // desde los metadatos del usuario en Supabase para asegurar que los nombres se
+        // muestren correctamente en los menús y navbars.
+        if (!userData.firstName) {
+          const metaFirstName =
+            (supabaseUser.user_metadata &&
+              (supabaseUser.user_metadata.firstName || supabaseUser.user_metadata.first_name || supabaseUser.user_metadata.nombre || supabaseUser.user_metadata.name)) ||
+            '';
+          if (metaFirstName) {
+            console.log('🔧 Usando firstName de user_metadata como respaldo:', metaFirstName);
+            userData.firstName = metaFirstName;
+          }
+        }
+
+        if (!userData.lastName) {
+          const metaLastName =
+            (supabaseUser.user_metadata &&
+              (supabaseUser.user_metadata.lastName || supabaseUser.user_metadata.last_name || supabaseUser.user_metadata.apellido || supabaseUser.user_metadata.lastname)) ||
+            '';
+          if (metaLastName) {
+            console.log('🔧 Usando lastName de user_metadata como respaldo:', metaLastName);
+            userData.lastName = metaLastName;
+          }
         }
         
         setLastFetchTime(now);
