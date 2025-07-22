@@ -716,7 +716,7 @@ const Dashboard = () => {
 
   return (
     <InstitutionalLayout>
-      <div className="space-y-6">
+      <div className="min-h-screen overflow-y-auto space-y-6 pb-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Panel de Control Institucional</h1>
           <div className="flex gap-4">

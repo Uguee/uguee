@@ -9,8 +9,8 @@ const InstitutionalLayout: React.FC<InstitutionalLayoutProps> = ({ children }) =
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      <main className="flex-1 p-6 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
+      <main className="flex-1 bg-gray-50 pt-16 overflow-auto">
+        <div className="max-w-7xl mx-auto p-6">
           {children}
         </div>
       </main>
