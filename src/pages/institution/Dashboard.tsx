@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DocumentsModal } from '@/components/DocumentsModal';
+import { IdCard } from 'lucide-react';
 import InstitutionalLayout from '@/components/layout/InstitutionalLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +35,10 @@ import {
   FileText,
   Calendar,
   User,
-  UserCog
+  UserCog,
+  X
 } from 'lucide-react';
+import { useUserDocuments } from '@/hooks/useUserDocuments';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -62,6 +66,11 @@ const Dashboard = () => {
   const [activeRoutes, setActiveRoutes] = useState<any[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [showRouteMap, setShowRouteMap] = useState(false);
+  const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
+  const [selectedUserForDocuments, setSelectedUserForDocuments] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const loadInstitutionData = async () => {
     if (!user?.id) return;
@@ -171,6 +180,8 @@ const Dashboard = () => {
           fecha_registro,
           rol_institucional,
           correo_institucional,
+          codigo_institucional,
+          direccion_de_residencia,
           usuario:usuario (
             nombre,
             apellido,
@@ -663,6 +674,46 @@ const Dashboard = () => {
     }
   };
 
+  // Función para abrir modal de documentos
+  const handleViewDocuments = (userId: number, userName: string) => {
+    setSelectedUserForDocuments({ id: userId, name: userName });
+    setDocumentsModalOpen(true);
+  };
+
+  // Función para cerrar modal de documentos
+  const closeDocumentsModal = () => {
+    setDocumentsModalOpen(false);
+    setSelectedUserForDocuments(null);
+  };
+
+  const handleApproval = async (userId: number, action: 'validado' | 'denegado') => {
+    try {
+      const { error } = await supabase
+        .from('registro')
+        .update({ validacion: action })
+        .eq('id_usuario', userId)
+        .eq('id_institucion', institution?.id_institucion);
+
+      if (error) throw error;
+
+      // Update state immediately
+      setRegistrationRequests(prev => prev.filter(request => request.id_usuario !== userId));
+      setDriverRequests(prev => prev.filter(request => request.id_usuario !== userId));
+      
+      toast({
+        title: action === 'validado' ? "Solicitud aprobada" : "Solicitud rechazada",
+        description: `El usuario ha sido ${action} exitosamente`,
+      });
+    } catch (error) {
+      console.error('Error approving/rejecting request:', error);
+      toast({
+        title: "Error",
+        description: `No se pudo ${action} la solicitud`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <InstitutionalLayout>
       <div className="space-y-6">
@@ -982,7 +1033,7 @@ const Dashboard = () => {
                   <div className="space-y-4">
                     {registrationRequests.map((request) => (
                       <div key={request.id_usuario} className="border rounded-lg p-4 bg-white hover:bg-purple-50 transition-colors">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                           <div>
                             <p className="font-semibold text-purple-700 flex items-center">
                               <User className="w-4 h-4 mr-2" />
@@ -1025,23 +1076,56 @@ const Dashboard = () => {
                             </p>
                             <p className="text-gray-700">{new Date(request.fecha_registro).toLocaleDateString()}</p>
                           </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <IdCard className="w-4 h-4 mr-2" />
+                              Código Institucional
+                            </p>
+                            <p className="text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded text-sm">
+                              {request.codigo_institucional}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-purple-700 flex items-center">
+                              <MapPin className="w-4 h-4 mr-2" />
+                              Dirección
+                            </p>
+                            <p className="text-gray-700">{request.direccion_de_residencia}</p>
+                          </div>
                         </div>
-                        <div className="mt-4 flex justify-end space-x-2">
+                        
+                        <div className="mt-4 flex justify-between items-center pt-4 border-t">
                           <Button
                             variant="outline"
-                            onClick={() => handleRejectRequest(request.id_usuario)}
-                            className="hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                            size="sm"
+                            onClick={() => handleViewDocuments(
+                              request.id_usuario, 
+                              `${request.usuario.nombre} ${request.usuario.apellido}`
+                            )}
+                            className="flex items-center gap-2"
                           >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Rechazar
+                            <FileText className="w-4 h-4" />
+                            Ver Documentos
                           </Button>
-                          <Button
-                            onClick={() => handleApproveRequest(request.id_usuario)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Aprobar
-                          </Button>
+                          
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleApproval(request.id_usuario, 'denegado')}
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Rechazar
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm"
+                              onClick={() => handleApproval(request.id_usuario, 'validado')}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Aprobar
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1553,6 +1637,16 @@ const Dashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de documentos */}
+      {selectedUserForDocuments && (
+        <DocumentsModal
+          isOpen={documentsModalOpen}
+          onClose={closeDocumentsModal}
+          userId={selectedUserForDocuments.id}
+          userName={selectedUserForDocuments.name}
+        />
+      )}
     </InstitutionalLayout>
   );
 };
