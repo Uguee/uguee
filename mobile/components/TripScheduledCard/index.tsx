@@ -3,6 +3,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 
 interface TripScheduledCardProps {
   trip: any; // Datos completos del viaje
+  time: string; // NUEVO: hora del viaje
   onPress?: () => void;
   onStartTrip?: () => void;
   canStartTrip?: boolean;
@@ -18,6 +19,7 @@ function formatPlaceName(nombre: string | null): string {
 
 const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
   trip,
+  time,
   onPress = () => {},
   onStartTrip = () => {},
   canStartTrip = false,
@@ -91,6 +93,28 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
     return "#E0E0E0";
   };
 
+  // Determina la fecha y hora a mostrar
+  let fechaMostrar = trip.programado_at;
+  if (trip.estado === "en-curso" && trip.salida_at) {
+    fechaMostrar = trip.salida_at;
+  }
+
+  // Determina el texto del estado
+  let estadoTexto = "";
+  if (trip.estado === "en-curso") {
+    estadoTexto = "en curso";
+  } else if (trip.estado === "programado") {
+    estadoTexto = "programado";
+  } else if (trip.estado === "pendiente") {
+    estadoTexto = "pendiente";
+  } else if (trip.estado === "completado") {
+    estadoTexto = "completado";
+  } else if (trip.estado === "terminado") {
+    estadoTexto = "terminado";
+  } else {
+    estadoTexto = trip.estado || "desconocido";
+  }
+
   return (
     <TouchableOpacity
       style={[styles.card, { borderColor: getBorderColor() }]}
@@ -104,7 +128,14 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
           <View style={styles.timeRow}>
             <View style={styles.timeDot} />
             <Text style={styles.time}>
-              {trip.programado_local || "No disponible"}
+              {fechaMostrar
+                ? new Date(fechaMostrar).toLocaleDateString("es-CO") +
+                  " " +
+                  new Date(fechaMostrar).toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "No disponible"}
             </Text>
           </View>
           <View
@@ -115,6 +146,11 @@ const TripScheduledCard: React.FC<TripScheduledCardProps> = ({
           >
             <Text style={styles.estadoBadgeText}>{getEstadoLabel()}</Text>
           </View>
+        </View>
+        <View style={styles.estadoBox}>
+          <Text style={[styles.estadoText, { color: "#fff" }]}>
+            {estadoTexto}
+          </Text>
         </View>
         {canStartTrip && trip.estado === "pendiente" && (
           <TouchableOpacity
@@ -231,9 +267,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   estadoBadgeText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  estadoBox: {
+    marginLeft: 18,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  estadoText: {
     color: "#7C3AED",
     fontSize: 11,
     fontWeight: "bold",
+  },
+  fechaText: {
+    fontSize: 13,
+    color: "#7C3AED",
+    marginTop: 4,
   },
 });
 

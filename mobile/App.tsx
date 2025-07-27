@@ -15,6 +15,7 @@ import {
   AddVehicleScreen,
   InstProfileScreen,
   ProfileScreen,
+  DriverTripActiveScreen,
 } from "./screens";
 import { HomeScreen } from "./screens";
 import DriverRoutesScreen from "./screens/DriverRoutesScreen";
@@ -25,7 +26,14 @@ import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
-import { View, Text, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Alert,
+  Image,
+  Modal,
+  TouchableOpacity,
+} from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
 import { getCedulaByUUID } from "./services/userDataService";
@@ -34,6 +42,15 @@ import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
 import { joinTripAsPassenger } from "./services/tripServices";
 import UserServicesScreen from "./screens/userServicesScreen";
+import UserTripStartScreen from "./screens/UserTripStartScreen";
+import TripCompletedDetailsModal from "./components/TripCompletedDetailsModal";
+import UserTripActiveScreen from "./screens/UserTripActiveScreen";
+import RatingModal from "./components/RatingModal";
+import { useTripEndSubscription } from "./hooks/useTripEndSubscription";
+import { getActivePassengerTrip } from "./services/tripServices";
+import { getCurrentToken } from "./services/authService";
+import { createTripReview } from "./services/reviewService";
+import { getRouteById } from "./services/routeService";
 
 type Screen =
   | "welcome"
@@ -64,7 +81,10 @@ type Screen =
   | "driver-trip-start"
   | "driver-qr"
   | "scan-qr"
-  | "user-services";
+  | "user-services"
+  | "user-trip-start"
+  | "driver-trip-active"
+  | "user-trip-active";
 
 // Componente principal de navegación
 const AppNavigator = () => {
@@ -89,6 +109,15 @@ const AppNavigator = () => {
   const [qrValue, setQRValue] = useState<string | null>(null);
   const [showScanQRScreen, setShowScanQRScreen] = useState(false);
   const [scanQRTripData, setScanQRTripData] = useState<any>(null);
+  const [showUserTripStartScreen, setShowUserTripStartScreen] = useState(false);
+  const [userTripStartData, setUserTripStartData] = useState<any>(null);
+  const [activeTripData, setActiveTripData] = useState<any>(null);
+  const [completedTrip, setCompletedTrip] = useState<any>(null);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showEndTripModal, setShowEndTripModal] = useState(false);
+  const [userActiveTripData, setUserActiveTripData] = useState<any>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [tripToRate, setTripToRate] = useState<any>(null);
 
   // Efecto para redirigir automáticamente según el estado de autenticación
   useEffect(() => {
@@ -111,6 +140,100 @@ const AppNavigator = () => {
       getCedulaByUUID(user.id).then(setCedula);
     }
   }, [user?.id]);
+
+  // Lógica para detectar viaje activo y suscribirse a su finalización
+  useEffect(() => {
+    console.log("[App] useEffect: user?.id=", user?.id, "cedula=", cedula);
+    const fetchActiveTrip = async () => {
+      if (!user?.id || !cedula) {
+        console.log(
+          "[App] No hay user?.id o cedula, no se consulta viaje activo"
+        );
+        return;
+      }
+      const jwt = getCurrentToken() || "";
+      if (!jwt) {
+        console.log("[App] No hay JWT, no se consulta viaje activo");
+        return;
+      }
+      console.log(
+        "[App] Llamando getActivePassengerTrip con cedula=",
+        cedula,
+        "jwt=",
+        jwt
+      );
+      const res = await getActivePassengerTrip(Number(cedula), jwt);
+      console.log("[App] Resultado getActivePassengerTrip:", res);
+      if (res.success && res.viajes.length > 0) {
+        // Selecciona el viaje con mayor id_viaje
+        const viajeMasReciente = res.viajes.reduce(
+          (max, v) => (v.id_viaje > max.id_viaje ? v : max),
+          res.viajes[0]
+        );
+        setTripToRate(viajeMasReciente);
+        console.log(
+          "[App] (post-join) setTripToRate (mayor id_viaje):",
+          viajeMasReciente
+        );
+        console.log("[App] id_viaje seteado:", viajeMasReciente?.id_viaje);
+      } else {
+        setTripToRate(null);
+        console.log("[App] No hay viaje activo, setTripToRate(null)");
+      }
+    };
+    fetchActiveTrip();
+  }, [user?.id, cedula]);
+
+  useEffect(() => {
+    console.log("[App] useEffect tripToRate?.id_viaje:", tripToRate?.id_viaje);
+  }, [tripToRate?.id_viaje]);
+
+  // Suscribirse al fin del viaje activo
+  useTripEndSubscription(tripToRate?.id_viaje, (viajeFinalizado) => {
+    console.log(
+      "[App] Callback useTripEndSubscription: viajeFinalizado=",
+      viajeFinalizado
+    );
+    setTripToRate(viajeFinalizado);
+    setShowRatingModal(true);
+  });
+
+  // Handler para guardar la reseña y redirigir
+  const handleSubmitRating = async (rating: number, comment: string) => {
+    setShowRatingModal(false);
+    if (!tripToRate || !tripToRate.id_viaje || !user?.id) {
+      console.log(
+        "[App] handleSubmitRating: tripToRate o id_viaje o user.id faltante"
+      );
+      return;
+    }
+    try {
+      const id_usuario = await getCedulaByUUID(user.id);
+      const jwt = getCurrentToken();
+      if (!id_usuario || !jwt) throw new Error("No hay usuario o JWT");
+      console.log("[App] Enviando reseña:", {
+        id_usuario,
+        id_viaje: tripToRate.id_viaje,
+        rating,
+        comment,
+      });
+      const res = await createTripReview(
+        id_usuario,
+        tripToRate.id_viaje,
+        rating,
+        comment,
+        jwt
+      );
+      if (res.success) {
+        alert("¡Reseña guardada exitosamente!");
+        setCurrentScreen("user-services");
+      } else {
+        alert(res.error || "Error al guardar la reseña");
+      }
+    } catch (e: any) {
+      alert(e.message || "Error inesperado al guardar la reseña");
+    }
+  };
 
   const handleBackToHome = () => {
     setCurrentScreen("welcome");
@@ -313,7 +436,7 @@ const AppNavigator = () => {
       return;
     }
 
-    if (!user?.id || !cedula) {
+    if (!user?.id) {
       Alert.alert("Error", "No se pudo obtener la información del usuario");
       setShowScanQRScreen(false);
       setScanQRTripData(null);
@@ -321,7 +444,19 @@ const AppNavigator = () => {
       return;
     }
 
+    if (cedula === null) {
+      Alert.alert(
+        "Cargando información",
+        "Por favor espera unos segundos mientras cargamos tu información de usuario. Intenta escanear de nuevo en un momento."
+      );
+      setShowScanQRScreen(false);
+      setScanQRTripData(null);
+      setCurrentScreen("user-trips");
+      return;
+    }
+
     try {
+      console.log("[App] Antes de refrescar viaje activo tras escanear QR");
       console.log("[App] Procesando QR escaneado:", qrData);
 
       // Parsear los datos del QR
@@ -351,7 +486,10 @@ const AppNavigator = () => {
       // Unir al pasajero al viaje
       const result = await joinTripAsPassenger(cedula, id_conductor, id_viaje);
 
-      console.log("[App] Unión exitosa:", result);
+      console.log(
+        "[App] Resultado getActivePassengerTrip (post-join):",
+        result
+      );
 
       Alert.alert(
         "¡Te has unido al viaje!",
@@ -359,9 +497,36 @@ const AppNavigator = () => {
         [
           {
             text: "OK",
-            onPress: () => {
+            onPress: async () => {
               setShowScanQRScreen(false);
               setScanQRTripData(null);
+              // Refresca el viaje activo y setea tripToRate
+              try {
+                const jwt = getCurrentToken() || "";
+                const res = await getActivePassengerTrip(Number(cedula), jwt);
+                if (res.success && res.viajes.length > 0) {
+                  const viajeMasReciente = res.viajes.reduce(
+                    (max, v) => (v.id_viaje > max.id_viaje ? v : max),
+                    res.viajes[0]
+                  );
+                  setTripToRate(viajeMasReciente);
+                  console.log(
+                    "[App] (post-join) setTripToRate (mayor id_viaje):",
+                    viajeMasReciente
+                  );
+                  console.log(
+                    "[App] (post-join) id_viaje seteado:",
+                    viajeMasReciente?.id_viaje
+                  );
+                } else {
+                  setTripToRate(null);
+                }
+              } catch (e) {
+                console.log(
+                  "[App] (post-join) Error refrescando viaje activo:",
+                  e
+                );
+              }
               setCurrentScreen("user-trips");
             },
           },
@@ -385,6 +550,42 @@ const AppNavigator = () => {
         ]
       );
     }
+  };
+
+  const handleGoToUserTripStartScreen = (tripData: any) => {
+    // Asegura que el id_conductor sea el id_usuario real
+    const tripToPass = {
+      ...tripData,
+      id_conductor:
+        tripData.id_conductor ||
+        (tripData.conductor && tripData.conductor.id_usuario) ||
+        null,
+    };
+    setUserTripStartData(tripToPass);
+    setShowUserTripStartScreen(true);
+    setCurrentScreen("user-trip-start");
+  };
+
+  // Handler para mostrar la pantalla de escaneo QR desde UserTripStartScreen
+  const handleShowScanQRScreenFromTripStart = (tripData: any) => {
+    setScanQRTripData(tripData);
+    setCurrentScreen("scan-qr");
+  };
+
+  const handleGoToDriverTripScreen = (trip: any) => {
+    if (trip._forceActive || trip.estado === "en-curso") {
+      setActiveTripData(trip);
+      setCurrentScreen("driver-trip-active");
+    } else {
+      setTripStartData(trip);
+      setCurrentScreen("driver-trip-start");
+    }
+  };
+
+  const handleEndTrip = (trip: any) => {
+    setShowEndTripModal(true);
+    setCompletedTrip(null);
+    setShowCompletedModal(false);
   };
 
   // Componente de Dashboard basado en rol
@@ -645,10 +846,7 @@ const AppNavigator = () => {
             onGoToMyVehicles={handleGoToMyVehicles}
             onGoToProfile={handleGoToProfileFromDriver}
             onGoToCreateTripScreen={handleGoToCreateTripScreen}
-            onStartTripScreen={(trip: any) => {
-              setTripStartData(trip);
-              setCurrentScreen("driver-trip-start");
-            }}
+            onStartTripScreen={handleGoToDriverTripScreen}
           />
         );
       case "driver-create-trip":
@@ -665,6 +863,15 @@ const AppNavigator = () => {
             onGoToProfileScreen={handleGoToProfile}
             onShowScanQRScreen={handleShowScanQRScreen}
             onGoToServices={handleGoToServices}
+            onGoToUserTripStartScreen={handleGoToUserTripStartScreen}
+            onGoToUserTripActiveScreen={(tripData) => {
+              console.log(
+                "[App] Navegando a user-trip-active con trip:",
+                tripData
+              );
+              setUserActiveTripData(tripData);
+              setCurrentScreen("user-trip-active");
+            }}
           />
         );
       case "driver-trip-start":
@@ -675,6 +882,10 @@ const AppNavigator = () => {
             onGoToQRScreen={(qr) => {
               setQRValue(qr);
               setCurrentScreen("driver-qr");
+            }}
+            onStartTrip={(trip) => {
+              setActiveTripData(trip);
+              setCurrentScreen("driver-trip-active");
             }}
           />
         );
@@ -687,7 +898,63 @@ const AppNavigator = () => {
         );
       case "scan-qr":
         return (
-          <ScanQRScreen onGoBack={handleGoBackFromScanQR} onScan={() => {}} />
+          <ScanQRScreen
+            onScan={async (qrData?: string) => {
+              if (!qrData) {
+                setCurrentScreen("user-trips");
+                return;
+              }
+              try {
+                let cedula = null;
+                if (user?.id) {
+                  cedula = await getCedulaByUUID(user.id);
+                }
+                if (!cedula)
+                  throw new Error("No se pudo obtener la cédula del usuario");
+                // Parsear QR (espera viaje:ID, conductor:ID)
+                const qrParts = qrData.split(",");
+                const viajePart = qrParts.find((part) =>
+                  part.startsWith("viaje:")
+                );
+                const conductorPart = qrParts.find((part) =>
+                  part.startsWith("conductor:")
+                );
+                const id_viaje = viajePart
+                  ? parseInt(viajePart.split(":")[1])
+                  : null;
+                const id_conductor = conductorPart
+                  ? parseInt(conductorPart.split(":")[1])
+                  : null;
+                if (!id_viaje || !id_conductor) throw new Error("QR inválido");
+                // Unir al viaje usando joinTripAsPassenger
+                await joinTripAsPassenger(cedula, id_conductor, id_viaje);
+                Alert.alert(
+                  "¡Te has unido al viaje!",
+                  "Has sido agregado exitosamente al viaje.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        setCurrentScreen("user-trips");
+                      },
+                    },
+                  ]
+                );
+              } catch (error: any) {
+                Alert.alert(
+                  "Error",
+                  error.message || "No se pudo unir al viaje.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => setCurrentScreen("user-trips"),
+                    },
+                  ]
+                );
+              }
+            }}
+            onGoBack={() => setCurrentScreen("user-trips")}
+          />
         );
       case "user-services":
         return (
@@ -697,6 +964,110 @@ const AppNavigator = () => {
             onGoToMyTrips={() => setCurrentScreen("user-trips")}
             onGoToServices={() => setCurrentScreen("user-services")}
             onGoToScanQR={() => setCurrentScreen("scan-qr")}
+          />
+        );
+      case "user-trip-start":
+        return (
+          <UserTripStartScreen
+            trip={userTripStartData}
+            onGoBack={() => setCurrentScreen("user-trips")}
+            onStartTrip={(viajeActualizado) => {
+              setUserActiveTripData(viajeActualizado);
+              setCurrentScreen("user-trip-active");
+            }}
+            onShowScanQRScreen={handleShowScanQRScreenFromTripStart}
+          />
+        );
+      case "driver-trip-active":
+        return (
+          <>
+            <DriverTripActiveScreen
+              trip={activeTripData}
+              onGoBack={() => setCurrentScreen("driver-my-trips")}
+              onEndTrip={handleEndTrip}
+            />
+            {/* Modal personalizado de fin de viaje */}
+            <Modal
+              visible={showEndTripModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowEndTripModal(false)}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <View
+                  style={{
+                    backgroundColor: "#fff",
+                    borderRadius: 18,
+                    padding: 28,
+                    alignItems: "center",
+                    width: 320,
+                  }}
+                >
+                  <Image
+                    source={require("./assets/good-rating.png")}
+                    style={{ width: 90, height: 90, marginBottom: 18 }}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "bold",
+                      color: "#7C3AED",
+                      marginBottom: 10,
+                      textAlign: "center",
+                    }}
+                  >
+                    ¡Gracias por ser conductor!
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: "#444",
+                      marginBottom: 24,
+                      textAlign: "center",
+                    }}
+                  >
+                    Recuerda invitar a tus pasajeros a calificar la experiencia.
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "#7C3AED",
+                      borderRadius: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 36,
+                    }}
+                    onPress={() => {
+                      setShowEndTripModal(false);
+                      setCurrentScreen("driver-my-trips");
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 17,
+                      }}
+                    >
+                      Aceptar
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </>
+        );
+      case "user-trip-active":
+        return (
+          <UserTripActiveScreen
+            trip={userActiveTripData}
+            onGoBack={() => setCurrentScreen("user-trips")}
           />
         );
       default:
@@ -710,6 +1081,52 @@ const AppNavigator = () => {
     <>
       <StatusBar style="auto" />
       {renderCurrentScreen()}
+      {/* Modal de calificación global al finalizar viaje */}
+      <RatingModal
+        visible={showRatingModal}
+        onClose={() => {
+          setShowRatingModal(false);
+          setCurrentScreen("user-services");
+          // Mostrar alerta personalizada sin título
+          Alert.alert(
+            "",
+            "Tu reseña es importante y nos ayuda a mejorar, recuerda hacerla luego.",
+            [
+              {
+                text: "OK",
+                onPress: () => {},
+              },
+            ]
+          );
+        }}
+        onSubmit={handleSubmitRating}
+      />
+      {/* Modal de viaje completado */}
+      <TripCompletedDetailsModal
+        visible={showCompletedModal}
+        onClose={() => setShowCompletedModal(false)}
+        route={
+          completedTrip?.ruta
+            ? `${completedTrip.ruta.nombre_partida} ➔ ${completedTrip.ruta.nombre_llegada}`
+            : ""
+        }
+        address={completedTrip?.ruta?.nombre_partida || ""}
+        departureDate={completedTrip?.programado_local?.split(",")[0] || ""}
+        departureTime={
+          completedTrip?.programado_local?.split(",")[1]?.trim() || ""
+        }
+        arrivalDate={
+          completedTrip?.llegada_at
+            ? new Date(completedTrip.llegada_at).toLocaleDateString("es-CO")
+            : ""
+        }
+        arrivalTime={
+          completedTrip?.llegada_at
+            ? new Date(completedTrip.llegada_at).toLocaleTimeString("es-CO")
+            : ""
+        }
+        passengers={completedTrip?.pasajeros || 0}
+      />
     </>
   );
 };

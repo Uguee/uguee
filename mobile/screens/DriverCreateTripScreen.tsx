@@ -20,6 +20,7 @@ import { useAuth } from "../hooks/useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getCurrentToken } from "../services/authService";
 import { createTrip } from "../services/tripServices";
+import { formatPlaceName } from "../lib/formatPlaceName";
 
 interface DriverCreateTripScreenProps {
   onGoToRegisterRouteScreen: () => void;
@@ -274,10 +275,11 @@ export default function DriverCreateTripScreen({
                         <View style={styles.routeIcon} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.dropdownTitle}>
-                            {item.nombre_partida} → {item.nombre_llegada}
+                            {formatPlaceName(item.nombre_partida)} →{" "}
+                            {formatPlaceName(item.nombre_llegada)}
                           </Text>
                           <Text style={styles.dropdownSubtitle}>
-                            Salida: {item.nombre_partida}
+                            Salida: {formatPlaceName(item.nombre_partida)}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -458,10 +460,8 @@ function getVehicleTitle(vehicle: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flex: 1,
     backgroundColor: "#fff",
     paddingHorizontal: 24,
-    paddingTop: 70,
     paddingTop: 70,
   },
   title: {
@@ -566,8 +566,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 16,
     justifyContent: "center",
-    marginTop: 40,
-    marginBottom: 24,
     marginTop: 40,
     marginBottom: 24,
   },

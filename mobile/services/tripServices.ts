@@ -1,10 +1,18 @@
 import { supabase } from "../lib/supabase";
+//implementa la edge function get-passengers-by-trip-id
+import { getCurrentToken } from "./authService";
 
 const TRIP_FUNCTION_URL =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/create-trip";
 
 const GET_DRIVER_TRIPS_URL =
   "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-driver-id";
+
+const START_TRIP_URL =
+  "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/start-trip";
+
+const END_TRIP_URL =
+  "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/end-trip";
 
 export interface Trip {
   id_viaje: string;
@@ -23,10 +31,93 @@ export interface Trip {
   vehiculo: {
     placa: string;
     modelo: string;
+    tipo?: string;
+    color?: string;
+  };
+  conductor?: {
+    id_usuario: number;
+    nombre: string;
+    apellido: string;
   };
   programado_at: string;
   salida_at: string | null;
   llegada_at: string | null;
+}
+
+/**
+ * Consulta los viajes de conductores de una institución específica.
+ * @param id_institucion ID de la institución
+ * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
+ * @param except_id_usuario (opcional) Excluir viajes de este conductor
+ * @returns {Promise<{ viajes: TripByInstitution[] }>} Donde cada viaje incluye todos los campos enriquecidos (ver interfaz TripByInstitution)
+ */
+export interface TripByInstitution {
+  id_viaje: number;
+  id_conductor: number;
+  id_vehiculo: string;
+  id_ruta: number;
+  salida_at: string | null;
+  llegada_at: string | null;
+  programado_at: string;
+  programado_local: string; // Fecha local formateada
+  estado:
+    | "programado"
+    | "pendiente"
+    | "en-curso"
+    | "completado"
+    | "desconocido";
+  conductor: {
+    id_usuario: number;
+    nombre: string;
+    apellido: string;
+  };
+  vehiculo: {
+    placa: string;
+    modelo: number;
+    color: string;
+    tipo?: number;
+  };
+  ruta: {
+    id_ruta: number;
+    nombre_partida: string;
+    nombre_llegada: string;
+  };
+  // ...otros campos que pueda retornar la edge function
+}
+
+export async function getTripsByInstitution(
+  id_institucion: number,
+  how_trips: number = 1,
+  except_id_usuario?: number
+): Promise<{ viajes: TripByInstitution[] }> {
+  const { getCurrentToken } = await import("./authService");
+  const token = getCurrentToken && getCurrentToken();
+  const body: any = { id_institucion, how_trips };
+  if (except_id_usuario !== undefined)
+    body.except_id_usuario = except_id_usuario;
+  const response = await fetch(
+    `${
+      process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    }/functions/v1/get-trips-by-institution`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await response.json();
+  console.log("[getTripsByInstitution] Respuesta completa:", data);
+  if (!response.ok) {
+    throw new Error(data.error || "Error al consultar viajes por institución");
+  }
+  if (data.viajes && data.viajes.length > 0) {
+    console.log("[getTripsByInstitution] Primer viaje:", data.viajes[0]);
+  }
+  // La edge function ya retorna los viajes enriquecidos, solo devolvemos tal cual
+  return data;
 }
 
 /**
@@ -208,38 +299,6 @@ export async function getDriverTrips(
 }
 
 /**
- * Consulta los viajes de conductores de una institución específica.
- * @param id_institucion ID de la institución
- * @param how_trips Filtro temporal (0=Todos, 1=Hoy, 2=Futuros)
- * @param except_id_usuario (opcional) Excluir viajes de este usuario
- * @returns Respuesta de la edgefunction
- */
-export async function getTripsByInstitution(
-  id_institucion: number,
-  how_trips: number = 1,
-  except_id_usuario?: number
-) {
-  const { getCurrentToken } = await import("./authService");
-  const token = getCurrentToken && getCurrentToken();
-  const body: any = { id_institucion, how_trips };
-  if (except_id_usuario !== undefined)
-    body.except_id_usuario = except_id_usuario;
-  const response = await fetch(
-    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-trips-by-institution",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    }
-  );
-  const data = await response.json();
-  return data;
-}
-
-/**
  * Une un pasajero a un viaje usando la edge function join-a-trip-as-passenger
  * @param id_pasajero ID del pasajero (cédula)
  * @param id_conductor ID del conductor (cédula)
@@ -252,7 +311,7 @@ export const joinTripAsPassenger = async (
   id_viaje: number
 ) => {
   try {
-    const token = supabase.auth.session()?.access_token;
+    const token = await getCurrentToken();
     if (!token) {
       throw new Error("No se encontró un token de sesión válido");
     }
@@ -292,3 +351,166 @@ export const joinTripAsPassenger = async (
     throw error;
   }
 };
+
+/**
+ * Obtiene los pasajeros de un viaje usando la edge function protegida por JWT.
+ * @param id_viaje ID del viaje
+ * @returns Array de pasajeros con nombre y apellido
+ */
+export async function getPassengersByTripId(id_viaje: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  console.log("[getPassengersByTripId] id_viaje:", id_viaje);
+  const response = await fetch(
+    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-passengers-by-trip-id",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id_viaje }),
+    }
+  );
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    console.log("[getPassengersByTripId] Error parseando JSON:", e);
+    data = null;
+  }
+  console.log("[getPassengersByTripId] status:", response.status);
+  console.log("[getPassengersByTripId] respuesta completa:", data);
+  if (!response.ok || !data?.success) {
+    console.log("[getPassengersByTripId] Lanzando error:", data?.error, data);
+    throw new Error(data?.error || "Error al obtener pasajeros del viaje");
+  }
+  console.log("[getPassengersByTripId] data:", data.data);
+  return data.data;
+}
+
+/**
+ * Marca el inicio de un viaje (salida_at = now()) validando el conductor.
+ * @param id_viaje ID del viaje
+ * @param id_conductor ID del conductor (usuario.id_usuario)
+ * @returns {Promise<any>} Respuesta de la edge function
+ */
+export async function startTrip(id_viaje: number, id_conductor: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  const body = { id_viaje, id_conductor };
+  const response = await fetch(START_TRIP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || "Error al iniciar el viaje");
+  }
+  return data;
+}
+
+/**
+ * Marca el final de un viaje (llegada_at = now()) validando el conductor.
+ * @param id_viaje ID del viaje
+ * @param id_conductor ID del conductor (usuario.id_usuario)
+ * @returns {Promise<any>} Respuesta de la edge function
+ */
+export async function endTrip(id_viaje: number, id_conductor: number) {
+  const token = await getCurrentToken();
+  if (!token) throw new Error("No se encontró un token JWT válido");
+  const body = { id_viaje, id_conductor };
+  const response = await fetch(END_TRIP_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json();
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || "Error al finalizar el viaje");
+  }
+  return data;
+}
+
+/**
+ * Consulta el viaje más relevante en el que el usuario participa como pasajero.
+ * Usa la edge function 'get-active-passenger-trip'.
+ * @param {number} id_usuario - ID del usuario (cédula)
+ * @param {string} jwt - Token JWT para autenticación
+ * @returns {Promise<{ success: boolean; viajes: any[]; error?: string }>} Donde cada viaje incluye info enriquecida (vehiculo, ruta, conductor)
+ */
+export async function getActivePassengerTrip(
+  id_usuario: number,
+  jwt: string
+): Promise<{ success: boolean; viajes: any[]; error?: string }> {
+  console.log(
+    "[getActivePassengerTrip] llamada con cedula=",
+    id_usuario,
+    "jwt=",
+    jwt
+  );
+  try {
+    const response = await fetch(
+      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-active-passenger-trip",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ id_usuario }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        viajes: [],
+        error: data.error || "Error al consultar viaje activo",
+      };
+    }
+    return { success: true, viajes: data.viajes };
+  } catch (error: any) {
+    return {
+      success: false,
+      viajes: [],
+      error: error.message || "Error inesperado",
+    };
+  }
+}
+
+/**
+ * Consulta los viajes finalizados donde el usuario fue pasajero, junto con la bandera de si ya dejó reseña y los datos del conductor.
+ * @param id_usuario ID del usuario pasajero (cédula)
+ * @param jwt JWT de autenticación
+ * @returns {Promise<{ viajes: any[] }>} Lista de viajes terminados, bandera tiene_resena y datos del conductor
+ */
+export async function getFinishedTripsByUserId(
+  id_usuario: number,
+  jwt: string
+): Promise<{ viajes: any[] }> {
+  const response = await fetch(
+    "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/get-finished-trips-by-user-id",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ id_usuario }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Error al consultar viajes finalizados");
+  }
+  // Ahora cada viaje incluye el objeto 'conductor'
+  return data;
+}
