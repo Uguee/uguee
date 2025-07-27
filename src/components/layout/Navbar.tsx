@@ -163,7 +163,19 @@ const Navbar = () => {
       return;
     }
 
-    // Usar AuthFlowService para determinar la redirección
+    // Si es admin, ir directamente a su dashboard
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard');
+      return;
+    }
+
+    // Si es admin_institucional, ir directamente a su dashboard
+    if (user.role === 'admin_institucional') {
+      navigate('/institution/dashboard');
+      return;
+    }
+
+    // Usar AuthFlowService para determinar la redirección para otros usuarios
     const result = await AuthFlowService.checkRouteAccess(user);
     
     if (result.shouldRedirect) {
@@ -175,11 +187,11 @@ const Navbar = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
+    <header className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50 h-12">
       <div className="container mx-auto px-4 h-full flex justify-between items-center">
         {/* Logo */}
         <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center">
-          <h1 className="text-primary text-2xl font-bold">Ugüee</h1>
+          <h1 className="text-primary text-lg font-bold">Ugüee</h1>
           {location.pathname !== '/' && (
             <span className="text-xs text-gray-500 ml-2 hidden sm:inline">
               {isInstitutionalAdmin ? 'Panel Administrativo' : 'Transporte universitario'}
@@ -206,7 +218,7 @@ const Navbar = () => {
                   <Clock className="mr-2 h-4 w-4" />
                   Solicitud enviada
                 </div>
-              ) : isDeniedDriver && user?.role !== 'admin_institucional' ? (
+              ) : isDeniedDriver && user?.role !== 'admin_institucional' && user?.role !== 'admin' ? (
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/driver/register')}
@@ -366,7 +378,7 @@ const Navbar = () => {
                       <Clock className="mr-2 h-4 w-4" />
                       Solicitud enviada
                     </div>
-                  ) : isDeniedDriver && user?.role !== 'admin_institucional' ? (
+                  ) : isDeniedDriver && user?.role !== 'admin_institucional' && user?.role !== 'admin' ? (
                     <Link 
                       to="/driver/register"
                       className="text-gray-600 py-2 hover:text-primary transition-colors"

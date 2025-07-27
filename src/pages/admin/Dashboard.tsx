@@ -1,296 +1,373 @@
-import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminStats } from '@/hooks/useAdminStats';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Users, Building2, Car, MapPin, AlertTriangle, Settings, Shield, Clock, CheckCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Building2, Clock, CheckCircle, XCircle, AlertCircle, Users, Car, MapPin, Route, Star, TrendingUp, BarChart3, UserCheck, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { stats, loading, error, refetch, setMockData } = useAdminStats();
 
-  // Datos de ejemplo - En producción vendrían de una API
-  const stats = {
-    totalInstitutions: 5,
-    totalStudents: 7500,
-    totalDrivers: 45,
-    activeRoutes: 32,
+  // Función para formatear números
+  const formatNumber = (num: number | undefined) => {
+    if (num === undefined || num === null) return '0';
+    return num.toLocaleString();
   };
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'Nueva Institución',
-      name: 'Universidad Nacional',
-      time: '10:30',
-      status: 'completed',
-    },
-    {
-      id: 2,
-      type: 'Reporte de Incidente',
-      name: 'Ruta 15 - Universidad de los Andes',
-      time: '09:15',
-      status: 'pending',
-    },
-  ];
+  // Función para formatear calificaciones
+  const formatRating = (rating: number | undefined) => {
+    if (rating === undefined || rating === null) return '0.0';
+    return rating.toFixed(1);
+  };
 
-  const institutions = [
-    {
-      id: 1,
-      name: 'Universidad Nacional',
-      students: 2500,
-      drivers: 15,
-      routes: 8,
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'Universidad de los Andes',
-      students: 1800,
-      drivers: 12,
-      routes: 6,
-      status: 'active',
-    },
-  ];
+
+
+
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Panel de Administración</h1>
-          <div className="flex gap-4">
-            <Button variant="outline">
-              <Building2 className="w-4 h-4 mr-2" />
-              Gestionar Instituciones
-            </Button>
-            <Button>
-              <Settings className="w-4 h-4 mr-2" />
-              Configuración del Sistema
-            </Button>
-          </div>
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Panel de Administración</h1>
+          <p className="text-sm text-gray-600 mt-1">Gestiona las solicitudes de instituciones y monitorea el sistema</p>
         </div>
 
-        {/* Botón grande para validar instituciones */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Card principal para solicitudes de instituciones */}
         <Card className="border-2 border-primary/20">
-          <CardContent className="p-6">
+          <CardContent className="p-4">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
-                <Building2 className="h-8 w-8 text-primary" />
+              <div className="mx-auto flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 mb-3">
+                <Building2 className="h-4 w-4 text-primary" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Solicitudes de Instituciones
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Revisa y aprueba las solicitudes de registro de nuevas instituciones educativas
+              <h2 className="text-base font-bold text-gray-900 mb-1">
+                Bienvenido Administrador
+              </h2>
+              <p className="text-xs text-gray-600 mb-3">
+                Gestiona las solicitudes de instituciones educativas
               </p>
               <Button 
-                size="lg" 
                 onClick={() => navigate('/admin/institution-requests')}
-                className="w-full sm:w-auto px-8 py-3"
+                className="flex items-center gap-2"
+                size="sm"
               >
-                <Building2 className="w-5 h-5 mr-2" />
-                Gestionar Solicitudes de Instituciones
+                <Building2 className="w-3 h-3" />
+                Gestionar Solicitudes
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Botón para validar usuarios */}
-        <Card className="border-2 border-orange-500/20">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-orange-100 mb-4">
-                <CheckCircle className="h-8 w-8 text-orange-600" />
+        {/* Estado de solicitudes */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-medium">Solicitudes Pendientes</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold text-yellow-600">
+                {loading ? '...' : formatNumber(stats?.institutions?.pending)}
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Validar Usuarios
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Revisa y aprueba los documentos de usuarios registrados en el sistema
+              <p className="text-xs text-muted-foreground">
+                Esperando revisión
               </p>
-              <Button 
-                size="lg" 
-                onClick={() => navigate('/admin/user-validation')}
-                className="w-full sm:w-auto px-8 py-3 bg-orange-600 hover:bg-orange-700"
-              >
-                <Users className="w-5 h-5 mr-2" />
-                Ver Validaciones Pendientes
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Botón para gestionar solicitudes de usuarios */}
-        <Card className="border-2 border-green-500/20">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
-                <Users className="h-8 w-8 text-green-600" />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-medium">Instituciones Aprobadas</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold text-green-600">
+                {loading ? '...' : formatNumber(stats?.institutions?.total)}
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Gestionar Solicitudes de Usuarios
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Aprueba o rechaza las solicitudes de usuarios para unirse a instituciones
-              </p>
-              <Button 
-                size="lg" 
-                onClick={() => navigate('/admin/registration-requests')}
-                className="w-full sm:w-auto px-8 py-3 bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="w-5 h-5 mr-2" />
-                Ver Solicitudes de Registro
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Instituciones</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalInstitutions}</div>
               <p className="text-xs text-muted-foreground">
-                Instituciones registradas
+                Total de instituciones
               </p>
             </CardContent>
           </Card>
+          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Estudiantes</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-xs font-medium">Solicitudes Rechazadas</CardTitle>
+              <XCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalStudents}</div>
+              <div className="text-xl font-bold text-red-600">
+                {loading ? '...' : formatNumber(stats?.institutions?.rejected)}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Estudiantes registrados
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conductores</CardTitle>
-              <Car className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalDrivers}</div>
-              <p className="text-xs text-muted-foreground">
-                Conductores activos
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rutas Activas</CardTitle>
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeRoutes}</div>
-              <p className="text-xs text-muted-foreground">
-                En operación actualmente
+                Rechazadas o canceladas
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Vista General</TabsTrigger>
-            <TabsTrigger value="institutions">Instituciones</TabsTrigger>
-            <TabsTrigger value="activity">Actividad Reciente</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen del Sistema</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Usuarios activos hoy</span>
-                    <span className="font-semibold">1,234</span>
+        {/* Información general del sistema */}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center text-base">
+                <BarChart3 className="h-4 w-4 mr-2 text-primary" />
+                Información General del Sistema
+              </CardTitle>
+              <Button
+                onClick={refetch}
+                disabled={loading}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Instituciones */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900 flex items-center text-sm">
+                  <Building2 className="h-4 w-4 mr-2 text-blue-500" />
+                  Instituciones
+                </h3>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Total registradas</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.institutions?.total)}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>Viajes completados hoy</span>
-                    <span className="font-semibold">156</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Incidentes reportados</span>
-                    <span className="font-semibold">3</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Tiempo promedio de respuesta</span>
-                    <span className="font-semibold">5 min</span>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Activas</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.institutions?.active)}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
 
-          <TabsContent value="institutions" className="space-y-4">
-            {institutions.map((institution) => (
-              <Card key={institution.id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold">{institution.name}</h3>
-                      <div className="grid grid-cols-3 gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          {institution.students} estudiantes
-                        </div>
-                        <div className="flex items-center">
-                          <Car className="w-4 h-4 mr-1" />
-                          {institution.drivers} conductores
-                        </div>
-                        <div className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {institution.routes} rutas
-                        </div>
-                      </div>
-                    </div>
-                    <Badge variant="default">Activa</Badge>
+              {/* Usuarios */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900 flex items-center text-sm">
+                  <Users className="h-4 w-4 mr-2 text-green-500" />
+                  Usuarios
+                </h3>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Total registrados</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.users?.total)}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Estudiantes</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.users?.students)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Conductores</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.users?.drivers)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Profesores</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.users?.professors)}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <TabsContent value="activity" className="space-y-4">
-            {recentActivity.map((activity) => (
-              <Card key={activity.id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold">{activity.type}</h3>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Shield className="w-4 h-4 mr-1" />
-                        {activity.name}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center text-sm">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {activity.time}
-                      </div>
-                      <Badge variant={activity.status === 'completed' ? 'default' : 'destructive'}>
-                        {activity.status === 'completed' ? 'Completado' : 'Pendiente'}
-                      </Badge>
-                    </div>
+              {/* Vehículos */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900 flex items-center text-sm">
+                  <Car className="h-4 w-4 mr-2 text-purple-500" />
+                  Vehículos
+                </h3>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Total registrados</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.vehicles?.total)}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-        </Tabs>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Automóviles</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.vehicles?.cars)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Motocicletas</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.vehicles?.motorcycles)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Otros</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.vehicles?.others)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rutas y Viajes */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-900 flex items-center text-sm">
+                  <Route className="h-4 w-4 mr-2 text-orange-500" />
+                  Rutas y Viajes
+                </h3>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Rutas activas</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.routes?.totalRoutes)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Viajes realizados</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.routes?.tripsCompleted)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Viajes hoy</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatNumber(stats?.routes?.tripsToday)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-600">Promedio pasajeros</span>
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatRating(stats?.routes?.averagePassengers)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estadísticas adicionales */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-sm">
+                <Star className="h-4 w-4 mr-2 text-yellow-500" />
+                Calidad del Servicio
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Calificación promedio</span>
+                  <div className="flex items-center">
+                    <Star className="h-3 w-3 text-yellow-500 mr-1" />
+                    <span className="text-xs font-medium">
+                      {loading ? '...' : formatRating(stats?.quality?.averageRating)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Total de reseñas</span>
+                  <span className="text-xs font-medium">
+                    {loading ? '...' : formatNumber(stats?.quality?.totalReviews)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Reseñas este mes</span>
+                  <span className="text-xs font-medium">
+                    {loading ? '...' : formatNumber(stats?.quality?.monthlyReviews)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-sm">
+                <TrendingUp className="h-4 w-4 mr-2 text-blue-500" />
+                Actividad Reciente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Usuarios activos hoy</span>
+                  <span className="text-xs font-medium">
+                    {loading ? '...' : formatNumber(stats?.activity?.activeUsers)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Nuevos registros (7 días)</span>
+                  <span className="text-xs font-medium">
+                    {loading ? '...' : formatNumber(stats?.activity?.newRegistrations)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Documentos validados</span>
+                  <span className="text-xs font-medium">
+                    {loading ? '...' : formatNumber(stats?.activity?.validatedDocuments)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Información sobre el proceso de validación */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2 text-blue-500" />
+              Proceso de Validación de Instituciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h4 className="font-semibold text-gray-900">1. Revisión de Documentos</h4>
+                <p className="text-sm text-gray-600">
+                  Verifica que todos los documentos legales y administrativos estén completos y sean válidos.
+                </p>
+              </div>
+              
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h4 className="font-semibold text-gray-900">2. Validación de Información</h4>
+                <p className="text-sm text-gray-600">
+                  Confirma que la información proporcionada sobre la institución sea correcta y actualizada.
+                </p>
+              </div>
+              
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h4 className="font-semibold text-gray-900">3. Aprobación Final</h4>
+                <p className="text-sm text-gray-600">
+                  Una vez verificado todo, la institución será activada en el sistema y podrá comenzar a operar.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

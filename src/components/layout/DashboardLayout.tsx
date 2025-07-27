@@ -104,7 +104,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }, [currentUserId]);
 
   // Determinar si se debe mostrar el sidebar
-  const shouldShowSidebar = !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/institution');
+  const shouldShowSidebar = !location.pathname.startsWith('/admin') && 
+                           !location.pathname.startsWith('/institution') &&
+                           user?.role !== 'admin' && 
+                           user?.role !== 'admin_institucional';
 
   return (
     <div className="min-h-screen flex flex-col">

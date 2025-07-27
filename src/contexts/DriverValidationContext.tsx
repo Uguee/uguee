@@ -35,11 +35,35 @@ export const DriverValidationProvider: React.FC<{ children: React.ReactNode }> =
     console.log('🔍 Checking driver validation for user:', user.id);
     setValidationState(prev => ({ ...prev, isLoading: true }));
     try {
-      // Primero verificar si el usuario está registrado en una institución
+      // Obtener el UUID desde la sesión de Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const userUuid = session?.user?.id;
+      
+      if (!userUuid) {
+        throw new Error('No se pudo obtener el UUID del usuario de la sesión');
+      }
+
+      console.log('🔑 UUID obtenido de la sesión:', userUuid);
+
+      // Obtener el id_usuario (cédula) usando el UUID
+      const { data: userData, error: userError } = await supabase
+        .from('usuario')
+        .select('id_usuario')
+        .eq('uuid', userUuid)
+        .single();
+
+      if (userError || !userData?.id_usuario) {
+        throw new Error('No se pudo obtener el id_usuario del usuario');
+      }
+
+      const id_usuario = userData.id_usuario;
+      console.log('📋 ID usuario obtenido:', id_usuario);
+
+      // Verificar si el usuario está registrado en una institución
       const { data: registroData, error: registroError } = await supabase
         .from('registro')
         .select('validacion_conductor')
-        .eq('id_usuario', parseInt(user.id))
+        .eq('id_usuario', id_usuario)
         .single();
 
       if (registroError) {

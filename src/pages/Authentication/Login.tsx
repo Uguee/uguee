@@ -84,7 +84,7 @@ const Login = () => {
         console.log("🚀 Redirecting based on role:", loggedInUser.role);
 
         // Usar AuthFlowService para determinar la redirección
-        const result = await AuthFlowService.checkRouteAccess(loggedInUser);
+        const result = await AuthFlowService.determineUserRedirection(loggedInUser);
         
         if (result.shouldRedirect) {
           console.log("➡️ Redirecting to:", result.redirectTo);
