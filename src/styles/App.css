@@ -40,3 +40,26 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Asegurar que el contenido principal tenga scroll */
+.institutional-main {
+  height: calc(100vh - 4rem); /* 4rem es la altura del navbar */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Evitar el colapso del layout */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+/* Asegurar que el contenido sea scrolleable */
+.scrollable-content {
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+}

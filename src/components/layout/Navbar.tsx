@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { DocumentVerificationService } from '@/services/documentVerificationService';
 import { AuthFlowService } from '@/services/authFlowService';
+import { useUserInstitution } from '@/hooks/useUserInstitution';
+import { Building2 } from 'lucide-react';
 
 interface User {
   id: string;
@@ -34,6 +36,7 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'passenger' | 'driver'>('passenger');
+  const { institution } = useUserInstitution();
 
   // Add debug logs for driver validation status
   useEffect(() => {
@@ -222,18 +225,100 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/driver/register')}
+        {/* Desktop Navigation - Movido a la izquierda para dar espacio al logo */}
+        <div className="flex items-center space-x-6">
+          <nav className="hidden md:flex items-center space-x-6">
+            {isAuthenticated ? (
+              <>
+                <Link 
+                  to="/dashboard" 
                   className="text-gray-600 hover:text-primary transition-colors"
+                  onClick={(e) => {
+                    console.log('🔍 Inicio button clicked');
+                    handleHomeClick(e);
+                  }}
                 >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  ¿Quieres ser conductor?
-                </Button>
-              ) : (
-                <div className="relative group">
-                  <button 
-                    className="flex items-center text-gray-600 hover:text-primary transition-colors"
-                    onClick={toggleViewMenu}
+                  Inicio
+                </Link>
+                {isPendingDriver ? (
+                  <div className="text-gray-600 flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Solicitud enviada
+                  </div>
+                ) : isDeniedDriver && user?.role !== 'admin_institucional' ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate('/driver/register')}
+                    className="text-gray-600 hover:text-primary transition-colors"
                   >
-                    Cambiar vista
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    ¿Quieres ser conductor?
+                  </Button>
+                ) : (
+                  <div className="relative group">
+                    <button 
+                      className="flex items-center text-gray-600 hover:text-primary transition-colors"
+                      onClick={toggleViewMenu}
+                    >
+                      Cambiar vista
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 ml-1" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M19 9l-7 7-7-7" 
+                        />
+                      </svg>
+                    </button>
+                    {isViewMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                        {isValidatedDriver && (
+                          <button
+                            onClick={() => handleViewChange('driver')}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Vista conductor
+                            {isDriverView && <Check className="ml-2 h-4 w-4" />}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleViewChange('passenger')}
+                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Vista pasajero
+                          {!isDriverView && !isInstitutionalView && !location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
+                        </button>
+                        {user?.role === 'admin_institucional' && (
+                          <button
+                            onClick={() => handleViewChange('admin_institucional')}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Vista Admin Institucional
+                            {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
+                          </button>
+                        )}
+                        {user?.role === 'admin' && (
+                          <button
+                            onClick={() => handleViewChange('admin')}
+                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Vista Admin General
+                            {location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="relative group">
+                  <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
+                    {user?.firstName || 'Usuario'}
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
                       className="h-4 w-4 ml-1" 
@@ -249,114 +334,88 @@ const Navbar = () => {
                       />
                     </svg>
                   </button>
-                  {isViewMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      {isValidatedDriver && (
-                        <button
-                          onClick={() => handleViewChange('driver')}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Vista conductor
-                          {isDriverView && <Check className="ml-2 h-4 w-4" />}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleViewChange('passenger')}
-                        className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Vista pasajero
-                        {!isDriverView && !isInstitutionalView && !location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
-                      </button>
-                      {user?.role === 'admin_institucional' && (
-                        <button
-                          onClick={() => handleViewChange('admin_institucional')}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Vista Admin Institucional
-                          {isInstitutionalView && <Check className="ml-2 h-4 w-4" />}
-                        </button>
-                      )}
-                      {user?.role === 'admin' && (
-                        <button
-                          onClick={() => handleViewChange('admin')}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Vista Admin General
-                          {location.pathname.startsWith('/admin') && <Check className="ml-2 h-4 w-4" />}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <Link 
+                      to="/profile" 
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Mi perfil
+                    </Link>
+                    <button 
+                      onClick={logout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Cerrar sesión
+                    </button>
+                  </div>
                 </div>
-              )}
-              <div className="relative group">
-                <button className="flex items-center text-gray-600 hover:text-primary transition-colors">
-                  {user?.firstName || 'Usuario'}
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4 ml-1" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M19 9l-7 7-7-7" 
-                    />
-                  </svg>
-                </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <Link 
-                    to="/profile" 
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Mi perfil
-                  </Link>
-                  <button 
-                    onClick={logout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Cerrar sesión
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <Link 
-                to="/login" 
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Iniciar sesión
-              </Link>
-              <Link 
-                to="/register" 
-                className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-md transition-colors"
-              >
-                Crear cuenta
-              </Link>
-            </>
-          )}
-        </nav>
+              </>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  className="text-gray-600 hover:text-primary transition-colors"
+                >
+                  Iniciar sesión
+                </Link>
+                <Link 
+                  to="/register" 
+                  className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-md transition-colors"
+                >
+                  Crear cuenta
+                </Link>
+              </>
+            )}
+          </nav>
 
-        {/* Mobile Menu Button */}
-        <button 
-          className="md:hidden text-gray-600"
-          onClick={toggleMenu}
-          aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
-        >
-          {isMenuOpen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+          {/* Logo de la institución - Solo para usuarios autenticados */}
+          {isAuthenticated && institution?.logo && (
+            <div className="flex items-center space-x-2 ml-4">
+              <img
+                src={institution.logo}
+                alt={institution.nombre_oficial}
+                className="h-10 w-10 object-contain rounded-lg border border-gray-200 bg-white p-1"
+                title={institution.nombre_oficial}
+              />
+              <div className="hidden lg:block">
+                <p className="text-xs font-medium text-gray-700 max-w-32 truncate">
+                  {institution.nombre_oficial}
+                </p>
+              </div>
+            </div>
           )}
-        </button>
+
+          {/* Placeholder si no hay logo */}
+          {isAuthenticated && !institution?.logo && institution?.nombre_oficial && (
+            <div className="flex items-center space-x-2 ml-4">
+              <div className="h-10 w-10 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                <Building2 className="h-6 w-6 text-gray-400" />
+              </div>
+              <div className="hidden lg:block">
+                <p className="text-xs font-medium text-gray-700 max-w-32 truncate">
+                  {institution.nombre_oficial}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Menu Button */}
+          <button 
+            className="md:hidden text-gray-600"
+            onClick={toggleMenu}
+            aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          >
+            {isMenuOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}

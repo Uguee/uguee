@@ -90,14 +90,16 @@ export class DocumentService {
    */
   static async saveDocumentData(documentData: DocumentData): Promise<UploadResponse> {
     try {
-      // Generar número secuencial consultando la tabla
-      const { count, error: countError } = await supabase
+      // ✅ CORREGIDO: Buscar el número más alto y sumarle 1
+      const { data: maxNumeroData, error: maxNumeroError } = await supabase
         .from('documento')
-        .select('numero', { count: 'exact', head: true });
+        .select('numero')
+        .order('numero', { ascending: false })
+        .limit(1);
       
-      const numeroDocumento = countError 
-        ? Math.floor(Date.now() / 1000) // Fallback
-        : (count || 0) + 1;
+      const numeroDocumento = maxNumeroError || !maxNumeroData || maxNumeroData.length === 0 
+        ? 1 // Si no hay documentos o hay error, empezar en 1
+        : maxNumeroData[0].numero + 1; // Si hay documentos, tomar el máximo + 1
       
       // Crear el objeto para insertar
       const documentInsert = {
