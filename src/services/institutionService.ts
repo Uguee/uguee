@@ -622,8 +622,147 @@ export class InstitutionService {
   }
 
   /**
+   * Obtiene rutas de usuarios pertenecientes a una institución específica
+   * Basado en el esquema: institucion -> registro -> usuario -> usuario_ruta -> ruta
+   */
+  static async getRoutesByInstitution(institutionId: number): Promise<any> {
+    try {
+      console.log('🛣️ InstitutionService: Obteniendo rutas de usuarios de institución:', institutionId);
+      
+      // Paso 1: Obtener usuarios registrados en la institución
+      const { data: registros, error: registrosError } = await supabase
+        .from('registro')
+        .select('id_usuario')
+        .eq('id_institucion', institutionId)
+        .eq('validacion', 'validado'); // Solo usuarios validados
+
+      if (registrosError) {
+        console.error('❌ Error obteniendo usuarios de institución:', registrosError);
+        return {
+          success: false,
+          error: `Error obteniendo usuarios: ${registrosError.message}`
+        };
+      }
+
+      if (!registros || registros.length === 0) {
+        console.log('⚠️ No se encontraron usuarios validados en la institución');
+        return {
+          success: true,
+          data: []
+        };
+      }
+
+      const userIds = registros.map(r => r.id_usuario);
+      console.log('👥 IDs de usuarios validados:', userIds.length);
+
+      // Paso 2: Obtener las rutas de estos usuarios a través de usuario_ruta
+      const { data: usuarioRutas, error: usuarioRutasError } = await supabase
+        .from('usuario_ruta')
+        .select(`
+          id_ruta,
+          id_usuario,
+          ruta:id_ruta (
+            id_ruta,
+            punto_partida,
+            punto_llegada,
+            trayecto,
+            longitud
+          ),
+          usuario:id_usuario (
+            id_usuario,
+            nombre,
+            apellido,
+            celular,
+            uuid
+          )
+        `)
+        .in('id_usuario', userIds);
+
+      if (usuarioRutasError) {
+        console.error('❌ Error obteniendo rutas de usuarios:', usuarioRutasError);
+        return {
+          success: false,
+          error: `Error obteniendo rutas: ${usuarioRutasError.message}`
+        };
+      }
+
+      console.log('🛣️ Rutas encontradas:', usuarioRutas?.length || 0);
+
+      // Paso 3: Procesar las rutas para convertir coordenadas si es necesario
+      const rutasConDatos = await Promise.all(
+        (usuarioRutas || []).map(async (usuarioRuta: any) => {
+          try {
+            // Intentar usar la función RPC para obtener coordenadas convertidas
+            const { data: rutaConvertida, error: rpcError } = await supabase.rpc('obtener_ruta_con_coordenadas', {
+              p_id_ruta: usuarioRuta.id_ruta
+            });
+
+            if (!rpcError && rutaConvertida && rutaConvertida.length > 0) {
+              const ruta = rutaConvertida[0];
+              return {
+                id_ruta: usuarioRuta.id_ruta,
+                id_usuario: usuarioRuta.id_usuario,
+                usuario: usuarioRuta.usuario,
+                ruta: {
+                  id_ruta: ruta.id_ruta,
+                  longitud: ruta.longitud,
+                  punto_partida: ruta.origen_coords,
+                  punto_llegada: ruta.destino_coords,
+                  trayecto: ruta.trayecto_coords
+                }
+              };
+            }
+
+            // Si la RPC falla, usar los datos directos
+            return {
+              id_ruta: usuarioRuta.id_ruta,
+              id_usuario: usuarioRuta.id_usuario,
+              usuario: usuarioRuta.usuario,
+              ruta: {
+                id_ruta: usuarioRuta.ruta?.id_ruta,
+                longitud: usuarioRuta.ruta?.longitud,
+                punto_partida: usuarioRuta.ruta?.punto_partida,
+                punto_llegada: usuarioRuta.ruta?.punto_llegada,
+                trayecto: usuarioRuta.ruta?.trayecto
+              }
+            };
+          } catch (error) {
+            console.error('❌ Error procesando ruta:', error);
+            return {
+              id_ruta: usuarioRuta.id_ruta,
+              id_usuario: usuarioRuta.id_usuario,
+              usuario: usuarioRuta.usuario,
+              ruta: {
+                id_ruta: usuarioRuta.id_ruta,
+                longitud: usuarioRuta.ruta?.longitud || null,
+                punto_partida: null,
+                punto_llegada: null,
+                trayecto: null
+              }
+            };
+          }
+        })
+      );
+
+      console.log('✅ Rutas procesadas exitosamente:', rutasConDatos.length);
+
+      return {
+        success: true,
+        data: rutasConDatos
+      };
+    } catch (error: any) {
+      console.error('❌ Error inesperado en getRoutesByInstitution:', error);
+      return {
+        success: false,
+        error: `Error inesperado: ${error.message}`
+      };
+    }
+  }
+
+  /**
    * Obtiene rutas activas de una institución específica
    * (rutas que tienen viajes programados por conductores de la institución)
+   * DEPRECATED: Usar getRoutesByInstitution en su lugar
    */
   static async getActiveRoutesByInstitution(institutionId: number): Promise<any> {
     try {
