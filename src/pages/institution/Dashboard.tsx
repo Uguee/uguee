@@ -36,7 +36,8 @@ import {
   Calendar,
   User,
   UserCog,
-  X
+  X,
+  Check
 } from 'lucide-react';
 import { useUserDocuments } from '@/hooks/useUserDocuments';
 
@@ -71,6 +72,7 @@ const Dashboard = () => {
     id: number;
     name: string;
   } | null>(null);
+  const [institutionUsers, setInstitutionUsers] = useState<any[]>([]);
 
   const loadInstitutionData = async () => {
     if (!user?.id) return;
@@ -215,6 +217,7 @@ const Dashboard = () => {
           validacion_conductor,
           fecha_registro,
           correo_institucional,
+          codigo_institucional,
           usuario:usuario (
             nombre,
             apellido,
@@ -239,6 +242,9 @@ const Dashboard = () => {
         console.log('📊 Number of driver requests:', driverResult.data?.length);
         setDriverRequests(driverResult.data || []);
       }
+
+      // Cargar usuarios de la institución
+      await loadInstitutionUsers(institutionId);
 
     } catch (error) {
       console.error('❌ Error cargando datos de institución:', error);
@@ -266,11 +272,13 @@ const Dashboard = () => {
           id_usuario,
           validacion,
           fecha_registro,
-          rol,
+          rol_institucional,
+          correo_institucional,
+          codigo_institucional,
+          direccion_de_residencia,
           usuario:usuario (
             nombre,
             apellido,
-            correo_institucional,
             celular,
             fecha_nacimiento
           )
@@ -294,11 +302,13 @@ const Dashboard = () => {
             id_usuario,
             validacion,
             fecha_registro,
-            rol,
+            rol_institucional,
+            correo_institucional,
+            codigo_institucional,
+            direccion_de_residencia,
             usuario:usuario (
               nombre,
               apellido,
-              correo_institucional,
               celular,
               fecha_nacimiento
             )
@@ -339,10 +349,11 @@ const Dashboard = () => {
           id_usuario,
           validacion_conductor,
           fecha_registro,
+          correo_institucional,
+          codigo_institucional,
           usuario:usuario (
             nombre,
             apellido,
-            correo_institucional,
             celular
           )
         `)
@@ -367,6 +378,55 @@ const Dashboard = () => {
     }
   };
 
+  // Función para cargar usuarios de la institución
+  const loadInstitutionUsers = async (institutionId?: number) => {
+    const idToUse = institutionId || institution?.id_institucion;
+    
+    if (!idToUse) {
+      console.log('❌ No hay ID de institución disponible para cargar usuarios');
+      return;
+    }
+
+    try {
+      console.log('👥 Cargando usuarios de la institución:', idToUse);
+
+      const { data, error } = await supabase
+        .from('registro')
+        .select(`
+          id_usuario,
+          validacion,
+          fecha_registro,
+          rol_institucional,
+          correo_institucional,
+          codigo_institucional,
+          direccion_de_residencia,
+          validacion_conductor,
+          usuario:usuario (
+            nombre,
+            apellido,
+            celular,
+            fecha_nacimiento
+          )
+        `)
+        .eq('id_institucion', idToUse)
+        .order('fecha_registro', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('✅ Usuarios cargados:', data);
+      setInstitutionUsers(data || []);
+    } catch (error) {
+      console.error('❌ Error cargando usuarios:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los usuarios de la institución",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Cargar datos al montar el componente
   useEffect(() => {
     loadInstitutionData();
@@ -379,6 +439,9 @@ const Dashboard = () => {
       pendingRequests: registrationRequests.length
     }));
   }, [registrationRequests]);
+
+  // Dentro del useEffect existente, después de loadDriverRequests()
+  // await loadInstitutionUsers(); // Eliminado según la solicitud
 
   // Datos de ejemplo temporales (mantener solo para development)
   const exampleDrivers = [
@@ -686,7 +749,7 @@ const Dashboard = () => {
     setSelectedUserForDocuments(null);
   };
 
-  const handleApproval = async (userId: number, action: 'validado' | 'denegado') => {
+  const handleApproval = async (userId: number, action: 'validado' | 'denegado' | 'rechazado') => {
     try {
       const { error } = await supabase
         .from('registro')
@@ -699,9 +762,10 @@ const Dashboard = () => {
       // Update state immediately
       setRegistrationRequests(prev => prev.filter(request => request.id_usuario !== userId));
       setDriverRequests(prev => prev.filter(request => request.id_usuario !== userId));
+      setInstitutionUsers(prev => prev.filter(user => user.id_usuario !== userId));
       
       toast({
-        title: action === 'validado' ? "Solicitud aprobada" : "Solicitud rechazada",
+        title: action === 'validado' ? "Solicitud aprobada" : action === 'denegado' ? "Solicitud rechazada" : "Solicitud rechazada",
         description: `El usuario ha sido ${action} exitosamente`,
       });
     } catch (error) {
@@ -731,6 +795,10 @@ const Dashboard = () => {
             <Button variant="outline" onClick={() => setActiveTab('requests')}>
               <UserPlus className="w-4 h-4 mr-2" />
               Solicitudes ({stats.pendingRequests})
+            </Button>
+            <Button variant="outline" onClick={() => setActiveTab('users')}>
+              <Users className="w-4 h-4 mr-2" />
+              Usuarios ({institutionUsers.length})
             </Button>
             <Button variant="outline" onClick={() => setActiveTab('reports')}>
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -814,6 +882,7 @@ const Dashboard = () => {
             <TabsTrigger value="drivers">Conductores</TabsTrigger>
             <TabsTrigger value="vehicles">Vehículos</TabsTrigger>
             <TabsTrigger value="requests">Solicitudes</TabsTrigger>
+            <TabsTrigger value="users">Usuarios</TabsTrigger>
             <TabsTrigger value="routes">Rutas Activas</TabsTrigger>
             <TabsTrigger value="reports">Reportes</TabsTrigger>
           </TabsList>
@@ -1218,6 +1287,149 @@ const Dashboard = () => {
               </CardContent>
             </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Usuarios de la Institución
+                </CardTitle>
+                <CardDescription>
+                  Gestiona todos los usuarios registrados en {institution?.nombre_oficial}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {institutionUsers.length > 0 ? (
+                    <div className="grid gap-4">
+                      {institutionUsers.map((user) => (
+                        <div key={user.id_usuario} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center space-x-4">
+                            <Avatar className="h-12 w-12">
+                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                                {user.usuario?.nombre?.charAt(0)}{user.usuario?.apellido?.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="space-y-1">
+                              <h4 className="font-semibold text-lg">
+                                {user.usuario?.nombre} {user.usuario?.apellido}
+                              </h4>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Mail className="w-3 h-3 mr-1" />
+                                {user.correo_institucional}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Phone className="w-3 h-3 mr-1" />
+                                {user.usuario?.celular || 'No especificado'}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Nacimiento: {user.usuario?.fecha_nacimiento ? new Date(user.usuario.fecha_nacimiento).toLocaleDateString() : 'No especificado'}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 text-right">
+                            <div className="text-sm font-medium text-gray-700">
+                              <IdCard className="w-4 h-4 inline mr-1" />
+                              Código: {user.codigo_institucional}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Rol: <span className="capitalize font-medium">{user.rol_institucional}</span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Registro: {new Date(user.fecha_registro).toLocaleDateString()}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Dirección: {user.direccion_de_residencia || 'No especificada'}
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {/* Badge de validación general */}
+                              <Badge 
+                                variant={user.validacion === 'validado' ? 'default' : user.validacion === 'pendiente' ? 'secondary' : 'destructive'}
+                                className={
+                                  user.validacion === 'validado' ? 'bg-green-600' :
+                                  user.validacion === 'pendiente' ? 'bg-yellow-600' : 'bg-red-600'
+                                }
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                {user.validacion === 'validado' ? 'Validado' : 
+                                 user.validacion === 'pendiente' ? 'Pendiente' : 'Rechazado'}
+                              </Badge>
+                              
+                              {/* Badge de conductor si aplica */}
+                              {user.validacion_conductor && (
+                                <Badge 
+                                  variant={user.validacion_conductor === 'validado' ? 'default' : 'secondary'}
+                                  className={user.validacion_conductor === 'validado' ? 'bg-blue-600' : 'bg-gray-600'}
+                                >
+                                  <Car className="w-3 h-3 mr-1" />
+                                  {user.validacion_conductor === 'validado' ? 'Conductor' : 'Conductor Pendiente'}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDocuments(
+                                user.id_usuario, 
+                                `${user.usuario.nombre} ${user.usuario.apellido}`
+                              )}
+                              className="flex items-center gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Ver Documentos
+                            </Button>
+                            
+                            <Button variant="outline" size="sm" className="flex items-center gap-2">
+                              <Eye className="w-4 h-4" />
+                              Ver Perfil
+                            </Button>
+                            
+                            {user.validacion === 'pendiente' && (
+                              <div className="flex gap-1">
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleApproval(user.id_usuario, 'rechazado')}
+                                  className="flex-1"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  onClick={() => handleApproval(user.id_usuario, 'validado')}
+                                  className="flex-1"
+                                >
+                                  <Check className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No hay usuarios registrados
+                      </h3>
+                      <p className="text-gray-600">
+                        Los usuarios registrados en {institution?.nombre_oficial} aparecerán aquí.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="routes" className="space-y-4">
