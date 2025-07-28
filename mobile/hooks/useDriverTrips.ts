@@ -56,35 +56,33 @@ export function useDriverTrips() {
   const [error, setError] = useState<string | null>(null);
 
   // Función para cargar los detalles de una ruta específica
-  const loadRouteDetails = async (tripId: number) => {
+  const loadRouteDetails = async (tripId: string) => {
     const trip = trips.find((t) => t.id_viaje === tripId);
-    if (!trip || trip.ruta) return trip; // Si ya tiene los detalles, no los cargamos de nuevo
+    if (!trip || !trip.ruta) return trip; // Asegúrate de que ruta existe
 
-    try {
-      const rutaResponse = await getRouteById(trip.id_ruta, 0);
-      if (rutaResponse.success === false) {
-        console.error(
-          `Error al obtener ruta ${trip.id_ruta}:`,
-          rutaResponse.error
-        );
-        return trip;
-      }
-      const ruta = rutaResponse.data;
-      if (ruta && ruta.nombre_partida && ruta.nombre_llegada) {
-        const ruta_nombre = `${filtrarDireccion(
-          ruta.nombre_partida
-        )} ➔ ${filtrarDireccion(ruta.nombre_llegada)}`;
-        const updatedTrip = { ...trip, ruta, ruta_nombre };
+    const idRuta = (trip.ruta as { id_ruta: string }).id_ruta;
+    const rutaResponse = await getRouteById(Number(idRuta), 0);
+    if (rutaResponse.success === false) {
+      console.error(`Error al obtener ruta ${idRuta}:`, rutaResponse.error);
+      return trip;
+    }
+    const ruta = rutaResponse.data;
+    if (ruta && ruta.nombre_partida && ruta.nombre_llegada) {
+      const ruta_nombre = `${filtrarDireccion(
+        ruta.nombre_partida
+      )} ➔ ${filtrarDireccion(ruta.nombre_llegada)}`;
+      const updatedTrip: TripWithRouteName = {
+        ...trip,
+        ruta: { ...ruta, id_ruta: String(ruta.id_ruta) },
+        ruta_nombre,
+      };
 
-        // Actualizamos el viaje en el estado
-        setTrips((prevTrips) =>
-          prevTrips.map((t) => (t.id_viaje === tripId ? updatedTrip : t))
-        );
+      // Actualizamos el viaje en el estado
+      setTrips((prevTrips) =>
+        prevTrips.map((t) => (t.id_viaje === tripId ? updatedTrip : t))
+      );
 
-        return updatedTrip;
-      }
-    } catch (e) {
-      console.error("Error cargando detalles de la ruta:", e);
+      return updatedTrip;
     }
     return trip;
   };

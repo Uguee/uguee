@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Alert,
 } from "react-native";
 import ReturnButton from "../components/ReturnButton";
 import { useAuth } from "../hooks/useAuth";
@@ -17,17 +18,23 @@ import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { getRouteById } from "../services/routeService";
 import { getCedulaByUUID } from "../services/userDataService";
+import { getPassengersByTripId, startTrip } from "../services/tripServices";
+import { leaveTrip } from "../services/passengerService";
+import { formatPlaceName } from "../lib/formatPlaceName";
+import { usePassengersSubscription } from "../hooks/usePassengersSubscription";
 
 interface DriverTripStartScreenProps {
   trip: any; // Todos los datos del viaje
   onGoBack?: () => void;
   onGoToQRScreen?: (qrValue: string) => void;
+  onStartTrip?: (trip: any) => void;
 }
 
 export default function DriverTripStartScreen({
   trip,
   onGoBack = () => {},
   onGoToQRScreen = () => {},
+  onStartTrip,
 }: DriverTripStartScreenProps) {
   const { user } = useAuth();
   const [location, setLocation] = useState<{
@@ -45,18 +52,15 @@ export default function DriverTripStartScreen({
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQRData] = useState("");
 
-  // Estado para la lista de pasajeros (fácil de hacer dinámica en el futuro)
-  const [passengers, setPassengers] = useState([
-    { id: 1, name: "Patricia Gómez" },
-    { id: 2, name: "Pedro" },
-  ]);
-
   // Estado para el modal de confirmación de eliminación
   const [modalVisible, setModalVisible] = useState(false);
   const [passengerToRemove, setPassengerToRemove] = useState<{
     id: number;
     name: string;
   } | null>(null);
+
+  // Estado para el proceso de eliminación
+  const [removingPassenger, setRemovingPassenger] = useState(false);
 
   // Logs útiles para depuración
   console.log("[DriverTripStartScreen] Props trip:", trip);
@@ -294,6 +298,55 @@ export default function DriverTripStartScreen({
     }
   };
 
+  // Hook de suscripción en tiempo real
+  const passengersFromSubscription = usePassengersSubscription(trip?.id_viaje);
+  const [passengers, setPassengers] = useState<any[]>([]);
+  const loadingPassengers = false; // El hook no expone loading, pero la lista se actualiza sola
+  const errorPassengers = null;
+
+  // Sincronizar el estado local con la suscripción
+  useEffect(() => {
+    setPassengers(passengersFromSubscription || []);
+  }, [passengersFromSubscription]);
+
+  // Función para recargar manualmente los pasajeros
+  const reloadPassengers = async () => {
+    if (!trip?.id_viaje) return;
+    try {
+      const res = await getPassengersByTripId(trip.id_viaje);
+      setPassengers(res || []);
+    } catch (e) {
+      // Puedes mostrar un error si quieres
+    }
+  };
+
+  // Formatear los pasajeros para mostrar nombre y rol
+  const formattedPassengers = (passengers || []).map((p: any) => ({
+    id: p.id_usuario,
+    name: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+    rol: p.rol_institucional || "",
+  }));
+
+  // Al cerrar el modal QR, recargar la lista de pasajeros
+  const handleCloseQRModal = async () => {
+    setShowQRModal(false);
+    await reloadPassengers();
+  };
+
+  const handleStartTrip = async () => {
+    try {
+      if (!trip?.id_viaje || !user?.id)
+        throw new Error("Faltan datos del viaje o usuario");
+      const id_conductor = await getCedulaByUUID(user.id);
+      if (!id_conductor)
+        throw new Error("No se pudo obtener el id del conductor");
+      await startTrip(Number(trip.id_viaje), Number(id_conductor));
+      if (onStartTrip) onStartTrip(trip);
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "No se pudo iniciar el viaje");
+    }
+  };
+
   if (
     !routeData?.punto_partida?.coordinates ||
     !routeData?.punto_llegada?.coordinates
@@ -325,13 +378,22 @@ export default function DriverTripStartScreen({
     setModalVisible(true);
   };
 
-  const handleRemovePassenger = () => {
+  const handleRemovePassenger = async () => {
     if (passengerToRemove) {
-      setPassengers((prev) =>
-        prev.filter((p) => p.id !== passengerToRemove.id)
-      );
-      setModalVisible(false);
-      setPassengerToRemove(null);
+      setRemovingPassenger(true);
+      try {
+        await leaveTrip(Number(trip.id_viaje), Number(passengerToRemove.id));
+        setModalVisible(false);
+        setPassengerToRemove(null);
+        Alert.alert("Éxito", "Pasajero eliminado del viaje");
+      } catch (error: any) {
+        Alert.alert(
+          "Error",
+          error.message || "No se pudo eliminar al pasajero"
+        );
+      } finally {
+        setRemovingPassenger(false);
+      }
     }
   };
 
@@ -345,8 +407,12 @@ export default function DriverTripStartScreen({
       <ReturnButton onPress={onGoBack} />
       {/* Lugares */}
       <View style={styles.placesContainer}>
-        <Text style={styles.placeBox}>{routeData.nombre_partida}</Text>
-        <Text style={styles.placeBox}>{routeData.nombre_llegada}</Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_partida)}
+        </Text>
+        <Text style={styles.placeBox}>
+          {formatPlaceName(routeData.nombre_llegada)}
+        </Text>
       </View>
       {/* Mapa */}
       <View style={styles.mapContainer}>
@@ -428,7 +494,7 @@ export default function DriverTripStartScreen({
             <View>
               <Text style={styles.meetingLabel}>Punto de encuentro:</Text>
               <Text style={styles.meetingPlace}>
-                {routeData.nombre_partida}
+                {formatPlaceName(routeData.nombre_partida)}
               </Text>
             </View>
           </View>
@@ -438,22 +504,47 @@ export default function DriverTripStartScreen({
           {/* Pasajeros */}
           <Text style={styles.meetingLabel}>Pasajeros:</Text>
           <View style={styles.passengerListContainer}>
-            <ScrollView
-              style={styles.passengerScroll}
-              showsVerticalScrollIndicator={true}
-            >
-              {passengers.map((p) => (
-                <View key={p.id} style={styles.passengerRow}>
-                  <Text style={styles.passengerName}>{p.name}</Text>
-                  <TouchableOpacity
-                    style={styles.removePassengerBtn}
-                    onPress={() => handleAskRemovePassenger(p)}
-                  >
-                    <Ionicons name="close-circle" size={22} color="#FF4D4D" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
+            {loadingPassengers ? (
+              <ActivityIndicator
+                size="small"
+                color="#A259FF"
+                style={{ marginTop: 8 }}
+              />
+            ) : errorPassengers ? (
+              <Text style={{ color: "#FF4D4D", marginTop: 8 }}>
+                {errorPassengers}
+              </Text>
+            ) : formattedPassengers.length === 0 ? (
+              <Text style={{ color: "#666", marginTop: 8 }}>
+                No hay pasajeros registrados
+              </Text>
+            ) : (
+              <ScrollView
+                style={styles.passengerScroll}
+                showsVerticalScrollIndicator={true}
+              >
+                {formattedPassengers.map((p) => (
+                  <View key={p.id} style={styles.passengerRow}>
+                    <Text style={styles.passengerName}>{p.name}</Text>
+                    <Text>{p.rol}</Text>
+                    <TouchableOpacity
+                      style={styles.removePassengerBtn}
+                      onPress={() => handleAskRemovePassenger(p)}
+                    >
+                      <Text
+                        style={{
+                          color: "#FF4D4D",
+                          fontWeight: "bold",
+                          fontSize: 16,
+                        }}
+                      >
+                        Eliminar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
         <View style={styles.buttonRow}>
@@ -461,7 +552,10 @@ export default function DriverTripStartScreen({
             <Ionicons name="qr-code-outline" size={24} color="#A259FF" />
             <Text style={styles.qrButtonText}>Generar QR</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={handleStartTrip}
+          >
             <Text style={styles.buttonText}>Iniciar viaje</Text>
           </TouchableOpacity>
         </View>
@@ -472,7 +566,7 @@ export default function DriverTripStartScreen({
         visible={showQRModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowQRModal(false)}
+        onRequestClose={handleCloseQRModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.qrModalContent}>
@@ -490,7 +584,7 @@ export default function DriverTripStartScreen({
             </Text>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setShowQRModal(false)}
+              onPress={handleCloseQRModal}
             >
               <Text style={styles.closeButtonText}>Cerrar</Text>
             </TouchableOpacity>
@@ -521,8 +615,11 @@ export default function DriverTripStartScreen({
               <TouchableOpacity
                 style={styles.deleteBtn}
                 onPress={handleRemovePassenger}
+                disabled={removingPassenger}
               >
-                <Text style={styles.deleteBtnText}>Eliminar</Text>
+                <Text style={styles.deleteBtnText}>
+                  {removingPassenger ? "Eliminando..." : "Eliminar"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -13,12 +14,14 @@ interface RatingModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (rating: number, comment: string) => void;
+  isLoading?: boolean;
 }
 
 const RatingModal: React.FC<RatingModalProps> = ({
   visible,
   onClose,
   onSubmit,
+  isLoading = false,
 }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -28,11 +31,19 @@ const RatingModal: React.FC<RatingModalProps> = ({
   };
 
   const handleSend = () => {
+    if (isLoading || rating === 0) return;
     onSubmit(rating, comment);
-    setRating(0);
-    setComment("");
-    onClose();
+    // No cerrar el modal ni limpiar campos aquí
+    // El componente padre se encarga de cerrar después del éxito
   };
+
+  // Limpiar campos cuando el modal se cierre
+  React.useEffect(() => {
+    if (!visible) {
+      setRating(0);
+      setComment("");
+    }
+  }, [visible]);
 
   return (
     <Modal
@@ -77,8 +88,23 @@ const RatingModal: React.FC<RatingModalProps> = ({
             numberOfLines={4}
             maxLength={300}
           />
-          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-            <Text style={styles.sendBtnText}>Enviar</Text>
+          <TouchableOpacity
+            style={[styles.sendBtn, isLoading && styles.sendBtnDisabled]}
+            onPress={handleSend}
+            disabled={isLoading || rating === 0}
+          >
+            {isLoading ? (
+              <>
+                <ActivityIndicator
+                  color="#fff"
+                  size="small"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.sendBtnText}>Enviando...</Text>
+              </>
+            ) : (
+              <Text style={styles.sendBtnText}>Enviar</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -162,6 +188,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 2,
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  sendBtnDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
   sendBtnText: {
     color: "#fff",

@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./useAuth";
 import { getCedulaByUUID } from "../services/userDataService";
 import { getFirstInstitutionAcceptedByUser } from "../services/institutionService";
-import { getTripsByInstitution } from "../services/tripServices";
+import {
+  getTripsByInstitution,
+  TripByInstitution,
+} from "../services/tripServices";
 
 export function useUserInstitutionTrips() {
   const { user } = useAuth();
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<TripByInstitution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [howTrips, setHowTrips] = useState(1); // 1 = Hoy por defecto
@@ -29,6 +32,12 @@ export function useUserInstitutionTrips() {
           cedula
         );
         setTrips(data.viajes || []);
+        if (data.viajes && data.viajes.length > 0) {
+          console.log(
+            "[useUserInstitutionTrips] Primer viaje recibido:",
+            data.viajes[0]
+          );
+        }
       } catch (e: any) {
         setError(e.message || "Error al obtener viajes");
         setTrips([]);

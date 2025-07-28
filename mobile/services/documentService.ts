@@ -1,6 +1,7 @@
 // Configuración de Supabase
 export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 export const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+import { getCurrentToken } from "./authService";
 
 export interface DocumentData {
   id_usuario: number;
@@ -33,6 +34,12 @@ export class DocumentService {
     userId: number
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
+      // Obtener token del usuario autenticado
+      const userToken = getCurrentToken();
+      if (!userToken) {
+        return { success: false, error: "Usuario no autenticado" };
+      }
+
       // Crear un nombre único para el archivo
       const fileExtension = imageUri.split(".").pop() || "jpg";
       const uniqueFileName = `${userId}/${fileName}_${Date.now()}.${fileExtension}`;
@@ -45,13 +52,13 @@ export class DocumentService {
         name: uniqueFileName,
       } as any);
 
-      // Subir archivo usando la API REST de Supabase Storage
+      // Subir archivo usando la API REST de Supabase Storage con token del usuario
       const uploadResponse = await fetch(
-        `${supabaseUrl}/storage/v1/object/documentos/${uniqueFileName}`,
+        `${supabaseUrl}/storage/v1/object/licencia/${uniqueFileName}`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${supabaseAnonKey}`,
+            Authorization: `Bearer ${userToken}`,
             "Content-Type": "multipart/form-data",
           },
           body: formData,
@@ -65,7 +72,7 @@ export class DocumentService {
       }
 
       // Construir URL pública
-      const publicUrl = `${supabaseUrl}/storage/v1/object/public/documentos/${uniqueFileName}`;
+      const publicUrl = `${supabaseUrl}/storage/v1/object/public/licencia/${uniqueFileName}`;
 
       return {
         success: true,
@@ -84,11 +91,17 @@ export class DocumentService {
     documentData: DocumentData
   ): Promise<UploadResponse> {
     try {
+      // Obtener token del usuario autenticado
+      const userToken = getCurrentToken();
+      if (!userToken) {
+        return { success: false, error: "Usuario no autenticado" };
+      }
+
       const response = await fetch(`${supabaseUrl}/rest/v1/documento`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseAnonKey}`,
+          Authorization: `Bearer ${userToken}`,
           apikey: supabaseAnonKey,
           Prefer: "return=representation",
         },

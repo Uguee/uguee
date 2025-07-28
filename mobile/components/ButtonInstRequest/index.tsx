@@ -1,14 +1,38 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
+
+interface Props {
+  onPress: () => void;
+  isLoading?: boolean;
+}
 
 export default function InstitutionRequestButton({
   onPress,
-}: {
-  onPress: () => void;
-}) {
+  isLoading = false,
+}: Props) {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
-      <Text style={styles.text}>Realizar registro</Text>
+    <TouchableOpacity
+      style={[styles.button, isLoading && styles.buttonDisabled]}
+      onPress={onPress}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <>
+          <ActivityIndicator
+            color="#fff"
+            size="small"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.text}>Procesando...</Text>
+        </>
+      ) : (
+        <Text style={styles.text}>Realizar registro</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -20,6 +44,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginTop: 18,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.7,
   },
   text: {
     color: "#fff",

@@ -31,6 +31,14 @@ export default function DriverRegisterForm({
   const [showExpedition, setShowExpedition] = useState(false);
   const [showExpiration, setShowExpiration] = useState(false);
 
+  // Función auxiliar para formatear fechas sin problemas de zona horaria
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <View>
       <Text style={styles.label}>Número de id en licencia</Text>
@@ -70,11 +78,12 @@ export default function DriverRegisterForm({
           display="calendar"
           onChange={(_, date) => {
             setShowExpedition(false);
-            if (date)
+            if (date) {
               onChange({
                 ...value,
-                expeditionDate: date.toISOString().split("T")[0],
+                expeditionDate: formatDate(date),
               });
+            }
           }}
         />
       )}
@@ -98,11 +107,12 @@ export default function DriverRegisterForm({
           display="calendar"
           onChange={(_, date) => {
             setShowExpiration(false);
-            if (date)
+            if (date) {
               onChange({
                 ...value,
-                expirationDate: date.toISOString().split("T")[0],
+                expirationDate: formatDate(date),
               });
+            }
           }}
         />
       )}
