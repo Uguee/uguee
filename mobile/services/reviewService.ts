@@ -61,28 +61,94 @@ export async function createTripReview(
   jwt: string
 ): Promise<{ success: boolean; reseña?: any; error?: string }> {
   try {
-    const response = await fetch(
-      "https://ezuujivxstyuziclhvhp.supabase.co/functions/v1/to-review-a-trip",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({
-          id_usuario,
-          id_viaje,
-          calificacion,
-          descripcion,
-        }),
-      }
-    );
-    const data = await response.json();
-    if (!response.ok) {
-      return { success: false, error: data.error || "Error al crear reseña" };
+    // Validaciones de entrada
+    if (!id_usuario || !id_viaje || !calificacion || !jwt) {
+      console.error("❌ [reviewService] Parámetros faltantes:", {
+        id_usuario: !!id_usuario,
+        id_viaje: !!id_viaje,
+        calificacion: !!calificacion,
+        jwt: !!jwt,
+      });
+      return { success: false, error: "Parámetros requeridos faltantes" };
     }
+
+    if (calificacion < 1 || calificacion > 5) {
+      console.error("❌ [reviewService] Calificación inválida:", calificacion);
+      return {
+        success: false,
+        error: "La calificación debe estar entre 1 y 5",
+      };
+    }
+
+    if (descripcion.length > 500) {
+      console.error(
+        "❌ [reviewService] Descripción muy larga:",
+        descripcion.length
+      );
+      return {
+        success: false,
+        error: "La descripción no puede exceder 500 caracteres",
+      };
+    }
+
+    console.log("🚀 [reviewService] Enviando reseña al servidor:", {
+      id_usuario,
+      id_viaje,
+      calificacion,
+      descripcion: descripcion.substring(0, 50) + "...",
+      descripcion_length: descripcion.length,
+      jwt_prefix: jwt.substring(0, 20) + "...",
+    });
+
+    const requestBody = {
+      id_usuario,
+      id_viaje,
+      calificacion,
+      descripcion: descripcion.trim(), // Limpiar espacios
+    };
+
+    const supabaseUrl =
+      process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/to-review-a-trip`;
+
+    console.log("🌐 [reviewService] URL de la edge function:", edgeFunctionUrl);
+
+    const response = await fetch(edgeFunctionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log("📡 [reviewService] Respuesta HTTP:", {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
+
+    const data = await response.json();
+    console.log("📄 [reviewService] Datos de respuesta:", data);
+
+    if (!response.ok) {
+      console.error("❌ [reviewService] Error HTTP:", {
+        status: response.status,
+        error: data.error,
+        data: data,
+      });
+      return {
+        success: false,
+        error:
+          data.error || `Error HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    console.log("✅ [reviewService] Reseña creada exitosamente");
     return { success: true, reseña: data.reseña };
   } catch (error: any) {
+    console.error("💥 [reviewService] Error inesperado:", error);
     return { success: false, error: error.message || "Error inesperado" };
   }
 }

@@ -271,6 +271,18 @@ export class AuthService {
         data.session?.access_token
       );
 
+      if (!syncSuccess) {
+        console.warn(
+          "⚠️ Sincronización falló, pero continuando con el registro"
+        );
+      }
+
+      // Esperar un momento para que la sincronización se complete
+      if (data.session?.access_token) {
+        console.log("⏳ Esperando sincronización de datos...");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
       // Intentar obtener datos del usuario desde el endpoint
       const appUser = await this.fetchUserDataForRegistration(
         userObj,
@@ -279,7 +291,11 @@ export class AuthService {
 
       // Si hay sesión, guardarla (pero puede no haberla si requiere confirmación)
       if (data.session) {
-        this.saveSession(data.session, appUser);
+        console.log(
+          "⚠️ [AuthService.register] Sesión disponible pero no se guardará hasta verificación de email"
+        );
+        // NO guardar la sesión automáticamente
+        // this.saveSession(data.session, appUser);
 
         return {
           success: true,
@@ -295,6 +311,9 @@ export class AuthService {
       }
 
       // No hay sesión (requiere confirmación de email)
+      console.log(
+        "📧 [AuthService.register] Usuario creado, requiere confirmación de email"
+      );
       return {
         success: true,
         data: {
@@ -427,7 +446,8 @@ export class AuthService {
    */
   private static async fetchUserDataForRegistration(
     supabaseUser: any,
-    accessToken?: string
+    accessToken?: string,
+    retryCount: number = 0
   ): Promise<User> {
     try {
       // Intentar obtener datos del endpoint primero (usar token pasado como parámetro o currentToken)
@@ -469,6 +489,25 @@ export class AuthService {
             };
             return mappedUser;
           }
+        } else if (response.status === 401 && retryCount < 2) {
+          // Si es 401, esperar y reintentar
+          console.log(
+            `[fetchUserDataForRegistration] 401 error, reintentando en ${
+              (retryCount + 1) * 1000
+            }ms...`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, (retryCount + 1) * 1000)
+          );
+          return this.fetchUserDataForRegistration(
+            supabaseUser,
+            accessToken,
+            retryCount + 1
+          );
+        } else {
+          console.warn(
+            `[fetchUserDataForRegistration] HTTP error ${response.status}, usando fallback`
+          );
         }
       }
     } catch (error) {
@@ -476,6 +515,7 @@ export class AuthService {
     }
 
     // Fallback a datos de Supabase metadata
+    console.log("📋 Usando datos de metadata como fallback");
     return {
       id: supabaseUser.id,
       firstName: supabaseUser.user_metadata?.firstName || "",

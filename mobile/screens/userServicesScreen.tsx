@@ -48,6 +48,7 @@ const ServiciosScreen = ({
   } | null>(null);
   const [historialViajes, setHistorialViajes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submittingReview, setSubmittingReview] = useState(false); // Prevenir doble envío
   const { user } = useAuth();
 
   useEffect(() => {
@@ -183,13 +184,94 @@ const ServiciosScreen = ({
   };
 
   const handleSubmitRating = async (rating: number, comment: string) => {
-    setRatingModalVisible(false);
-    if (!selectedTrip || !selectedTrip.id_viaje || !user?.id) return;
+    console.log("🌟 Iniciando envío de reseña:", {
+      rating,
+      comment: comment.substring(0, 50) + "...",
+      selectedTrip: selectedTrip?.id_viaje,
+      submittingReview,
+    });
+
+    // Prevenir doble envío
+    if (submittingReview) {
+      console.log("⚠️ Ya se está enviando una reseña, ignorando...");
+      return;
+    }
+
+    if (!selectedTrip || !selectedTrip.id_viaje || !user?.id) {
+      setRatingModalVisible(false);
+      console.error("❌ Datos faltantes:", {
+        selectedTrip: !!selectedTrip,
+        id_viaje: selectedTrip?.id_viaje,
+        user_id: !!user?.id,
+      });
+      Alert.alert("Error", "Datos del viaje no disponibles");
+      return;
+    }
+
+    // Verificar si el viaje ya fue calificado según nuestro estado local
+    if (selectedTrip.tiene_resena) {
+      console.log("⚠️ El viaje ya fue calificado según el estado local");
+      setRatingModalVisible(false);
+      Alert.alert("Información", "Este viaje ya fue calificado anteriormente");
+      return;
+    }
+
+    setSubmittingReview(true);
+
     try {
+      console.log("📍 Paso 1: Obteniendo id_usuario");
       const id_usuario = await getCedulaByUUID(user.id);
-      if (!id_usuario) throw new Error("No se pudo obtener el id_usuario");
+      if (!id_usuario) {
+        console.error("❌ No se pudo obtener id_usuario");
+        throw new Error("No se pudo obtener el id_usuario");
+      }
+      console.log("✅ id_usuario obtenido:", id_usuario);
+
+      console.log("📍 Paso 2: Obteniendo JWT");
       const jwt = getCurrentToken();
-      if (!jwt) throw new Error("No hay JWT");
+      if (!jwt) {
+        console.error("❌ No hay JWT disponible");
+        throw new Error("No hay JWT");
+      }
+      console.log("✅ JWT disponible:", jwt.substring(0, 20) + "...");
+
+      console.log("📍 Paso 3: Verificando si ya existe reseña");
+      // Verificar si ya existe una reseña en el servidor
+      const existingReview = await getTripReview(
+        id_usuario,
+        selectedTrip.id_viaje,
+        jwt
+      );
+      if (existingReview.success && existingReview.resena) {
+        console.log(
+          "⚠️ Ya existe una reseña en el servidor:",
+          existingReview.resena
+        );
+        // Actualizar estado local para reflejar que ya tiene reseña
+        setHistorialViajes((prev) =>
+          prev.map((v) =>
+            v.id_viaje === selectedTrip.id_viaje
+              ? { ...v, tiene_resena: true }
+              : v
+          )
+        );
+        setRatingModalVisible(false);
+        Alert.alert(
+          "Información",
+          "Este viaje ya fue calificado anteriormente"
+        );
+        return;
+      }
+
+      console.log("📍 Paso 4: Enviando reseña al servidor");
+      const reviewData = {
+        id_usuario,
+        id_viaje: selectedTrip.id_viaje,
+        rating,
+        comment,
+      };
+      console.log("📄 Datos de la reseña:", reviewData);
+
       const res = await createTripReview(
         id_usuario,
         selectedTrip.id_viaje,
@@ -197,7 +279,11 @@ const ServiciosScreen = ({
         comment,
         jwt
       );
+
+      console.log("📄 Respuesta del servidor:", res);
+
       if (res.success) {
+        console.log("🎉 Reseña enviada exitosamente");
         // Actualizar el historial para reflejar el cambio
         setHistorialViajes((prev) =>
           prev.map((v) =>
@@ -206,12 +292,23 @@ const ServiciosScreen = ({
               : v
           )
         );
-        alert("¡Reseña guardada exitosamente!");
+        setRatingModalVisible(false);
+        Alert.alert("Éxito", "¡Reseña guardada exitosamente!");
       } else {
-        alert(res.error || "Error al guardar la reseña");
+        console.error("❌ Error del servidor:", res.error);
+        setRatingModalVisible(false);
+        Alert.alert("Error", res.error || "Error al guardar la reseña");
       }
     } catch (e: any) {
-      alert(e.message || "Error inesperado al guardar la reseña");
+      console.error("💥 Error inesperado:", e);
+      setRatingModalVisible(false);
+      Alert.alert(
+        "Error",
+        e.message || "Error inesperado al guardar la reseña"
+      );
+    } finally {
+      setSubmittingReview(false);
+      console.log("🏁 Proceso de envío de reseña finalizado");
     }
   };
 
@@ -294,6 +391,7 @@ const ServiciosScreen = ({
         visible={ratingModalVisible}
         onClose={() => setRatingModalVisible(false)}
         onSubmit={handleSubmitRating}
+        isLoading={submittingReview}
       />
       <ViewRatingModal
         visible={viewRatingModalVisible}

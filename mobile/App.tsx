@@ -4,6 +4,7 @@ import {
   WelcomeScreen,
   LoginScreen,
   RegisterScreen,
+  EmailVerificationScreen,
   VerifyIdentityScreen,
   CameraPermissionsScreen,
   StartVerificationScreen,
@@ -24,6 +25,7 @@ import SelectedInstScreen from "./screens/SelectedInstScreen";
 import DriverMyTripsScreen from "./screens/DriverMyTripsScreen";
 import UserTripsScreen from "./screens/UserTripsScreen";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { useCedula } from "./hooks/useCedula";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { User } from "./services/authService";
 import {
@@ -33,10 +35,14 @@ import {
   Image,
   Modal,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import RegisterRouteScreen from "./screens/RegisterRouteScreen";
 import DriverCreateTripScreen from "./screens/DriverCreateTripScreen";
-import { getCedulaByUUID } from "./services/userDataService";
+import {
+  getCedulaByUUID,
+  getCedulaByUUIDWithRetry,
+} from "./services/userDataService";
 import DriverTripStartScreen from "./screens/DriverTripStartScreen";
 import DriveQRScreen from "./screens/DriveQRScreen";
 import ScanQRScreen from "./screens/ScanQRScreen";
@@ -56,6 +62,7 @@ type Screen =
   | "welcome"
   | "login"
   | "register"
+  | "email-verification"
   | "verify-identity"
   | "permissions"
   | "start-verification"
@@ -90,20 +97,31 @@ type Screen =
 const AppNavigator = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("welcome");
   const { user, isAuthenticated, isLoading, login, register } = useAuth();
+  const {
+    cedula,
+    loading: cedulaLoading,
+    error: cedulaError,
+    refetch: refetchCedula,
+  } = useCedula();
   const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [routesRefreshKey, setRoutesRefreshKey] = useState(0);
-  const [cedula, setCedula] = React.useState<number | null>(null);
+
+  // Estado para guardar credenciales del usuario durante el proceso de verificación
+  const [userCredentials, setUserCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
+
   const [tripStartData, setTripStartData] = useState<{
     pickupPlace: string;
     destinationPlace: string;
     punto_partida?: {
       coordinates: [number, number];
+      address: string;
     };
     punto_llegada?: {
       coordinates: [number, number];
-    };
-    trayecto?: {
-      coordinates: [number, number][];
+      address: string;
     };
   } | null>(null);
   const [qrValue, setQRValue] = useState<string | null>(null);
@@ -128,18 +146,34 @@ const AppNavigator = () => {
           console.log("🔄 Usuario autenticado, redirigiendo al dashboard");
           setCurrentScreen("dashboard");
         }
-      } else if (currentScreen === "dashboard") {
-        console.log("🔄 Usuario no autenticado, redirigiendo a welcome");
-        setCurrentScreen("welcome");
+      } else {
+        // Usuario no autenticado - redirigir desde cualquier pantalla protegida
+        const protectedScreens = [
+          "dashboard",
+          "profile",
+          "profile-from-driver",
+          "driver-home",
+          "my-vehicles",
+          "vehicle-registration",
+          "inst-profile",
+          "inst-profile-from-driver",
+          "register-route",
+          "driver-routes",
+          "driver-my-trips",
+          "driver-create-trip",
+          "user-trips",
+          "user-services",
+        ];
+
+        if (protectedScreens.includes(currentScreen)) {
+          console.log(
+            `🔄 Usuario no autenticado, redirigiendo desde ${currentScreen} a welcome`
+          );
+          setCurrentScreen("welcome");
+        }
       }
     }
   }, [isAuthenticated, isLoading, user]);
-
-  useEffect(() => {
-    if (user?.id) {
-      getCedulaByUUID(user.id).then(setCedula);
-    }
-  }, [user?.id]);
 
   // Lógica para detectar viaje activo y suscribirse a su finalización
   useEffect(() => {
@@ -253,35 +287,36 @@ const AppNavigator = () => {
 
   const handleLoginSubmit = async (email: string, password: string) => {
     try {
-      console.log("🔐 Intentando login:", { email });
-      console.log("📊 Estado antes del login:", {
-        isAuthenticated,
-        user: user?.email,
-      });
+      console.log("🔐 [handleLoginSubmit] Intentando login:", { email });
 
-      const loggedUser = await login({ email, password });
+      const loginResult = await login({ email, password });
 
-      if (loggedUser) {
-        console.log(
-          "✅ Login exitoso, redirigiendo según rol:",
-          loggedUser.role
-        );
-        console.log("📊 Estado después del login exitoso:", {
-          isAuthenticated,
-          user: user?.email,
-        });
-        // La redirección se maneja automáticamente por el useEffect
+      if (loginResult) {
+        console.log("✅ [handleLoginSubmit] Login exitoso");
         setCurrentScreen("dashboard");
       }
     } catch (error: any) {
-      console.error("❌ Error en login:", error.message);
-      console.log("📊 Estado después del error:", {
-        isAuthenticated,
-        user: user?.email,
-      });
-      // Asegurar que estamos en la pantalla de login después del error
-      setCurrentScreen("login");
+      console.error("❌ [handleLoginSubmit] Error en login:", error.message);
+      // Re-lanzar el error para que LoginScreen pueda manejarlo
+      throw error;
     }
+  };
+
+  const handleGoToEmailVerificationFromLogin = (
+    email: string,
+    password: string
+  ) => {
+    console.log(
+      "📧 [handleGoToEmailVerificationFromLogin] Redirigiendo desde login a email-verification"
+    );
+
+    // Guardar credenciales para el proceso de verificación
+    setUserCredentials({
+      email: email,
+      password: password,
+    });
+
+    setCurrentScreen("email-verification");
   };
 
   const handleRegisterSubmit = async (data: {
@@ -294,7 +329,15 @@ const AppNavigator = () => {
     password: string;
   }) => {
     try {
-      console.log("📝 Intentando registro:", { email: data.email });
+      console.log("📝 [handleRegisterSubmit] Intentando registro:", {
+        email: data.email,
+      });
+
+      // Guardar credenciales para el proceso de verificación
+      setUserCredentials({
+        email: data.email,
+        password: data.password,
+      });
 
       await register({
         firstName: data.name,
@@ -307,16 +350,40 @@ const AppNavigator = () => {
         id: data.cedula, // Cédula para sync-user
       });
 
-      console.log("✅ Registro exitoso");
-      // Después del registro exitoso, ir a validación de documentos
-      setCurrentScreen("verify-identity");
+      console.log(
+        "✅ [handleRegisterSubmit] Registro exitoso, redirigiendo a verificación de email"
+      );
+      // Después del registro exitoso, ir a verificación de email
+      setCurrentScreen("email-verification");
     } catch (error: any) {
-      console.error("❌ Error en registro:", error.message);
+      console.error(
+        "❌ [handleRegisterSubmit] Error en registro:",
+        error.message
+      );
+      // Limpiar credenciales si el registro falla
+      setUserCredentials(null);
       // El error se maneja en el hook useAuth
     }
   };
 
+  const handleEmailVerificationComplete = () => {
+    console.log(
+      "✅ [handleEmailVerificationComplete] Email verificado, continuando a verify-identity"
+    );
+    setCurrentScreen("verify-identity");
+  };
+
+  const handleGoBackFromEmailVerification = () => {
+    console.log("🔙 [handleGoBackFromEmailVerification] Volviendo a register");
+    // Limpiar credenciales al volver atrás
+    setUserCredentials(null);
+    setCurrentScreen("register");
+  };
+
   const handleContinueFromVerifyIdentity = () => {
+    console.log(
+      "➡️ [handleContinueFromVerifyIdentity] Continuando a permissions"
+    );
     setCurrentScreen("permissions");
   };
 
@@ -334,6 +401,47 @@ const AppNavigator = () => {
   };
 
   const handleStartVerificationProcess = () => {
+    console.log(
+      "🚀 [handleStartVerificationProcess] Iniciando proceso de verificación"
+    );
+    console.log("📊 [handleStartVerificationProcess] Datos del usuario:", {
+      user: user
+        ? {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+          }
+        : null,
+      cedula: cedula,
+      cedulaLoading: cedulaLoading,
+      cedulaError: cedulaError,
+      isAuthenticated: isAuthenticated,
+      isLoading: isLoading,
+    });
+
+    console.log("🔍 [handleStartVerificationProcess] Estado de cédula:", {
+      cedula: cedula,
+      loading: cedulaLoading,
+      error: cedulaError,
+      userExists: !!user,
+      userId: user?.id,
+    });
+
+    console.log(
+      "📋 [handleStartVerificationProcess] Datos necesarios para document-verification:",
+      {
+        necesitaCedula: true,
+        cedulaDisponible: cedula !== null,
+        puedeContinuar: cedula !== null && !cedulaLoading,
+        mensaje:
+          cedula === null
+            ? "❌ Cédula no disponible - Error 401 probable"
+            : "✅ Cédula disponible",
+      }
+    );
+
     setCurrentScreen("document-verification");
   };
 
@@ -647,6 +755,7 @@ const AppNavigator = () => {
             onLogin={handleLoginSubmit}
             onGoToRegister={handleRegister}
             onBackToHome={handleBackToHome}
+            onGoToEmailVerification={handleGoToEmailVerificationFromLogin}
           />
         );
       case "register":
@@ -655,6 +764,16 @@ const AppNavigator = () => {
             onRegister={handleRegisterSubmit}
             onGoToLogin={handleLogin}
             onBackToHome={handleBackToHome}
+          />
+        );
+      case "email-verification":
+        return (
+          <EmailVerificationScreen
+            onVerificationComplete={handleEmailVerificationComplete}
+            onGoBack={handleGoBackFromEmailVerification}
+            onBackToHome={handleBackToHome}
+            userEmail={userCredentials?.email}
+            userPassword={userCredentials?.password}
           />
         );
       case "verify-identity":
@@ -690,19 +809,86 @@ const AppNavigator = () => {
           />
         );
       case "document-verification":
+        console.log(
+          "📋 [document-verification] Renderizando pantalla de verificación de documentos"
+        );
+        console.log("📊 [document-verification] Estado actual:", {
+          cedula: cedula,
+          cedulaLoading: cedulaLoading,
+          cedulaError: cedulaError,
+          user: user
+            ? {
+                id: user.id,
+                email: user.email,
+              }
+            : null,
+        });
+
         if (cedula === null) {
+          console.log(
+            "❌ [document-verification] Cédula es null, mostrando pantalla de carga"
+          );
           return (
             <View
               style={{
                 flex: 1,
                 justifyContent: "center",
                 alignItems: "center",
+                backgroundColor: "#fff",
+                padding: 20,
               }}
             >
-              <Text>Obteniendo cédula...</Text>
+              <ActivityIndicator size="large" color="#A259FF" />
+              <Text
+                style={{
+                  marginTop: 20,
+                  fontSize: 16,
+                  color: "#666",
+                  textAlign: "center",
+                }}
+              >
+                {cedulaLoading
+                  ? "Obteniendo cédula..."
+                  : "Error obteniendo cédula"}
+              </Text>
+              <Text
+                style={{
+                  marginTop: 10,
+                  fontSize: 14,
+                  color: "#999",
+                  textAlign: "center",
+                }}
+              >
+                {cedulaLoading
+                  ? "Esto puede tomar unos segundos después del registro"
+                  : cedulaError || "No se pudo obtener la cédula del usuario"}
+              </Text>
+              {!cedulaLoading && (
+                <TouchableOpacity
+                  style={{
+                    marginTop: 30,
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    backgroundColor: "#A259FF",
+                    borderRadius: 8,
+                  }}
+                  onPress={refetchCedula}
+                >
+                  <Text
+                    style={{ color: "#fff", fontSize: 16, fontWeight: "500" }}
+                  >
+                    Reintentar
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           );
         }
+
+        console.log(
+          "✅ [document-verification] Cédula disponible, mostrando DocumentVerificationScreen con userId:",
+          cedula
+        );
         return (
           <DocumentVerificationScreen
             onComplete={handleCompleteDocumentVerification}
