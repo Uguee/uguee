@@ -1,6 +1,7 @@
 export { default as WelcomeScreen } from "./WelcomeScreen";
 export { default as LoginScreen } from "./LoginScreen";
 export { default as RegisterScreen } from "./RegisterScreen";
+export { default as EmailVerificationScreen } from "./EmailVerificationScreen";
 export { default as VerifyIdentityScreen } from "./VerifyIdentityScreen";
 export { default as CameraPermissionsScreen } from "./CameraPermissionsScreen";
 export { default as StartVerificationScreen } from "./StartVerificationScreen";
@@ -22,3 +23,4 @@ export { default as DriverTripStartScreen } from "./DriverTripStartScreen";
 export { default as ScanQRScreen } from "./ScanQRScreen";
 export { default as UserServicesScreen } from "./userServicesScreen";
 export { default as UserTripStartScreen } from "./UserTripStartScreen";
+export { default as DriverTripActiveScreen } from "./DriverTripActiveScreen";

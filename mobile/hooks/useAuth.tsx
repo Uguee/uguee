@@ -1,5 +1,16 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { AuthService, User, LoginCredentials, RegisterData } from '../services/authService';
+import React, {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
+import {
+  AuthService,
+  User,
+  LoginCredentials,
+  RegisterData,
+} from "../services/authService";
 
 interface AuthContextType {
   user: User | null;
@@ -28,28 +39,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (credentials: LoginCredentials): Promise<User | null> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      console.log('🔐 Intentando login para:', credentials.email);
-      
+      console.log("🔐 [useAuth] Intentando login para:", credentials.email);
+
       const response = await AuthService.login(credentials);
-      
+
       if (response.success && response.data) {
         setUser(response.data.user);
-        console.log('✅ Login exitoso:', response.data.user.email);
+        console.log("✅ [useAuth] Login exitoso:", response.data.user.email);
         return response.data.user;
       } else {
         setUser(null);
-        const errorMsg = response.error || 'Error de autenticación';
+        const errorMsg = response.error || "Error de autenticación";
         setError(errorMsg);
-        console.error('❌ Login fallido:', errorMsg);
-        throw new Error(errorMsg);
+        console.error("❌ [useAuth] Login fallido:", errorMsg);
+
+        // Lanzar error específico para que pueda ser capturado
+        const error = new Error(errorMsg);
+        throw error;
       }
     } catch (err: any) {
       setUser(null);
-      const errorMsg = err.message || 'Error de conexión';
+      const errorMsg = err.message || "Error de conexión";
       setError(errorMsg);
-      console.error('❌ Error en login:', errorMsg);
+      console.error("❌ [useAuth] Error en login:", errorMsg);
+
+      // Re-lanzar el error para que pueda ser manejado por el componente
       throw err;
     } finally {
       setIsLoading(false);
@@ -60,25 +76,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (userData: RegisterData): Promise<void> => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      console.log('📝 Intentando registro para:', userData.email);
-      
+      console.log("📝 [useAuth] Intentando registro para:", userData.email);
+
       const response = await AuthService.register(userData);
-      
-      if (response.success && response.data) {
-        setUser(response.data.user);
-        console.log('✅ Registro exitoso:', response.data.user.email);
+
+      if (response.success) {
+        console.log(
+          "✅ [useAuth] Registro exitoso, usuario debe verificar email:",
+          userData.email
+        );
+        // NO hacer login automático ni guardar usuario
+        // El usuario debe verificar su email primero
+        setUser(null); // Mantener usuario como null hasta verificación
       } else {
-        const errorMsg = response.error || 'Error en el registro';
+        const errorMsg = response.error || "Error en el registro";
         setError(errorMsg);
-        console.error('❌ Registro fallido:', errorMsg);
+        console.error("❌ [useAuth] Registro fallido:", errorMsg);
         throw new Error(errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'Error de conexión';
+      const errorMsg = err.message || "Error de conexión";
       setError(errorMsg);
-      console.error('❌ Error en registro:', errorMsg);
+      console.error("❌ [useAuth] Error en registro:", errorMsg);
       throw err;
     } finally {
       setIsLoading(false);
@@ -92,10 +113,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await AuthService.logout();
       setUser(null);
       setError(null);
-      console.log('👋 Logout exitoso');
+      console.log("👋 Logout exitoso");
     } catch (err: any) {
-      console.error('❌ Error en logout:', err);
-      setError('Error cerrando sesión');
+      console.error("❌ Error en logout:", err);
+      setError("Error cerrando sesión");
     } finally {
       setIsLoading(false);
     }
@@ -117,20 +138,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearError,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Hook para usar el contexto de autenticación
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+    throw new Error("useAuth debe ser usado dentro de un AuthProvider");
   }
   return context;
 };
 
-export default AuthProvider; 
+export default AuthProvider;

@@ -124,7 +124,7 @@ const UserTripDetailsModal: React.FC<UserTripDetailsModalProps> = ({
             )}
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
-                <Text style={styles.startBtnText}>Iniciar viaje</Text>
+                <Text style={styles.startBtnText}>ver viaje</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn2} onPress={onClose}>
                 <Text style={styles.closeBtn2Text}>cerrar</Text>

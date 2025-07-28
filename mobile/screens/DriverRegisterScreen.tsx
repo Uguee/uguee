@@ -52,6 +52,8 @@ export default function DriverRegisterScreen({ onGoBack }: Props) {
   };
 
   const handleSubmit = async () => {
+    console.log("🚀 Iniciando handleSubmit");
+
     if (!user?.id) {
       Alert.alert("Error", "No se pudo obtener el usuario autenticado.");
       return;
@@ -86,32 +88,38 @@ export default function DriverRegisterScreen({ onGoBack }: Props) {
       return;
     }
 
+    console.log("✅ Todas las validaciones pasaron, iniciando proceso...");
     setIsUploading(true);
 
     try {
+      console.log("📍 Paso 1: Obteniendo cédula del usuario");
       // Obtener cédula real
       const id_usuario = await getCedulaByUUID(user.id);
       if (!id_usuario) {
+        console.error("❌ No se pudo obtener id_usuario");
         Alert.alert(
           "Error",
           "No se pudo obtener el id_usuario real del usuario."
         );
-        setIsUploading(false);
         return;
       }
+      console.log("✅ id_usuario obtenido:", id_usuario);
 
+      console.log("📍 Paso 2: Actualizando estado de conductor");
       // 1. Actualizar estado de conductor
       const updateMsg = await updateDriverValidationStatus({
         id_usuario,
         id_institucion: idInstitucion,
       });
+      console.log("✅ updateMsg:", updateMsg);
 
       if (updateMsg !== "Estado de validación actualizado a pendiente") {
+        console.error("❌ Mensaje inesperado:", updateMsg);
         Alert.alert("Error", "No se pudo actualizar el estado del conductor.");
-        setIsUploading(false);
         return;
       }
 
+      console.log("📍 Paso 3: Subiendo documento");
       // 2. Subir documento
       const result = await DocumentService.uploadDocument(
         frontImage,
@@ -124,16 +132,28 @@ export default function DriverRegisterScreen({ onGoBack }: Props) {
           fecha_vencimiento: form.expirationDate,
         }
       );
+      console.log("📄 Resultado del documento:", result);
 
       if (result.success) {
-        Alert.alert("Éxito", "Documento subido correctamente.");
-        onGoBack();
+        console.log("🎉 ¡Proceso completado exitosamente!");
+        Alert.alert("Éxito", "Documento subido correctamente.", [
+          {
+            text: "OK",
+            onPress: () => {
+              console.log("👈 Ejecutando onGoBack...");
+              onGoBack();
+            },
+          },
+        ]);
       } else {
+        console.error("❌ Error en el resultado:", result.error);
         Alert.alert("Error", result.error || "Error subiendo documento.");
       }
     } catch (error: any) {
+      console.error("💥 Error en handleSubmit:", error);
       Alert.alert("Error", error.message || "Error subiendo documento.");
     } finally {
+      console.log("🏁 Finalizando proceso, desactivando loading");
       setIsUploading(false);
     }
   };
@@ -147,7 +167,10 @@ export default function DriverRegisterScreen({ onGoBack }: Props) {
         onChange={setForm}
         onPickFiles={handlePickFiles}
       />
-      <InstitutionRequestButton onPress={handleSubmit} />
+      <InstitutionRequestButton
+        onPress={handleSubmit}
+        isLoading={isUploading}
+      />
     </ScrollView>
   );
 }

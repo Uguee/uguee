@@ -17,17 +17,25 @@ interface TripScheduledDetailsModalProps {
   destinationPlace?: string;
   departureDate?: string;
   departureTime?: string;
+  trip?: any;
 }
 
 const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
   visible,
   onClose,
   onStartTrip = () => {},
-  pickupPlace = "Campus Meléndez Calle 13 # 100",
-  destinationPlace = "Cl. 13 #98-10",
-  departureDate = "2025-05-31",
-  departureTime = "07:00:00 p.m",
+  pickupPlace,
+  destinationPlace,
+  departureDate,
+  departureTime,
+  trip,
 }) => {
+  // Determina la fecha y hora a mostrar
+  let fechaMostrar = trip?.programado_at;
+  if (trip?.estado === "en-curso" && trip?.salida_at) {
+    fechaMostrar = trip.salida_at;
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
@@ -61,11 +69,13 @@ const TripScheduledDetailsModal: React.FC<TripScheduledDetailsModalProps> = ({
               Hora de salida: <Text style={styles.value}>{departureTime}</Text>
             </Text>
             <Text style={styles.confirmText}>
-              ¿Está seguro iniciar su viaje con la ruta actual?
+              {trip?.estado === "en-curso"
+                ? "Debes ver tu viaje para poder continuarlo"
+                : "Debes ver tu viaje para poder iniciarlo"}
             </Text>
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.startBtn} onPress={onStartTrip}>
-                <Text style={styles.startBtnText}>Iniciar viaje</Text>
+                <Text style={styles.startBtnText}>ver viaje</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn2} onPress={onClose}>
                 <Text style={styles.closeBtn2Text}>cerrar</Text>

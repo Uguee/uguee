@@ -28,8 +28,15 @@ const ProfileScreen = ({
   const { logout, user } = useAuth();
 
   const handleLogout = async () => {
-    await logout();
-    onGoToHomeScreen();
+    try {
+      console.log("🚪 Iniciando logout desde ProfileScreen");
+      await logout();
+      console.log("✅ Logout exitoso, navegando a home");
+      // Navegar de vuelta al home después del logout exitoso
+      onGoToHomeScreen();
+    } catch (error) {
+      console.error("❌ Error durante el logout:", error);
+    }
   };
 
   const getInitial = (name?: string) =>

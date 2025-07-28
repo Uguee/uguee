@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
@@ -13,19 +14,59 @@ interface LoginScreenProps {
   onLogin: (email: string, password: string) => void;
   onGoToRegister: () => void;
   onBackToHome: () => void;
+  onGoToEmailVerification: (email: string, password: string) => void;
 }
 
 export default function LoginScreen({
   onLogin,
   onGoToRegister,
   onBackToHome,
+  onGoToEmailVerification,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (email.trim() && password.trim()) {
-      onLogin(email, password);
+      try {
+        console.log("🔐 [LoginScreen] Intentando login para:", email);
+        await onLogin(email, password);
+      } catch (error: any) {
+        console.error("❌ [LoginScreen] Error en login:", error);
+
+        // Verificar si el error es por email no confirmado
+        if (error.message && error.message.includes("Email not confirmed")) {
+          console.log(
+            "📧 [LoginScreen] Email no confirmado, redirigiendo a verificación"
+          );
+
+          Alert.alert(
+            "Email no verificado",
+            "Tu email aún no ha sido verificado. Te ayudaremos a completar la verificación.",
+            [
+              {
+                text: "Verificar ahora",
+                onPress: () => {
+                  console.log(
+                    "➡️ [LoginScreen] Redirigiendo a email-verification"
+                  );
+                  onGoToEmailVerification(email, password);
+                },
+              },
+              {
+                text: "Cancelar",
+                style: "cancel",
+              },
+            ]
+          );
+        } else {
+          // Otros errores se manejan normalmente
+          console.error(
+            "❌ [LoginScreen] Error de login no relacionado con verificación:",
+            error.message
+          );
+        }
+      }
     }
   };
 
