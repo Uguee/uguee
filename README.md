@@ -173,17 +173,6 @@ VITE_SUPABASE_URL=tu_supabase_url
 VITE_SUPABASE_ANON_KEY=tu_supabase_anon_key
 ```
 
-### Para la Aplicación Móvil
-La aplicación móvil actualmente funciona de forma independiente sin variables de entorno.
-
-## 🎨 Pantallas Móviles Implementadas
-
-1. **WelcomeScreen** - Pantalla inicial con logo y opciones
-2. **LoginScreen** - Inicio de sesión
-3. **RegisterScreen** - Registro con campos completos
-4. **VerifyIdentityScreen** - Confirmación de verificación
-5. **CameraPermissionsScreen** - Solicitud de permisos
-6. **StartVerificationScreen** - Inicio del proceso de verificación
 
 ## 🔧 Tecnologías Utilizadas
 
@@ -203,24 +192,7 @@ La aplicación móvil actualmente funciona de forma independiente sin variables 
 - React Native
 - Expo SDK 53
 - TypeScript
-- React Navigation (pendiente)
+- React Navigation
 
-## 📝 Próximos Pasos
-
-### Para la Aplicación Móvil
-1. **Integración con backend**: Conectar con APIs o Supabase
-2. **Navegación avanzada**: Implementar React Navigation completo
-3. **Funcionalidades nativas**: Cámara, geolocalización, notificaciones
-4. **Optimización**: Mejoras de rendimiento y UX
-
-### Para la Aplicación Web
-1. **Funcionalidades completas**: Dashboard, gestión de viajes
-2. **Optimizaciones**: SEO, performance, accesibilidad
-
-## 📄 Licencia
-
-[Especifica tu licencia aquí]
-
----
 
 **¡Ugüee - Viaja seguro y económico!** 🚗✈️
